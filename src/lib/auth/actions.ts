@@ -4,7 +4,7 @@ import { createActionClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-export async function signUp(formData: FormData) {
+export async function signUp(formData: FormData): Promise<void> {
   const supabase = createActionClient()
   
   const email = formData.get('email') as string
@@ -24,18 +24,16 @@ export async function signUp(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    redirect(`/signup?error=${encodeURIComponent(error.message)}`)
   }
 
   if (data.user) {
     revalidatePath('/', 'layout')
     redirect('/app/dashboard')
   }
-
-  return { success: true }
 }
 
-export async function signIn(formData: FormData) {
+export async function signIn(formData: FormData): Promise<void> {
   const supabase = createActionClient()
 
   const email = formData.get('email') as string
@@ -47,15 +45,13 @@ export async function signIn(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
   if (data.user) {
     revalidatePath('/', 'layout')
     redirect('/app/dashboard')
   }
-
-  return { success: true }
 }
 
 export async function signOut() {
