@@ -143,7 +143,7 @@ export async function generateWeeklyReportData(organizationId: string): Promise<
   }
 }
 
-export function generateWeeklyReportHtml(data: WeeklyReportData): string {
+export async function generateWeeklyReportHtml(data: WeeklyReportData): Promise<string> {
   const topCampaignSection = data.topCampaign
     ? `
       <div style="margin-top: 24px; padding: 16px; background: #f0fdf4; border-radius: 8px;">
