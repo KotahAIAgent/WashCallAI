@@ -29,7 +29,7 @@ export async function GET(request: Request) {
         .from('phone_numbers')
         .select('organization_id')
         .eq('phone_number', phone)
-        .single()
+        .single() as { data: { organization_id: string } | null }
 
       if (phoneNumber) {
         organizationId = phoneNumber.organization_id
