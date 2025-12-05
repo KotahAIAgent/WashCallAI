@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       .from('organizations')
       .select('plan, trial_ends_at, name')
       .eq('id', organizationId)
-      .single()
+      .single() as { data: { plan: string | null; trial_ends_at: string | null; name: string } | null }
 
     if (!org) {
       return NextResponse.json({
