@@ -1,0 +1,249 @@
+'use client'
+
+import { useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { updateInboundConfig } from '@/lib/agents/actions'
+import { useToast } from '@/hooks/use-toast'
+import { Database } from '@/types/database'
+import { Phone, CheckCircle2, AlertTriangle } from 'lucide-react'
+
+type AgentConfig = Database['public']['Tables']['agent_configs']['Row']
+type Organization = Database['public']['Tables']['organizations']['Row']
+type PhoneNumber = Database['public']['Tables']['phone_numbers']['Row']
+
+export function InboundConfigForm({
+  organizationId,
+  config,
+  organization,
+  phoneNumbers,
+}: {
+  organizationId: string
+  config: AgentConfig | null
+  organization: Organization | null
+  phoneNumbers: PhoneNumber[]
+}) {
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  // Filter phone numbers that can be used for inbound
+  const inboundPhones = phoneNumbers.filter(p => p.type === 'inbound' || p.type === 'both')
+  const currentInboundPhone = phoneNumbers.find(p => p.id === config?.inbound_phone_number_id)
+
+  async function handleSubmit(formData: FormData) {
+    setLoading(true)
+    formData.append('organizationId', organizationId)
+    
+    const result = await updateInboundConfig(formData)
+    
+    if (result?.error) {
+      toast({
+        title: 'Error',
+        description: result.error,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Inbound Agent configuration saved successfully',
+      })
+    }
+    
+    setLoading(false)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Inbound Agent Configuration</CardTitle>
+        <CardDescription>Configure your AI receptionist for incoming calls</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form action={handleSubmit} className="space-y-6">
+
+          {/* Agent Status */}
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              {config?.inbound_enabled ? (
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              )}
+              <div>
+                <p className="font-medium">Agent Status</p>
+                <p className="text-sm text-muted-foreground">
+                  {config?.inbound_agent_id 
+                    ? 'Your inbound agent is configured and ready'
+                    : 'Waiting for agent setup by WashCall AI team'}
+                </p>
+              </div>
+            </div>
+            <Badge variant={config?.inbound_agent_id ? 'default' : 'secondary'}>
+              {config?.inbound_agent_id ? 'Active' : 'Pending Setup'}
+            </Badge>
+          </div>
+
+          {/* Inbound Phone Number Display */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Phone className="h-5 w-5 text-muted-foreground" />
+              <Label className="text-base font-semibold">Your Business Line</Label>
+            </div>
+            
+            {currentInboundPhone ? (
+              <div className="p-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-lg">{currentInboundPhone.phone_number}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentInboundPhone.friendly_name || 'Main Business Line'}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    Active
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Forward your business calls to this number or use it as your main line
+                </p>
+              </div>
+            ) : inboundPhones.length > 0 ? (
+              <div className="space-y-2">
+                <Select name="inboundPhoneNumberId" defaultValue={inboundPhones[0]?.id}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select inbound number" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inboundPhones.map((phone) => (
+                      <SelectItem key={phone.id} value={phone.id}>
+                        {phone.friendly_name || phone.phone_number} ({phone.phone_number})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg border border-dashed text-center">
+                <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  No phone number assigned yet. Contact WashCall AI support to get your business line set up.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Business Info */}
+          <div className="space-y-2">
+            <Label htmlFor="businessName">Business Name</Label>
+            <Input
+              id="businessName"
+              name="businessName"
+              defaultValue={organization?.name || ''}
+              placeholder="My Pressure Washing Company"
+            />
+            <p className="text-sm text-muted-foreground">
+              Your AI will introduce itself as representing this business
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="serviceArea">Service Area</Label>
+            <Textarea
+              id="serviceArea"
+              name="serviceArea"
+              placeholder="e.g., Greater Houston area, Katy, Sugar Land, The Woodlands"
+              rows={2}
+            />
+            <p className="text-sm text-muted-foreground">
+              Help your AI know which areas you serve to qualify leads properly
+            </p>
+          </div>
+
+          {/* Custom Greeting */}
+          <div className="space-y-2">
+            <Label htmlFor="inboundGreeting">Custom Greeting (Optional)</Label>
+            <Textarea
+              id="inboundGreeting"
+              name="inboundGreeting"
+              defaultValue={config?.inbound_greeting || ''}
+              placeholder="e.g., Thank you for calling [Business Name], this is your AI assistant. How can I help you today?"
+              rows={2}
+            />
+            <p className="text-sm text-muted-foreground">
+              Customize how your AI greets callers, or leave blank for the default
+            </p>
+          </div>
+
+          {/* Lead Preferences */}
+          <div className="space-y-4 pt-4 border-t">
+            <Label className="text-base font-semibold">Lead Preferences</Label>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="allowResidential">Accept Residential Jobs</Label>
+                <p className="text-sm text-muted-foreground">
+                  House washing, driveways, patios, etc.
+                </p>
+              </div>
+              <Switch id="allowResidential" name="allowResidential" defaultChecked />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="allowCommercial">Accept Commercial Jobs</Label>
+                <p className="text-sm text-muted-foreground">
+                  Storefronts, parking lots, fleet washing, etc.
+                </p>
+              </div>
+              <Switch id="allowCommercial" name="allowCommercial" defaultChecked />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="autoBookEstimates">Auto-Book Estimates</Label>
+                <p className="text-sm text-muted-foreground">
+                  Let your AI schedule estimate appointments automatically
+                </p>
+              </div>
+              <Switch id="autoBookEstimates" name="autoBookEstimates" />
+            </div>
+          </div>
+
+          {/* Enable Toggle */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="space-y-0.5">
+              <Label htmlFor="enableInbound">Enable Inbound Agent</Label>
+              <p className="text-sm text-muted-foreground">
+                Your AI will answer calls 24/7 when enabled
+              </p>
+            </div>
+            <Switch 
+              id="enableInbound" 
+              name="enableInbound" 
+              defaultChecked={config?.inbound_enabled}
+              disabled={!config?.inbound_agent_id}
+            />
+          </div>
+          
+          {!config?.inbound_agent_id && (
+            <p className="text-sm text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="h-4 w-4" />
+              Inbound calling will be available once your agent is set up by our team
+            </p>
+          )}
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Saving...' : 'Save Configuration'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
