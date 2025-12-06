@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       .select('id, name, email, trial_ends_at, setup_status')
       .is('plan', null) // No paid plan
       .lt('trial_ends_at', now) // Trial has ended
-      .eq('setup_status', 'active') // Still marked as active
+      .eq('setup_status', 'active') as { data: Array<{ id: string; name: string; email: string | null; trial_ends_at: string; setup_status: string }> | null; error: any }
 
     if (fetchError) {
       console.error('Error fetching expired trials:', fetchError)
