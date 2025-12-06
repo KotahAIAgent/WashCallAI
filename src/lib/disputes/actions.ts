@@ -226,8 +226,8 @@ export async function reviewDispute({
   }
 
   // Update the dispute
-  const { error: updateError } = await supabase
-    .from('call_disputes')
+  const { error: updateError } = await (supabase
+    .from('call_disputes') as any)
     .update({
       status,
       admin_notes: adminNotes || null,
@@ -249,8 +249,8 @@ export async function reviewDispute({
     const currentCount = org?.billable_calls_this_month || 0
 
     if (currentCount > 0) {
-      await supabase
-        .from('organizations')
+      await (supabase
+        .from('organizations') as any)
         .update({
           billable_calls_this_month: currentCount - 1,
         })
