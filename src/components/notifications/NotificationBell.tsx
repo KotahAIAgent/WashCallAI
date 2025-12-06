@@ -45,7 +45,7 @@ export function NotificationBell({ organizationId, userId }: NotificationBellPro
   const loadUnreadCount = async () => {
     const result = await getUnreadCount(organizationId, userId)
     if (!result.error) {
-      setUnreadCount(result.count)
+      setUnreadCount(result.count ?? 0)
     }
   }
 
