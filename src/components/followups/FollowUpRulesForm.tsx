@@ -98,7 +98,7 @@ export function FollowUpRulesForm({ organizationId }: FollowUpRulesFormProps) {
       delayHours: newRule.delayHours,
       maxAttempts: newRule.maxAttempts,
       onlyDuringBusinessHours: newRule.onlyDuringBusinessHours,
-      messageTemplate: newRule.action === 'send_sms' ? newRule.messageTemplate : undefined,
+      messageTemplate: (newRule.action as string) === 'send_sms' ? newRule.messageTemplate : undefined,
     })
 
     if (result.error) {
