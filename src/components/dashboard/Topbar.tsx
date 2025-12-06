@@ -79,12 +79,12 @@ export function Topbar({ isAdmin = false, userId }: TopbarProps) {
               </Link>
               <DropdownMenuSeparator />
               <form action={signOut}>
-                <DropdownMenuItem asChild>
-                  <button type="submit" className="w-full flex items-center cursor-pointer text-red-600">
+                <button type="submit" className="w-full">
+                  <DropdownMenuItem className="cursor-pointer text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
-                  </button>
-                </DropdownMenuItem>
+                  </DropdownMenuItem>
+                </button>
               </form>
             </DropdownMenuContent>
           </DropdownMenu>
