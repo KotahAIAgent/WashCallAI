@@ -64,7 +64,7 @@ export default async function DisputesPage() {
 
       {/* Usage Stats */}
       {usageResult && !usageResult.error && (
-        <UsageStatsCard stats={usageResult} />
+        <UsageStatsCard stats={usageResult as any} />
       )}
 
       {/* How Billing Works Info */}
