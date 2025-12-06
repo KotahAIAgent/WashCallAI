@@ -226,7 +226,7 @@ export async function getAnalyticsReport(organizationId: string, dateFrom: strin
   const totalLeads = leads?.length || 0
   const interestedLeads = leads?.filter(l => l.status === 'interested').length || 0
   const bookedLeads = leads?.filter(l => l.status === 'booked').length || 0
-  const avgScore = leads?.reduce((sum, l) => sum + (l.score || 0), 0) / (totalLeads || 1)
+  const avgScore = (leads?.reduce((sum, l) => sum + (l.score || 0), 0) || 0) / (totalLeads || 1)
 
   return {
     period: { from: dateFrom, to: dateTo },
