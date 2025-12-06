@@ -202,8 +202,8 @@ export async function POST(request: Request) {
 
       let leadId: string
       if (existingLead) {
-        const { data: updatedLead } = await supabase
-          .from('leads')
+        const { data: updatedLead } = await (supabase
+          .from('leads') as any)
           .update(lead)
           .eq('id', existingLead.id)
           .select()
@@ -220,8 +220,8 @@ export async function POST(request: Request) {
 
       // Link call to lead
       if (leadId && call) {
-        await supabase
-          .from('calls')
+        await (supabase
+          .from('calls') as any)
           .update({ lead_id: leadId })
           .eq('id', call.id)
       }
@@ -253,8 +253,8 @@ export async function POST(request: Request) {
                            callData.status === 'voicemail' ? 'voicemail' :
                            callData.status === 'answered' ? 'answered' : 'no_answer'
 
-      await supabase
-        .from('campaign_contacts')
+      await (supabase
+        .from('campaign_contacts') as any)
         .update({
           status: contactStatus,
           call_count: supabase.rpc('increment', { x: 1 }),
@@ -293,8 +293,8 @@ export async function POST(request: Request) {
           // Check if we need to reset the counter for a new billing period
           if (org.billing_period_month !== currentMonth || org.billing_period_year !== currentYear) {
             // New billing period - reset counter
-            await supabase
-              .from('organizations')
+            await (supabase
+              .from('organizations') as any)
               .update({
                 billable_calls_this_month: 1,
                 billing_period_month: currentMonth,
@@ -303,8 +303,8 @@ export async function POST(request: Request) {
               .eq('id', organizationId)
           } else {
             // Same billing period - increment counter
-            await supabase
-              .from('organizations')
+            await (supabase
+              .from('organizations') as any)
               .update({
                 billable_calls_this_month: (org.billable_calls_this_month || 0) + 1,
               })

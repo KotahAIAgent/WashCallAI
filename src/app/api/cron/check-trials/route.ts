@@ -51,8 +51,8 @@ export async function POST(request: Request) {
     for (const org of expiredOrgs) {
       try {
         // Disable agent configs
-        await supabase
-          .from('agent_configs')
+        await (supabase
+          .from('agent_configs') as any)
           .update({
             inbound_enabled: false,
             outbound_enabled: false,
@@ -61,15 +61,15 @@ export async function POST(request: Request) {
           .eq('organization_id', org.id)
 
         // Pause active campaigns
-        await supabase
-          .from('campaigns')
+        await (supabase
+          .from('campaigns') as any)
           .update({ status: 'paused' })
           .eq('organization_id', org.id)
           .eq('status', 'active')
 
         // Update organization status
-        await supabase
-          .from('organizations')
+        await (supabase
+          .from('organizations') as any)
           .update({ 
             setup_status: 'ready' // Ready but not active
           })

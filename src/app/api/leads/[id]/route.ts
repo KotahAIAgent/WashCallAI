@@ -36,8 +36,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
 
-    const { data: lead, error } = await supabase
-      .from('leads')
+    const { data: lead, error } = await (supabase
+      .from('leads') as any)
       .update(body)
       .eq('id', params.id)
       .select()

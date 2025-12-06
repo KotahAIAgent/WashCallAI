@@ -53,8 +53,8 @@ export async function POST(request: Request) {
       customerId = customer.id
 
       // Update organization with customer ID
-      await supabase
-        .from('organizations')
+      await (supabase
+        .from('organizations') as any)
         .update({ billing_customer_id: customerId })
         .eq('id', organization.id)
     }
