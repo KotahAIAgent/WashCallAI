@@ -150,7 +150,7 @@ export async function generateWeeklyReportHtml(data: WeeklyReportData): Promise<
         <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #166534;">🏆 Top Campaign</h3>
         <p style="margin: 0; font-weight: 600;">${data.topCampaign.name}</p>
         <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">
-          ${data.topCampaign.contacted} called → ${data.topCampaign.interested} interested
+          ${data.topCampaign.contacts} called → ${data.topCampaign.interested} interested
         </p>
       </div>
     `
