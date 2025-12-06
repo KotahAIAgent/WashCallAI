@@ -23,7 +23,8 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { submitDispute, BILLABLE_STATUSES } from '@/lib/disputes/actions'
+import { submitDispute } from '@/lib/disputes/actions'
+import { BILLABLE_STATUSES } from '@/lib/disputes/constants'
 import { AlertTriangle, Phone, Play, CheckCircle2, Clock } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 

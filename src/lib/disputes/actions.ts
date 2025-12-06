@@ -3,9 +3,6 @@
 import { createActionClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-// Statuses that count toward billing
-export const BILLABLE_STATUSES = ['answered', 'interested', 'not_interested', 'callback', 'completed']
-
 // ============================================
 // CUSTOMER ACTIONS
 // ============================================
