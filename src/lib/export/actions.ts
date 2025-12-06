@@ -220,8 +220,8 @@ export async function getAnalyticsReport(organizationId: string, dateFrom: strin
   const inboundCalls = calls?.filter(c => c.direction === 'inbound').length || 0
   const outboundCalls = calls?.filter(c => c.direction === 'outbound').length || 0
   const answeredCalls = calls?.filter(c => c.status === 'answered' || c.status === 'completed').length || 0
-  const avgDuration = calls?.filter(c => c.duration_seconds)
-    .reduce((sum, c) => sum + (c.duration_seconds || 0), 0) / (answeredCalls || 1)
+  const avgDuration = (calls?.filter(c => c.duration_seconds)
+    .reduce((sum, c) => sum + (c.duration_seconds || 0), 0) || 0) / (answeredCalls || 1)
 
   const totalLeads = leads?.length || 0
   const interestedLeads = leads?.filter(l => l.status === 'interested').length || 0
