@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       .from('profiles')
       .select('organization_id')
       .eq('id', session.user.id)
-      .single()
+      .single() as { data: { organization_id: string } | null }
 
     if (!profile?.organization_id) {
       return NextResponse.json({ error: 'No organization found' }, { status: 400 })

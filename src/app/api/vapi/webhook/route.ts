@@ -16,7 +16,7 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
     .from('organizations')
     .select('plan, trial_ends_at')
     .eq('id', organizationId)
-    .single()
+    .single() as { data: { plan: string | null; trial_ends_at: string | null } | null }
 
   if (!org) {
     return { hasAccess: false, reason: 'Organization not found' }
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
           .from('phone_numbers')
           .select('organization_id')
           .eq('phone_number', toNumber)
-          .single()
+          .single() as { data: { organization_id: string } | null }
         
         if (phoneNumber) {
           organizationId = phoneNumber.organization_id
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         .from('organizations')
         .select('id')
         .limit(1)
-        .single()
+        .single() as { data: { id: string } | null }
 
       if (!organizations) {
         return NextResponse.json({ error: 'No organization found' }, { status: 400 })
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
         .select('id')
         .eq('organization_id', organizationId)
         .eq('phone', lead.phone)
-        .single()
+        .single() as { data: { id: string } | null }
 
       let leadId: string
       if (existingLead) {
@@ -283,7 +283,7 @@ export async function POST(request: Request) {
           .from('organizations')
           .select('billable_calls_this_month, billing_period_month, billing_period_year')
           .eq('id', organizationId)
-          .single()
+          .single() as { data: { billable_calls_this_month: number | null; billing_period_month: number | null; billing_period_year: number | null } | null }
 
         if (org) {
           const now = new Date()

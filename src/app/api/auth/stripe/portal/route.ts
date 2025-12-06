@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       .from('profiles')
       .select('organization_id')
       .eq('id', session.user.id)
-      .single()
+      .single() as { data: { organization_id: string } | null }
 
     if (!profile?.organization_id) {
       return NextResponse.json({ error: 'No organization found' }, { status: 400 })
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       .from('organizations')
       .select('billing_customer_id')
       .eq('id', profile.organization_id)
-      .single()
+      .single() as { data: { billing_customer_id: string | null } | null }
 
     if (!organization?.billing_customer_id) {
       return NextResponse.json({ error: 'No billing customer found' }, { status: 400 })

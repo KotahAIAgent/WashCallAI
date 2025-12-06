@@ -17,7 +17,7 @@ export async function PATCH(
       .from('profiles')
       .select('organization_id')
       .eq('id', session.user.id)
-      .single()
+      .single() as { data: { organization_id: string } | null }
 
     if (!profile?.organization_id) {
       return NextResponse.json({ error: 'No organization found' }, { status: 400 })
@@ -30,7 +30,7 @@ export async function PATCH(
       .from('leads')
       .select('organization_id')
       .eq('id', params.id)
-      .single()
+      .single() as { data: { organization_id: string } | null }
 
     if (!existingLead || existingLead.organization_id !== profile.organization_id) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
