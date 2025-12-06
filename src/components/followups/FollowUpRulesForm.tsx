@@ -292,7 +292,7 @@ export function FollowUpRulesForm({ organizationId }: FollowUpRulesFormProps) {
                   />
                 </div>
 
-                {newRule.action === 'send_sms' && (
+                {(newRule.action as string) === 'send_sms' && (
                   <div className="space-y-2">
                     <Label>SMS Message Template</Label>
                     <Textarea
