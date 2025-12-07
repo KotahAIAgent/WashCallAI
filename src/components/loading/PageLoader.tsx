@@ -12,7 +12,7 @@ const container = {
     opacity: 1,
     transition: {
       duration: 0.6,
-      ease: 'easeOut',
+      ease: [0.4, 0, 0.2, 1] as const,
       when: 'beforeChildren',
       staggerChildren: 0.2,
     },
@@ -21,7 +21,7 @@ const container = {
     opacity: 0,
     transition: {
       duration: 0.5,
-      ease: 'easeIn',
+      ease: [0.42, 0, 1, 1] as const,
     },
   },
 }
@@ -31,7 +31,7 @@ const item = {
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, ease: 'easeOut' },
+    transition: { duration: 0.7, ease: [0.4, 0, 0.2, 1] as const },
   },
 }
 
