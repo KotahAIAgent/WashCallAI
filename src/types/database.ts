@@ -70,6 +70,13 @@ export interface Database {
           trial_started_at: string | null
           trial_ends_at: string | null
           trial_used: boolean
+          trial_plan: string | null
+          setup_fee_refunded: boolean
+          setup_fee_refunded_at: string | null
+          account_credit: number
+          setup_fee_credited: boolean
+          setup_fee_credited_at: string | null
+          subscription_started_at: string | null
         }
         Insert: {
           id?: string
@@ -108,6 +115,13 @@ export interface Database {
           trial_started_at?: string | null
           trial_ends_at?: string | null
           trial_used?: boolean
+          trial_plan?: string | null
+          setup_fee_refunded?: boolean
+          setup_fee_refunded_at?: string | null
+          account_credit?: number
+          setup_fee_credited?: boolean
+          setup_fee_credited_at?: string | null
+          subscription_started_at?: string | null
         }
         Update: {
           id?: string
@@ -146,6 +160,13 @@ export interface Database {
           trial_started_at?: string | null
           trial_ends_at?: string | null
           trial_used?: boolean
+          trial_plan?: string | null
+          setup_fee_refunded?: boolean
+          setup_fee_refunded_at?: string | null
+          account_credit?: number
+          setup_fee_credited?: boolean
+          setup_fee_credited_at?: string | null
+          subscription_started_at?: string | null
         }
       }
       organization_members: {

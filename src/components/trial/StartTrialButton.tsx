@@ -20,13 +20,17 @@ interface StartTrialButtonProps {
   canStartTrial: boolean
   hasUsedTrial: boolean
   variant?: 'default' | 'large' | 'outline'
+  trialPlan?: 'starter' | 'growth' | 'pro'
+  planName?: string
 }
 
 export function StartTrialButton({ 
   organizationId, 
   canStartTrial, 
   hasUsedTrial,
-  variant = 'default' 
+  variant = 'default',
+  trialPlan = 'starter',
+  planName
 }: StartTrialButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
@@ -37,7 +41,7 @@ export function StartTrialButton({
   const handleStartTrial = async () => {
     setIsStarting(true)
     
-    const result = await startFreeTrial(organizationId)
+    const result = await startFreeTrial(organizationId, trialPlan)
     
     if (result.error) {
       toast({
@@ -54,9 +58,10 @@ export function StartTrialButton({
     // Wait a moment to show success state
     setTimeout(() => {
       setIsDialogOpen(false)
+      const planText = planName ? ` for ${planName}` : ''
       toast({
-        title: '🎉 Welcome to WashCall AI!',
-        description: `Your 15-day free trial has started. Enjoy full access to all features!`,
+        title: '🎉 Welcome to NeverMiss AI!',
+        description: `Your 7-day free trial${planText} has started. Enjoy full access to all features!`,
       })
       router.refresh()
     }, 1500)
@@ -83,7 +88,7 @@ export function StartTrialButton({
         className={`${buttonClasses[variant]} bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700`}
       >
         <Sparkles className="h-4 w-4 mr-2" />
-        Start 15-Day Free Trial
+        {planName ? `Start ${planName} Trial` : 'Start 7-Day Free Trial'}
       </Button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -95,7 +100,7 @@ export function StartTrialButton({
               </div>
               <h2 className="text-2xl font-bold mb-2">You're All Set! 🎉</h2>
               <p className="text-muted-foreground">
-                Your 15-day free trial is now active. Enjoy!
+                Your 7-day free trial is now active. Enjoy!
               </p>
             </div>
           ) : (
@@ -103,10 +108,11 @@ export function StartTrialButton({
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  Start Your Free Trial
+                  {planName ? `Start ${planName} Free Trial` : 'Start Your Free Trial'}
                 </DialogTitle>
                 <DialogDescription>
-                  Get full access to WashCall AI for 15 days. No credit card required.
+                  Get full access to Starter plan features (inbound calls only) for 7 days. No credit card required.
+                  Upgrade to Growth or Pro for outbound calling features.
                 </DialogDescription>
               </DialogHeader>
 
@@ -119,13 +125,12 @@ export function StartTrialButton({
                   <ul className="space-y-2">
                     {[
                       'Unlimited inbound AI calls',
-                      'Up to 50 outbound AI calls',
                       'Lead capture & management',
                       'Call recordings & transcripts',
                       'Appointment booking',
                       'SMS notifications',
                       'Analytics dashboard',
-                      'Priority support',
+                      'Email support',
                     ].map((feature, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -133,6 +138,14 @@ export function StartTrialButton({
                       </li>
                     ))}
                   </ul>
+                  
+                  {/* Note about outbound */}
+                  <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      <strong>Note:</strong> Outbound calling features require a Growth or Pro subscription. 
+                      Start with Starter to try inbound calls, then upgrade for outbound campaigns.
+                    </p>
+                  </div>
                 </div>
 
                 {/* No Credit Card Notice */}

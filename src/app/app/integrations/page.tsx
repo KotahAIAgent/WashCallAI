@@ -20,7 +20,7 @@ const integrations = [
   {
     id: 'zapier',
     name: 'Zapier',
-    description: 'Connect WashCall AI to 5,000+ apps. Automate workflows when leads come in or appointments are booked.',
+    description: 'Connect NeverMiss AI to 5,000+ apps. Automate workflows when leads come in or appointments are booked.',
     icon: Webhook,
     category: 'Automation',
     status: 'available' as const,
@@ -128,7 +128,7 @@ export default async function IntegrationsPage() {
           Integrations
         </h2>
         <p className="text-muted-foreground">
-          Connect WashCall AI with your favorite tools and automate your workflow
+          Connect NeverMiss AI with your favorite tools and automate your workflow
         </p>
       </div>
 
@@ -145,7 +145,7 @@ export default async function IntegrationsPage() {
                 <Badge className="bg-green-100 text-green-700">Available Now</Badge>
               </div>
               <p className="text-muted-foreground mt-1">
-                Connect WashCall AI to 5,000+ apps. Create automated workflows when:
+                Connect NeverMiss AI to 5,000+ apps. Create automated workflows when:
               </p>
               <ul className="text-sm text-muted-foreground mt-2 space-y-1">
                 <li>• A new lead is captured</li>

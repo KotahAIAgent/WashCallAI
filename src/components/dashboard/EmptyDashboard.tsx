@@ -22,7 +22,7 @@ export function EmptyDashboard() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
               <Rocket className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Welcome to WashCall AI! 🎉</h3>
+            <h3 className="text-2xl font-bold mb-2">Welcome to NeverMiss AI! 🎉</h3>
             <p className="text-muted-foreground mb-6">
               Your AI-powered calling assistant is ready to help grow your pressure washing business. 
               Here's how to get started:

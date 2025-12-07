@@ -13,6 +13,8 @@ export const STRIPE_PLANS = {
     name: 'Starter',
     price: 149,
     priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter_test',
+    setupFee: 99,
+    setupFeePriceId: process.env.STRIPE_SETUP_FEE_STARTER_PRICE_ID || 'price_setup_starter_test',
     description: 'Perfect for getting started with AI-powered inbound calls',
     features: [
       'Unlimited inbound AI calls',
@@ -21,6 +23,7 @@ export const STRIPE_PLANS = {
       'SMS notifications',
       'Basic analytics',
       'Email support',
+      'Setup fee credited after 6 months',
     ],
     limits: {
       inboundCalls: -1, // -1 = unlimited
@@ -33,6 +36,8 @@ export const STRIPE_PLANS = {
     name: 'Growth',
     price: 349,
     priceId: process.env.STRIPE_GROWTH_PRICE_ID || 'price_growth_test',
+    setupFee: 149,
+    setupFeePriceId: process.env.STRIPE_SETUP_FEE_GROWTH_PRICE_ID || 'price_setup_growth_test',
     description: 'Scale your business with outbound AI calling',
     features: [
       'Everything in Starter',
@@ -41,6 +46,7 @@ export const STRIPE_PLANS = {
       'Campaign contact management',
       'Advanced analytics',
       'Priority support',
+      'Setup fee credited after 6 months',
     ],
     limits: {
       inboundCalls: -1,
@@ -53,6 +59,8 @@ export const STRIPE_PLANS = {
     name: 'Pro',
     price: 699,
     priceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro_test',
+    setupFee: 199,
+    setupFeePriceId: process.env.STRIPE_SETUP_FEE_PRO_PRICE_ID || 'price_setup_pro_test',
     description: 'Unlimited power for high-volume operations',
     features: [
       'Everything in Growth',
@@ -62,6 +70,7 @@ export const STRIPE_PLANS = {
       'Custom AI voice & scripts',
       'API access',
       'Dedicated account manager',
+      'Setup fee credited after 6 months',
     ],
     limits: {
       inboundCalls: -1,
@@ -94,4 +103,14 @@ export function planHasAccess(plan: PlanType | null, feature: 'outbound' | 'camp
 // Get remaining outbound calls for a plan
 export function getOutboundLimit(plan: PlanType): number {
   return STRIPE_PLANS[plan]?.limits.outboundCalls || 0
+}
+
+// Get setup fee amount for a plan
+export function getSetupFee(plan: PlanType): number {
+  return STRIPE_PLANS[plan]?.setupFee || 0
+}
+
+// Get setup fee price ID for a plan
+export function getSetupFeePriceId(plan: PlanType): string {
+  return STRIPE_PLANS[plan]?.setupFeePriceId || ''
 }

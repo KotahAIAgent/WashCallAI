@@ -11,7 +11,7 @@ export default function LoginPage() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
         <CardDescription>
-          Sign in to your WashCall AI account
+          Sign in to your NeverMiss AI account
         </CardDescription>
       </CardHeader>
       <form action={signIn}>

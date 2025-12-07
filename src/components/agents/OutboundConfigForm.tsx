@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { updateOutboundConfig } from '@/lib/agents/actions'
 import { useToast } from '@/hooks/use-toast'
 import { Database } from '@/types/database'
-import { Clock, Calendar, Phone, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Clock, Calendar, Phone, AlertTriangle, CheckCircle2, Building2, Briefcase } from 'lucide-react'
 
 type AgentConfig = Database['public']['Tables']['agent_configs']['Row']
 type PhoneNumber = Database['public']['Tables']['phone_numbers']['Row']
@@ -75,6 +75,7 @@ export function OutboundConfigForm({
     formData.append('organizationId', organizationId)
     formData.append('enabledDays', JSON.stringify(enabledDays))
     formData.append('selectedPhoneId', selectedPhoneId)
+    // introductionStyle is already in formData from the Select component
     
     const result = await updateOutboundConfig(formData)
     
@@ -119,7 +120,7 @@ export function OutboundConfigForm({
                 <p className="text-sm text-muted-foreground">
                   {config?.outbound_agent_id 
                     ? 'Your outbound agent is configured and ready'
-                    : 'Waiting for agent setup by WashCall AI team'}
+                    : 'Waiting for agent setup by NeverMiss AI team'}
                 </p>
               </div>
             </div>
@@ -190,7 +191,7 @@ export function OutboundConfigForm({
               <div className="p-4 rounded-lg border border-dashed text-center">
                 <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  No phone numbers assigned yet. Contact WashCall AI support to add phone numbers to your account.
+                  No phone numbers assigned yet. Contact NeverMiss AI support to add phone numbers to your account.
                 </p>
               </div>
             )}
@@ -205,16 +206,63 @@ export function OutboundConfigForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="general">General Outreach</SelectItem>
-                <SelectItem value="cold_restaurants">Restaurant Cold Calls</SelectItem>
-                <SelectItem value="property_managers">Property Managers</SelectItem>
                 <SelectItem value="past_customers">Past Customer Follow-up</SelectItem>
                 <SelectItem value="new_leads">New Lead Follow-up</SelectItem>
                 <SelectItem value="estimate_reminder">Estimate Reminders</SelectItem>
+                <SelectItem value="appointment_reminder">Appointment Reminders</SelectItem>
+                <SelectItem value="maintenance_recall">Maintenance Recall</SelectItem>
+                <SelectItem value="commercial_outreach">Commercial Outreach</SelectItem>
+                <SelectItem value="reactivation">Customer Reactivation</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
               Your AI agent uses different scripts optimized for each campaign type
             </p>
+          </div>
+
+          {/* Introduction Style */}
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-muted-foreground" />
+              <Label className="text-base font-semibold">Introduction Style</Label>
+            </div>
+            <Select 
+              name="introductionStyle" 
+              defaultValue={
+                (config?.schedule as { introductionStyle?: string } | null)?.introductionStyle || 'company_name'
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="company_name">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    <span>Mention Company Name</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="service_description">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    <span>Mention What You Do (Service Description)</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+              <p className="text-sm font-medium">Examples:</p>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p className="flex items-start gap-2">
+                  <Building2 className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span><strong>Company Name:</strong> "Hi, this is [Your Company Name] calling..."</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <Briefcase className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span><strong>Service Description:</strong> "Hi, I'm calling from a local HVAC company..."</span>
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Daily Call Limit */}

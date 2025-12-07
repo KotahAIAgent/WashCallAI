@@ -42,7 +42,7 @@ async function getReferralData(organizationId: string) {
 
   return {
     referralCode,
-    referralLink: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/signup?ref=${referralCode}`,
+    referralLink: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/signup?ref=${referralCode}`,
     stats: {
       totalReferrals,
       successfulReferrals,
@@ -95,7 +95,7 @@ export default async function ReferralsPage() {
                 <span className="text-lg font-bold text-primary">Give $50, Get $50</span>
               </div>
               <h3 className="text-2xl font-bold mb-2">
-                Share WashCall AI with other businesses
+                Share NeverMiss AI with other businesses
               </h3>
               <p className="text-muted-foreground max-w-lg">
                 When a business signs up using your link and subscribes to any paid plan, 

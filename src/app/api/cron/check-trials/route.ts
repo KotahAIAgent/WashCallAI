@@ -80,7 +80,7 @@ export async function POST(request: Request) {
           organization_id: org.id,
           type: 'system',
           title: '⚠️ Your Trial Has Expired',
-          message: 'Your 15-day free trial has ended. Subscribe now to keep your AI agents running and never miss a lead!',
+          message: 'Your 7-day free trial has ended. Subscribe now to keep your AI agents running and never miss a lead!',
           link: '/app/pricing',
         })
 

@@ -118,7 +118,7 @@ export function GlobalSearch() {
       case 'call': return 'bg-green-100 text-green-700'
       case 'campaign': return 'bg-blue-100 text-blue-700'
       case 'appointment': return 'bg-amber-100 text-amber-700'
-      default: return 'bg-gray-100 text-gray-700'
+      default: return 'bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300'
     }
   }
 

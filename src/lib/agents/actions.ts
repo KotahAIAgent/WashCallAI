@@ -90,6 +90,7 @@ export async function updateOutboundConfig(formData: FormData) {
   const callScriptType = formData.get('callScriptType') as string
   const dailyCallLimit = Math.min(parseInt(formData.get('dailyCallLimit') as string) || 50, 100)
   const enableOutbound = formData.get('enableOutbound') === 'on'
+  const introductionStyle = formData.get('introductionStyle') as string || 'company_name'
   
   // Schedule data
   const enabledDaysJson = formData.get('enabledDays') as string
@@ -116,6 +117,7 @@ export async function updateOutboundConfig(formData: FormData) {
       endTime,
       timezone,
       selectedPhoneId,
+      introductionStyle, // Store introduction style preference
     },
     updated_at: new Date().toISOString(),
   }

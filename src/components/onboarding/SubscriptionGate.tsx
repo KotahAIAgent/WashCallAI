@@ -87,10 +87,10 @@ export function SubscriptionGate({
                     <h3 className="font-semibold text-lg">Your AI Agent is Ready! 🎉</h3>
                     <p className="text-muted-foreground">
                       {canStartTrial 
-                        ? 'Start your free 15-day trial or choose a plan to go live.'
+                        ? 'Start your free 7-day trial or choose a plan to go live. Setup fee fully refunded if you cancel during trial.'
                         : hasUsedTrial
-                          ? 'Your trial has ended. Subscribe to continue using WashCall AI.'
-                          : 'Choose a plan to start receiving AI-powered calls today.'
+                          ? 'Your trial has ended. Subscribe to continue using NeverMiss AI.'
+                          : 'Choose a plan to start receiving AI-powered calls today. Setup includes CRM & Calendar integration.'
                       }
                     </p>
                   </div>
@@ -175,7 +175,9 @@ export function SubscriptionGate({
                   </Button>
                 </Link>
                 <p className="text-xs text-muted-foreground mt-3">
-                  Start with unlimited inbound calls at $149/month
+                  Start with unlimited inbound calls at $149/month + $99 setup fee
+                  <br />
+                  <span className="text-teal-600">Setup includes CRM & Calendar integration</span>
                 </p>
               </CardContent>
             </Card>

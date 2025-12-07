@@ -88,7 +88,7 @@ export default async function AppLayout({
     <ThemeProvider>
       <TourProvider>
         <OrganizationProvider>
-          <div className="h-screen flex overflow-hidden bg-gray-100 dark:bg-gray-900">
+          <div className="h-screen flex overflow-hidden bg-background">
             <Sidebar isAdmin={isAdmin} />
             <div className="flex flex-col flex-1 overflow-hidden">
               <Topbar isAdmin={isAdmin} userId={userId} />

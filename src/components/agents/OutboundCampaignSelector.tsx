@@ -78,7 +78,7 @@ export function OutboundCampaignSelector({
         <h3 className="font-semibold mb-2">Agent Not Configured</h3>
         <p className="text-sm text-muted-foreground mb-4">
           Your outbound AI agent needs to be set up before you can start calling.
-          Contact WashCall AI support to configure your agent.
+          Contact NeverMiss AI support to configure your agent.
         </p>
       </div>
     )

@@ -4,48 +4,84 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Base Colors - Warm, Soft Background */
+    --background: 30 20% 98%;
     --foreground: 222.2 84% 4.9%;
+    
+    /* Card - Glassmorphism Base */
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+    
+    /* Popover */
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
+    
+    /* Primary - Deep Purple-Blue Gradient */
+    --primary: 250 95% 63%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - Soft Gray */
+    --secondary: 220 13% 91%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
+    
+    /* Muted - Subtle Gray */
+    --muted: 220 13% 95%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    
+    /* Accent - Electric Cyan */
+    --accent: 188 94% 43%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Destructive - Rose Red */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders - Subtle */
+    --border: 220 13% 85%;
+    --input: 220 13% 90%;
+    --ring: 250 95% 63%;
+    
+    /* Radius - More Generous */
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* Dark Mode - Deep Navy with Purple Undertones */
+    --background: 222 47% 8%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    
+    /* Card - Dark Glass */
+    --card: 222 47% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    
+    /* Popover */
+    --popover: 222 47% 10%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    
+    /* Primary - Brighter Purple */
+    --primary: 250 95% 70%;
+    --primary-foreground: 222 47% 8%;
+    
+    /* Secondary - Dark Gray */
+    --secondary: 217 32% 17.5%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    
+    /* Muted */
+    --muted: 217 32% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    
+    /* Accent - Brighter Cyan */
+    --accent: 188 94% 50%;
+    --accent-foreground: 222 47% 8%;
+    
+    /* Destructive */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders */
+    --border: 217 32% 25%;
+    --input: 217 32% 20%;
+    --ring: 250 95% 70%;
   }
 }
 
@@ -54,7 +90,33 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.03) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.03) 0px, transparent 50%);
+  }
+}
+
+/* Custom Glassmorphism Utility */
+@layer utilities {
+  .glass {
+    @apply backdrop-blur-xl bg-white/80 dark:bg-gray-900/80;
+    @apply border border-white/20 dark:border-gray-700/30;
+    @apply shadow-xl shadow-black/5;
+  }
+  
+  .glass-strong {
+    @apply backdrop-blur-2xl bg-white/90 dark:bg-gray-900/90;
+    @apply border border-white/30 dark:border-gray-700/40;
+    @apply shadow-2xl shadow-black/10;
+  }
+  
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+  
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
   }
 }
 

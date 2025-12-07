@@ -80,7 +80,7 @@ export function InboundConfigForm({
                 <p className="text-sm text-muted-foreground">
                   {config?.inbound_agent_id 
                     ? 'Your inbound agent is configured and ready'
-                    : 'Waiting for agent setup by WashCall AI team'}
+                    : 'Waiting for agent setup by NeverMiss AI team'}
                 </p>
               </div>
             </div>
@@ -132,7 +132,7 @@ export function InboundConfigForm({
               <div className="p-4 rounded-lg border border-dashed text-center">
                 <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  No phone number assigned yet. Contact WashCall AI support to get your business line set up.
+                  No phone number assigned yet. Contact NeverMiss AI support to get your business line set up.
                 </p>
               </div>
             )}
@@ -145,7 +145,7 @@ export function InboundConfigForm({
               id="businessName"
               name="businessName"
               defaultValue={organization?.name || ''}
-              placeholder="My Pressure Washing Company"
+              placeholder="My Business Name"
             />
             <p className="text-sm text-muted-foreground">
               Your AI will introduce itself as representing this business
@@ -157,7 +157,7 @@ export function InboundConfigForm({
             <Textarea
               id="serviceArea"
               name="serviceArea"
-              placeholder="e.g., Greater Houston area, Katy, Sugar Land, The Woodlands"
+              placeholder="e.g., Greater Houston area, surrounding suburbs, 25-mile radius"
               rows={2}
             />
             <p className="text-sm text-muted-foreground">
@@ -186,9 +186,9 @@ export function InboundConfigForm({
             
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="allowResidential">Accept Residential Jobs</Label>
+                <Label htmlFor="allowResidential">Accept Residential Customers</Label>
                 <p className="text-sm text-muted-foreground">
-                  House washing, driveways, patios, etc.
+                  Homeowners and residential properties
                 </p>
               </div>
               <Switch id="allowResidential" name="allowResidential" defaultChecked />
@@ -196,9 +196,9 @@ export function InboundConfigForm({
             
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="allowCommercial">Accept Commercial Jobs</Label>
+                <Label htmlFor="allowCommercial">Accept Commercial Customers</Label>
                 <p className="text-sm text-muted-foreground">
-                  Storefronts, parking lots, fleet washing, etc.
+                  Businesses and commercial properties
                 </p>
               </div>
               <Switch id="allowCommercial" name="allowCommercial" defaultChecked />

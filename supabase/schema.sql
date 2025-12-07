@@ -73,7 +73,11 @@ CREATE TABLE organizations (
   -- Free Trial (15 days)
   trial_started_at TIMESTAMPTZ,
   trial_ends_at TIMESTAMPTZ,
-  trial_used BOOLEAN DEFAULT false -- Has the user ever used a trial?
+  trial_used BOOLEAN DEFAULT false, -- Has the user ever used a trial?
+  trial_plan TEXT, -- Plan level for the trial (starter, growth, pro)
+  -- Setup Fee Refund Tracking
+  setup_fee_refunded BOOLEAN DEFAULT false,
+  setup_fee_refunded_at TIMESTAMPTZ
 );
 
 -- Create profiles table (depends on organizations and auth.users)

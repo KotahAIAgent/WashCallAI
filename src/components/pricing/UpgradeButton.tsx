@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
@@ -9,9 +9,11 @@ interface UpgradeButtonProps {
   planKey: string
   planName: string
   isUpgrade: boolean
+  isOnTrial?: boolean
+  trialPlan?: string | null
 }
 
-export function UpgradeButton({ planKey, planName, isUpgrade }: UpgradeButtonProps) {
+export function UpgradeButton({ planKey, planName, isUpgrade, isOnTrial = false, trialPlan = null }: UpgradeButtonProps) {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
@@ -19,10 +21,16 @@ export function UpgradeButton({ planKey, planName, isUpgrade }: UpgradeButtonPro
     setLoading(true)
     
     try {
+      // Check if converting from trial to same plan (no setup fee)
+      const isTrialConversion = isOnTrial && trialPlan === planKey
+      
       const response = await fetch('/api/auth/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planKey }),
+        body: JSON.stringify({ 
+          plan: planKey,
+          isTrialConversion 
+        }),
       })
 
       const data = await response.json()

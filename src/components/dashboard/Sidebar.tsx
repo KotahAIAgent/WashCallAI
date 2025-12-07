@@ -52,12 +52,22 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <div className="hidden md:flex md:flex-shrink-0">
       <div className="flex flex-col w-64">
-        <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-white dark:bg-gray-800 border-r dark:border-gray-700">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <span className="text-xl font-bold text-primary">WashCall AI</span>
+        <div className="flex flex-col flex-grow pt-6 pb-4 overflow-y-auto glass border-r border-border/50">
+          {/* Logo */}
+          <div className="flex items-center flex-shrink-0 px-6 mb-8">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-xl blur-lg opacity-60 group-hover:opacity-80 transition-opacity"></div>
+              <div className="relative px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500">
+                <span className="text-xl font-black text-white tracking-tight">
+                  NeverMiss AI
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="mt-5 flex-grow flex flex-col">
-            <nav className="flex-1 px-2 space-y-1">
+          
+          {/* Navigation */}
+          <div className="mt-2 flex-grow flex flex-col">
+            <nav className="flex-1 px-3 space-y-1">
               {allNavigation.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
@@ -69,27 +79,34 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
                     href={item.href}
                     data-tour={tourId}
                     className={cn(
-                      'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
+                      'group relative flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200',
                       isActive
                         ? isAdminItem 
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-primary text-white'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
+                          : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/30'
                         : isAdminItem
-                          ? 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-800 dark:hover:text-amber-300'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-primary'
+                          ? 'text-amber-700 dark:text-amber-400 hover:bg-amber-50/80 dark:hover:bg-amber-900/20 hover:text-amber-800 dark:hover:text-amber-300 hover:scale-105'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 hover:text-indigo-600 dark:hover:text-indigo-400'
                     )}
                   >
+                    {/* Active indicator bar */}
+                    {isActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-white/90 rounded-r-full"></div>
+                    )}
                     <Icon
                       className={cn(
-                        'mr-3 flex-shrink-0 h-5 w-5',
+                        'mr-3 flex-shrink-0 h-5 w-5 transition-transform',
                         isActive 
-                          ? 'text-white' 
+                          ? 'text-white drop-shadow-sm scale-110' 
                           : isAdminItem 
-                            ? 'text-amber-500 group-hover:text-amber-600 dark:group-hover:text-amber-400'
-                            : 'text-gray-400 group-hover:text-primary'
+                            ? 'text-amber-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 group-hover:scale-110'
+                            : 'text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:scale-110'
                       )}
                     />
-                    {item.name}
+                    <span className={cn(
+                      'relative z-10',
+                      isActive && 'text-white drop-shadow-sm font-bold'
+                    )}>{item.name}</span>
                   </Link>
                 )
               })}

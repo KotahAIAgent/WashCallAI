@@ -162,7 +162,7 @@ export async function generateWeeklyReportHtml(data: WeeklyReportData): Promise<
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weekly Report - WashCall AI</title>
+  <title>Weekly Report - NeverMiss AI</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f4f4f5; margin: 0; padding: 20px;">
   <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -181,7 +181,7 @@ export async function generateWeeklyReportHtml(data: WeeklyReportData): Promise<
         Hi ${data.organizationName} 👋
       </p>
       <p style="margin: 0 0 24px 0; color: #666;">
-        Here's your weekly performance summary from WashCall AI:
+        Here's your weekly performance summary from NeverMiss AI:
       </p>
 
       <!-- Calls Section -->
@@ -233,7 +233,7 @@ export async function generateWeeklyReportHtml(data: WeeklyReportData): Promise<
 
       <!-- CTA -->
       <div style="margin-top: 32px; text-align: center;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/app/dashboard" 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/dashboard" 
            style="display: inline-block; background: #3b82f6; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
           View Full Dashboard →
         </a>
@@ -244,12 +244,12 @@ export async function generateWeeklyReportHtml(data: WeeklyReportData): Promise<
     <div style="background: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
       <p style="margin: 0; font-size: 12px; color: #666;">
         You're receiving this because you have weekly reports enabled.
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/app/settings" style="color: #3b82f6;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/settings" style="color: #3b82f6;">
           Manage preferences
         </a>
       </p>
       <p style="margin: 8px 0 0 0; font-size: 12px; color: #999;">
-        © ${new Date().getFullYear()} WashCall AI. All rights reserved.
+        © ${new Date().getFullYear()} NeverMiss AI. All rights reserved.
       </p>
     </div>
   </div>
@@ -277,7 +277,7 @@ export async function sendWeeklyReport(organizationId: string, toEmail: string) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'WashCall AI <reports@washcall.ai>',
+        from: 'NeverMiss AI <reports@nevermiss.ai>',
         to: toEmail,
         subject: `📊 Weekly Report: ${data.period.from} - ${data.period.to}`,
         html,

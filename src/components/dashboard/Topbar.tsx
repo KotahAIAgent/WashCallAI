@@ -28,8 +28,8 @@ export function Topbar({ isAdmin = false, userId }: TopbarProps) {
   const { organization } = useOrganization()
 
   return (
-    <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/30">
-      <div className="flex-1 px-4 flex justify-between items-center gap-4">
+    <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 glass border-b border-border/50">
+      <div className="flex-1 px-6 flex justify-between items-center gap-4">
         <div className="flex items-center gap-4">
           <MobileSidebar isAdmin={isAdmin} />
           <h1 className="hidden sm:block text-lg font-semibold text-gray-900 dark:text-white">

@@ -16,7 +16,7 @@ export interface TourStep {
 export const tourSteps: TourStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to WashCall AI!',
+    title: 'Welcome to NeverMiss AI!',
     description: 'Let us show you around. This quick tour will help you get started with managing your AI-powered phone system.',
     position: 'bottom',
   },

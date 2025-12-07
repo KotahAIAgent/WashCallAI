@@ -115,7 +115,7 @@ export default async function OutboundAIPage() {
                 <p className="text-sm text-muted-foreground">
                   {config?.outbound_agent_id 
                     ? 'Your AI agent is configured and ready to make calls'
-                    : 'Contact WashCall AI support to set up your outbound agent'}
+                    : 'Contact NeverMiss AI support to set up your outbound agent'}
                 </p>
               </div>
             </div>

@@ -1,9 +1,10 @@
 'use server'
 
 import { createActionClient } from '@/lib/supabase/server'
+import { stripe } from '@/lib/stripe/server'
 import { revalidatePath } from 'next/cache'
 
-const TRIAL_DURATION_DAYS = 15
+const TRIAL_DURATION_DAYS = 7
 
 export interface TrialStatus {
   isOnTrial: boolean
@@ -20,7 +21,7 @@ export async function getTrialStatus(organizationId: string): Promise<TrialStatu
 
   const { data: org, error } = await supabase
     .from('organizations')
-    .select('trial_started_at, trial_ends_at, trial_used, plan')
+    .select('trial_started_at, trial_ends_at, trial_used, plan, trial_plan')
     .eq('id', organizationId)
     .single()
 
@@ -64,7 +65,7 @@ export async function getTrialStatus(organizationId: string): Promise<TrialStatu
   }
 }
 
-export async function startFreeTrial(organizationId: string) {
+export async function startFreeTrial(organizationId: string, trialPlan?: 'starter' | 'growth' | 'pro') {
   const supabase = createActionClient()
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -91,19 +92,33 @@ export async function startFreeTrial(organizationId: string) {
     return { error: 'You already have an active subscription' }
   }
 
+  // Only allow Starter plan for free trials
+  // Growth and Pro require payment to access outbound features
+  if (trialPlan && trialPlan !== 'starter') {
+    return { error: 'Free trials are only available for Starter plan. Growth and Pro plans require payment to access outbound features.' }
+  }
+  
+  // Default to starter if no plan specified
+  const finalTrialPlan = trialPlan || 'starter'
+
   // Start the trial
   const now = new Date()
   const trialEndsAt = new Date(now.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000)
 
+  const updateData: any = {
+    trial_started_at: now.toISOString(),
+    trial_ends_at: trialEndsAt.toISOString(),
+    trial_used: true,
+    // Set setup status to active during trial
+    setup_status: 'active',
+  }
+
+  // Store trial plan (always starter for free trials)
+  updateData.trial_plan = finalTrialPlan
+
   const { error } = await supabase
     .from('organizations')
-    .update({
-      trial_started_at: now.toISOString(),
-      trial_ends_at: trialEndsAt.toISOString(),
-      trial_used: true,
-      // Set setup status to active during trial
-      setup_status: 'active',
-    })
+    .update(updateData)
     .eq('id', organizationId)
 
   if (error) {
@@ -116,6 +131,7 @@ export async function startFreeTrial(organizationId: string) {
     success: true, 
     trialEndsAt: trialEndsAt.toISOString(),
     daysRemaining: TRIAL_DURATION_DAYS,
+    trialPlan: finalTrialPlan,
   }
 }
 
@@ -151,9 +167,104 @@ export async function extendTrial(organizationId: string, additionalDays: number
   return { success: true, newEndDate: newEndDate.toISOString() }
 }
 
+// Helper function to refund setup fee
+async function refundSetupFee(organizationId: string, customerId: string): Promise<boolean> {
+  try {
+    // Get all invoices for this customer
+    const invoices = await stripe.invoices.list({
+      customer: customerId,
+      limit: 100,
+    })
+
+    // Find the setup fee charge
+    let setupFeePaymentIntentId: string | null = null
+
+    for (const invoice of invoices.data) {
+      if (invoice.lines.data) {
+        for (const line of invoice.lines.data) {
+          if (line.metadata?.setup_fee === 'true') {
+            if (invoice.payment_intent && typeof invoice.payment_intent === 'string') {
+              setupFeePaymentIntentId = invoice.payment_intent
+              break
+            } else if (typeof invoice.payment_intent === 'object' && invoice.payment_intent?.id) {
+              setupFeePaymentIntentId = invoice.payment_intent.id
+              break
+            }
+          }
+        }
+      }
+    }
+
+    // If not found in invoices, check payment intents directly
+    if (!setupFeePaymentIntentId) {
+      const paymentIntents = await stripe.paymentIntents.list({
+        customer: customerId,
+        limit: 100,
+      })
+
+      for (const pi of paymentIntents.data) {
+        if (pi.metadata?.setup_fee === 'true') {
+          setupFeePaymentIntentId = pi.id
+          break
+        }
+      }
+    }
+
+    if (!setupFeePaymentIntentId) {
+      console.log('Setup fee payment not found for customer:', customerId)
+      return false
+    }
+
+    // Process the refund (Stripe will handle if already refunded)
+    await stripe.refunds.create({
+      payment_intent: setupFeePaymentIntentId,
+      reason: 'requested_by_customer',
+      metadata: {
+        organization_id: organizationId,
+        reason: 'trial_cancellation',
+      },
+    })
+
+    return true
+  } catch (error) {
+    console.error('Error refunding setup fee:', error)
+    return false
+  }
+}
+
 export async function cancelTrial(organizationId: string) {
   const supabase = createActionClient()
 
+  // Check if user is still within trial period (for setup fee refund)
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('trial_ends_at, billing_customer_id, setup_fee_refunded')
+    .eq('id', organizationId)
+    .single()
+
+  const now = new Date()
+  const trialEndsAt = org?.trial_ends_at ? new Date(org.trial_ends_at) : null
+  const isOnTrial = trialEndsAt && now < trialEndsAt
+
+  let setupFeeRefunded = false
+
+  // If still on trial, automatically refund setup fee
+  if (isOnTrial && org?.billing_customer_id && !org?.setup_fee_refunded) {
+    setupFeeRefunded = await refundSetupFee(organizationId, org.billing_customer_id)
+    
+    if (setupFeeRefunded) {
+      // Update organization to track refund
+      await supabase
+        .from('organizations')
+        .update({
+          setup_fee_refunded: true,
+          setup_fee_refunded_at: new Date().toISOString(),
+        })
+        .eq('id', organizationId)
+    }
+  }
+
+  // End the trial
   const { error } = await supabase
     .from('organizations')
     .update({
@@ -166,7 +277,10 @@ export async function cancelTrial(organizationId: string) {
   }
 
   revalidatePath('/app')
-  return { success: true }
+  return { 
+    success: true,
+    setupFeeRefunded,
+  }
 }
 
 // Check if organization has active access (trial or paid)

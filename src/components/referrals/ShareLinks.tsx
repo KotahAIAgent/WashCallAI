@@ -40,10 +40,10 @@ export function ShareLinks({ referralCode, referralLink }: ShareLinksProps) {
     setTimeout(() => setCopiedCode(false), 2000)
   }
 
-  const shareMessage = `I've been using WashCall AI to automate my pressure washing business calls - it's amazing! Use my link to get $50 off: ${referralLink}`
+  const shareMessage = `I've been using NeverMiss AI to automate my business calls - it's amazing! Use my link to get $50 off: ${referralLink}`
 
   const shareViaEmail = () => {
-    const subject = encodeURIComponent("Check out WashCall AI - AI Phone System for Pressure Washers")
+    const subject = encodeURIComponent("Check out NeverMiss AI - AI Phone System for Service Businesses")
     const body = encodeURIComponent(shareMessage)
     window.open(`mailto:?subject=${subject}&body=${body}`)
   }

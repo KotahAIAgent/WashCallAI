@@ -10,6 +10,7 @@ import { UpdateOrganizationForm } from '@/components/organization/UpdateOrganiza
 import { NotificationSettingsForm } from '@/components/settings/NotificationSettingsForm'
 import { BusinessPreferencesForm } from '@/components/settings/BusinessPreferencesForm'
 import { EmailReportsToggle } from '@/components/settings/EmailReportsToggle'
+import { CreditBalance } from '@/components/settings/CreditBalance'
 
 async function getOrganization(organizationId: string) {
   const supabase = createServerClient()
@@ -177,7 +178,15 @@ export default async function SettingsPage() {
         </TabsContent>
 
         {/* Billing Tab */}
-        <TabsContent value="billing">
+        <TabsContent value="billing" className="space-y-6">
+          {/* Credit Balance Card */}
+          {organization && (
+            <CreditBalance 
+              creditAmount={organization.account_credit || 0}
+              setupFeeCredited={organization.setup_fee_credited || false}
+            />
+          )}
+          
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

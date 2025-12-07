@@ -23,6 +23,7 @@ export default async function PricingPage() {
   let trialDaysRemaining = 0
   let canStartTrial = false
   let hasUsedTrial = false
+  let trialPlan: string | null = null
 
   if (session) {
     const { data: profile } = await supabase
@@ -36,12 +37,13 @@ export default async function PricingPage() {
       
       const { data: org } = await supabase
         .from('organizations')
-        .select('plan, trial_ends_at, trial_used')
+        .select('plan, trial_ends_at, trial_used, trial_plan')
         .eq('id', profile.organization_id)
         .single()
 
       currentPlan = org?.plan as PlanType || null
       hasUsedTrial = org?.trial_used || false
+      trialPlan = org?.trial_plan as string | null
       
       // Calculate trial status
       if (org?.trial_ends_at) {
@@ -93,7 +95,7 @@ export default async function PricingPage() {
               </div>
               <h3 className="text-2xl font-bold mb-2">Not Ready to Commit?</h3>
               <p className="text-muted-foreground mb-6">
-                Start your <strong>15-day free trial</strong> and experience the full power of WashCall AI. 
+                Start your <strong>7-day free trial</strong> and experience the full power of NeverMiss AI. 
                 No credit card required. Cancel anytime.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -105,7 +107,9 @@ export default async function PricingPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-4">
-                ✓ Full access to all features &nbsp; ✓ 50 outbound calls included &nbsp; ✓ Priority support
+                ✓ Unlimited inbound calls &nbsp; ✓ Lead capture &nbsp; ✓ No credit card required
+                <br />
+                <span className="text-amber-600">Note: Outbound features require Growth or Pro subscription</span>
               </p>
             </div>
           </CardContent>
@@ -116,7 +120,7 @@ export default async function PricingPage() {
         <h2 className="text-3xl font-bold tracking-tight">Choose Your Plan</h2>
         <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
           Start with unlimited inbound AI calls. Upgrade for outbound calling campaigns 
-          to proactively grow your pressure washing business.
+          to proactively grow your business. Setup includes CRM & Calendar integration.
         </p>
       </div>
 
@@ -158,9 +162,26 @@ export default async function PricingPage() {
               </CardHeader>
 
               <CardContent className="flex-1 flex flex-col">
-                <div className="text-center mb-6">
+                <div className="text-center mb-4">
                   <span className="text-4xl font-bold">${plan.price}</span>
                   <span className="text-muted-foreground">/month</span>
+                </div>
+                <div className="text-center mb-4 pb-4 border-b">
+                  <div className="text-sm text-muted-foreground mb-1">
+                    One-time setup fee: <span className="font-semibold text-foreground">${plan.setupFee}</span>
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <div className="text-primary font-semibold flex items-center justify-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      Credited back after 6 months
+                    </div>
+                    {key === 'starter' && canStartTrial
+                      ? <div className="text-muted-foreground">Fully refunded if you cancel during trial</div>
+                      : key === 'starter' && isOnTrial && trialPlan === key
+                        ? <div className="text-muted-foreground">No setup fee when converting from trial</div>
+                        : <div className="text-muted-foreground">Required to access outbound features</div>
+                    }
+                  </div>
                 </div>
 
                 <ul className="space-y-3 mb-6 flex-1">
@@ -170,6 +191,12 @@ export default async function PricingPage() {
                       <span className="text-sm">{feature}</span>
                     </li>
                   ))}
+                  <li className="flex items-start gap-2 pt-2 border-t">
+                    <Check className="h-5 w-5 text-teal-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm font-medium text-teal-700">
+                      CRM & Calendar Integration (included in setup)
+                    </span>
+                  </li>
                 </ul>
 
                 {isCurrentPlan ? (
@@ -180,11 +207,21 @@ export default async function PricingPage() {
                   <Button variant="outline" className="w-full" disabled>
                     Contact to Downgrade
                   </Button>
+                ) : canStartTrial && key === 'starter' ? (
+                  <StartTrialButton
+                    organizationId={organizationId}
+                    canStartTrial={canStartTrial}
+                    hasUsedTrial={hasUsedTrial}
+                    trialPlan="starter"
+                    planName={plan.name}
+                  />
                 ) : (
                   <UpgradeButton 
                     planKey={key} 
                     planName={plan.name}
                     isUpgrade={!!isUpgrade}
+                    isOnTrial={isOnTrial}
+                    trialPlan={trialPlan}
                   />
                 )}
               </CardContent>
@@ -235,6 +272,26 @@ export default async function PricingPage() {
             <CardContent className="text-sm text-muted-foreground">
               Pro plans include personalized AI scripts tailored to your business, service areas, 
               and unique selling points for maximum conversion.
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">What's the setup fee for?</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              The one-time setup fee covers custom AI agent creation, CRM integration (HubSpot, Salesforce, etc.), 
+              calendar sync (Google Calendar, Outlook), and business customization. Fully refunded if you cancel during your 7-day trial.
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Which CRMs and calendars are supported?</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              We integrate with most popular CRMs (HubSpot, Salesforce, Pipedrive, Zoho) and calendars 
+              (Google Calendar, Outlook, Calendly). Contact us if you need a specific integration.
             </CardContent>
           </Card>
         </div>

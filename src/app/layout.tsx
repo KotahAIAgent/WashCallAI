@@ -6,8 +6,8 @@ import { Toaster } from '@/components/ui/toaster'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'WashCall AI - AI Call Center for Service Businesses',
-  description: '24/7 AI receptionist and outbound calling for pressure washing and service businesses',
+  title: 'NeverMiss AI - Never Miss Another Customer Again',
+  description: '24/7 AI receptionist and outbound calling for service businesses. HVAC, Dental, Plumbing, Landscaping & more.',
 }
 
 export default function RootLayout({
@@ -17,6 +17,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+      </head>
       <body className={inter.className}>
         {children}
         <Toaster />

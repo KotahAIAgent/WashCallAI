@@ -24,32 +24,29 @@ import {
 } from 'lucide-react'
 import { submitOnboardingForm } from '@/lib/onboarding/actions'
 
+// Generic services - will be customized per industry later
 const SERVICES = [
-  'House/Exterior Washing',
-  'Driveway & Concrete Cleaning',
-  'Roof Cleaning (Soft Wash)',
-  'Deck & Patio Cleaning',
-  'Fence Cleaning',
-  'Gutter Cleaning',
-  'Window Cleaning',
-  'Commercial Building Washing',
-  'Fleet/Vehicle Washing',
-  'Grease Trap Cleaning',
-  'Restaurant Cleaning',
-  'Parking Lot/Garage Cleaning',
-  'Graffiti Removal',
-  'Pool Deck Cleaning',
-  'Awning Cleaning',
+  'Emergency Services',
+  'Routine Maintenance',
+  'Installation/Setup',
+  'Repairs',
+  'Inspections',
+  'Consultations',
+  'Commercial Services',
+  'Residential Services',
+  'Preventive Care',
+  'Same-Day Service',
+  'After-Hours Service',
+  'Seasonal Services',
 ]
 
 const EQUIPMENT = [
-  'Hot Water Pressure Washer',
-  'Cold Water Pressure Washer',
-  'Soft Wash System',
-  'Surface Cleaner',
-  'Water Tank/Trailer',
-  'Lift/Boom Equipment',
-  'Commercial Grade Equipment',
+  'Professional Grade Equipment',
+  'Specialized Tools',
+  'Fleet Vehicles',
+  'Diagnostic Equipment',
+  'Safety Equipment',
+  'Commercial Equipment',
 ]
 
 const MARKETING_CHANNELS = [
@@ -193,13 +190,13 @@ export function OnboardingForm({ organizationId }: { organizationId: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white py-8 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Let's Set Up Your AI Calling Agent</h1>
           <p className="text-gray-600 mt-2">
-            Tell us about your pressure washing business so we can customize your AI agent
+            Tell us about your business so we can customize your AI agent
           </p>
         </div>
 
@@ -259,7 +256,7 @@ export function OnboardingForm({ organizationId }: { organizationId: string }) {
                       id="businessName"
                       value={formData.businessName}
                       onChange={(e) => updateField('businessName', e.target.value)}
-                      placeholder="Clean Pro Pressure Washing"
+                      placeholder="Your Business Name"
                     />
                   </div>
                   <div className="space-y-2">
@@ -650,13 +647,14 @@ export function OnboardingForm({ organizationId }: { organizationId: string }) {
                   />
                 </div>
 
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="font-medium text-blue-900">What Happens Next?</h4>
-                  <ul className="mt-2 space-y-1 text-sm text-blue-800">
+                <div className="p-4 bg-teal-50 rounded-lg border border-teal-200">
+                  <h4 className="font-medium text-teal-900">What Happens Next?</h4>
+                  <ul className="mt-2 space-y-1 text-sm text-teal-800">
                     <li>• We'll review your information within 24 hours</li>
                     <li>• Our team will create a custom AI agent for your business</li>
+                    <li>• We'll integrate with your CRM and calendar</li>
                     <li>• You'll receive an email when it's ready to test</li>
-                    <li>• Choose a plan to go live!</li>
+                    <li>• Choose a plan to go live! (One-time setup fee included - refunded if you cancel during trial)</li>
                   </ul>
                 </div>
               </>

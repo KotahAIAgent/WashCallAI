@@ -103,7 +103,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         error: accessCheck.reason,
         action: 'reject',
-        message: 'Your trial has expired. Please subscribe to continue using WashCall AI.'
+        message: 'Your trial has expired. Please subscribe to continue using NeverMiss AI.'
       }, { status: 403 })
     }
 

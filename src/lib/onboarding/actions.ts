@@ -96,13 +96,13 @@ async function sendWelcomeEmail(formData: OnboardingFormData) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to WashCall AI</title>
+  <title>Welcome to NeverMiss AI</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: #f4f4f5;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <!-- Header -->
     <div style="text-align: center; margin-bottom: 30px;">
-      <h1 style="color: #3b82f6; margin: 0; font-size: 28px;">WashCall AI</h1>
+      <h1 style="color: #3b82f6; margin: 0; font-size: 28px;">NeverMiss AI</h1>
     </div>
     
     <!-- Main Card -->
@@ -112,7 +112,7 @@ async function sendWelcomeEmail(formData: OnboardingFormData) {
       </h2>
       
       <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-        Thank you for signing up <strong>${formData.businessName}</strong> with WashCall AI! 
+        Thank you for signing up <strong>${formData.businessName}</strong> with NeverMiss AI! 
         We're excited to help you never miss another call.
       </p>
       
@@ -141,7 +141,7 @@ async function sendWelcomeEmail(formData: OnboardingFormData) {
       
       <!-- CTA Button -->
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/app/dashboard" 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/dashboard" 
            style="display: inline-block; background: #3b82f6; color: white; padding: 14px 32px; 
                   border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
           Go to Dashboard →
@@ -177,10 +177,10 @@ async function sendWelcomeEmail(formData: OnboardingFormData) {
     <!-- Footer -->
     <div style="text-align: center; margin-top: 30px; color: #a1a1aa; font-size: 13px;">
       <p style="margin: 0 0 10px;">
-        Questions? Reply to this email or contact support@washcall.ai
+        Questions? Reply to this email or contact support@nevermiss.ai
       </p>
       <p style="margin: 0;">
-        WashCall AI - Never Miss Another Call
+        NeverMiss AI - Never Miss Another Call
       </p>
     </div>
   </div>
@@ -189,9 +189,9 @@ async function sendWelcomeEmail(formData: OnboardingFormData) {
   `.trim()
 
   const emailText = `
-Welcome to WashCall AI, ${formData.ownerName}!
+Welcome to NeverMiss AI, ${formData.ownerName}!
 
-Thank you for signing up ${formData.businessName} with WashCall AI! We're excited to help you never miss another call.
+Thank you for signing up ${formData.businessName} with NeverMiss AI! We're excited to help you never miss another call.
 
 WHAT HAPPENS NEXT?
 1. We review your application (usually within 24 hours)
@@ -210,11 +210,11 @@ Location: ${formData.city}, ${formData.state}
 Services: ${formData.servicesOffered.join(', ')}
 AI Style: ${formData.callStyle || 'Friendly'}
 
-Go to your dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/app/dashboard
+Go to your dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/dashboard
 
-Questions? Reply to this email or contact support@washcall.ai
+Questions? Reply to this email or contact support@nevermiss.ai
 
-WashCall AI - Never Miss Another Call
+NeverMiss AI - Never Miss Another Call
   `.trim()
 
   // Try to send via Resend
@@ -227,9 +227,9 @@ WashCall AI - Never Miss Another Call
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'WashCall AI <welcome@washcall.ai>',
+          from: 'NeverMiss AI <welcome@nevermiss.ai>',
           to: customerEmail,
-          subject: `Welcome to WashCall AI, ${formData.ownerName}! 🎉`,
+          subject: `Welcome to NeverMiss AI, ${formData.ownerName}! 🎉`,
           html: emailHtml,
           text: emailText,
         }),
@@ -255,8 +255,8 @@ WashCall AI - Never Miss Another Call
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: customerEmail }] }],
-          from: { email: 'welcome@washcall.ai', name: 'WashCall AI' },
-          subject: `Welcome to WashCall AI, ${formData.ownerName}! 🎉`,
+          from: { email: 'welcome@nevermiss.ai', name: 'NeverMiss AI' },
+          subject: `Welcome to NeverMiss AI, ${formData.ownerName}! 🎉`,
           content: [
             { type: 'text/plain', value: emailText },
             { type: 'text/html', value: emailHtml },
@@ -277,7 +277,7 @@ WashCall AI - Never Miss Another Call
 }
 
 async function sendAdminNotificationEmail(formData: OnboardingFormData, organizationId: string) {
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@washcall.ai'
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@nevermiss.ai'
   
   const emailContent = `
 New Lead Form Submission!
@@ -324,7 +324,7 @@ Submitted At: ${new Date().toISOString()}
 
 ---
 Action Required: Review and set up AI agent for this customer.
-Admin Panel: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/app/admin
+Admin Panel: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/admin
   `.trim()
 
   // Try Resend
@@ -337,7 +337,7 @@ Admin Panel: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/app
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'WashCall AI <notifications@washcall.ai>',
+          from: 'NeverMiss AI <notifications@nevermiss.ai>',
           to: adminEmail,
           subject: `🚀 New Lead: ${formData.businessName} - ${formData.city}, ${formData.state}`,
           text: emailContent,
@@ -364,7 +364,7 @@ Admin Panel: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.washcall.ai'}/app
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: adminEmail }] }],
-          from: { email: 'notifications@washcall.ai', name: 'WashCall AI' },
+          from: { email: 'notifications@nevermiss.ai', name: 'NeverMiss AI' },
           subject: `🚀 New Lead: ${formData.businessName} - ${formData.city}, ${formData.state}`,
           content: [{ type: 'text/plain', value: emailContent }],
         }),

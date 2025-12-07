@@ -56,7 +56,7 @@ export async function submitIntegrationRequest(
 
   // Send email notification to admin
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || 'support@washcall.ai'
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@nevermiss.ai'
     
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -65,7 +65,7 @@ export async function submitIntegrationRequest(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'WashCall AI <notifications@washcall.ai>',
+        from: 'NeverMiss AI <notifications@nevermiss.ai>',
         to: adminEmail,
         subject: `🔌 Integration Request: ${request.integrationName}`,
         html: `

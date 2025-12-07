@@ -27,25 +27,25 @@ const quickGuides = [
     title: 'Getting Started',
     description: 'Set up your AI agent in 5 minutes',
     icon: Zap,
-    href: '#getting-started',
+    href: '/app/inbound-ai',
   },
   {
     title: 'Managing Leads',
     description: 'Track and follow up with leads',
     icon: Users,
-    href: '#managing-leads',
+    href: '/app/leads',
   },
   {
     title: 'Calendar & Appointments',
     description: 'View and manage bookings',
     icon: Calendar,
-    href: '#calendar',
+    href: '/app/calendar',
   },
   {
     title: 'Account Settings',
     description: 'Customize your profile and preferences',
     icon: Settings,
-    href: '#settings',
+    href: '/app/settings',
   },
 ]
 
@@ -68,7 +68,7 @@ const faqs = [
   },
   {
     question: 'What happens if the AI can\'t answer a question?',
-    answer: 'The AI is trained on common pressure washing questions and your specific business details. If it encounters something unusual, it gracefully takes a message, captures the caller\'s info, and schedules a callback so you never lose a lead.',
+    answer: 'The AI is trained on common questions for your industry and your specific business details. If it encounters something unusual, it gracefully takes a message, captures the caller\'s info, and schedules a callback so you never lose a lead.',
   },
   {
     question: 'How do outbound campaigns work?',
@@ -100,7 +100,7 @@ export default function HelpPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Help & Support</h2>
           <p className="text-muted-foreground">
-            Everything you need to get the most out of WashCall AI
+            Everything you need to get the most out of NeverMiss AI
           </p>
         </div>
         <RestartTourButton />
@@ -114,7 +114,7 @@ export default function HelpPage() {
               <PlayCircle className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">New to WashCall AI?</h3>
+              <h3 className="font-semibold">New to NeverMiss AI?</h3>
               <p className="text-sm text-muted-foreground">
                 Take a quick guided tour to learn the basics
               </p>
@@ -129,19 +129,21 @@ export default function HelpPage() {
         {quickGuides.map((guide) => {
           const Icon = guide.icon
           return (
-            <Card key={guide.title} className="hover:border-primary/50 transition-colors cursor-pointer">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Icon className="h-5 w-5 text-primary" />
+            <Link key={guide.title} href={guide.href}>
+              <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{guide.title}</h3>
+                      <p className="text-sm text-muted-foreground">{guide.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{guide.title}</h3>
-                    <p className="text-sm text-muted-foreground">{guide.description}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           )
         })}
       </div>
@@ -190,13 +192,13 @@ export default function HelpPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <a 
-                href="mailto:support@washcall.ai" 
+                href="mailto:support@nevermiss.ai" 
                 className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
               >
                 <Mail className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">Email Support</p>
-                  <p className="text-sm text-muted-foreground">support@washcall.ai</p>
+                  <p className="text-sm text-muted-foreground">support@nevermiss.ai</p>
                 </div>
               </a>
               
@@ -257,30 +259,21 @@ export default function HelpPage() {
               <CardTitle className="text-sm font-medium">Resources</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <a 
-                href="#" 
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
+              <div className="flex items-center gap-2 text-sm text-muted-foreground opacity-60">
                 <Book className="h-4 w-4" />
                 User Guide
-                <ExternalLink className="h-3 w-3 ml-auto" />
-              </a>
-              <a 
-                href="#" 
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
+                <Badge variant="outline" className="ml-auto text-xs">Coming Soon</Badge>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground opacity-60">
                 <Video className="h-4 w-4" />
                 Video Tutorials
-                <ExternalLink className="h-3 w-3 ml-auto" />
-              </a>
-              <a 
-                href="#" 
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
+                <Badge variant="outline" className="ml-auto text-xs">Coming Soon</Badge>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground opacity-60">
                 <FileText className="h-4 w-4" />
                 API Documentation
-                <ExternalLink className="h-3 w-3 ml-auto" />
-              </a>
+                <Badge variant="outline" className="ml-auto text-xs">Coming Soon</Badge>
+              </div>
             </CardContent>
           </Card>
         </div>
