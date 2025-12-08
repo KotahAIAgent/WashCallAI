@@ -11,7 +11,7 @@ import { AdminUpdateStatus } from '@/components/admin/AdminUpdateStatus'
 // Add your admin email(s) here
 const ADMIN_EMAILS = [
   'admin@washcallai.com',
-  // Add your email here
+  'dakkota@dshpressure.com',
 ]
 
 async function getAllOrganizations() {

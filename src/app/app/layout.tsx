@@ -9,7 +9,7 @@ import { createServerClient } from '@/lib/supabase/server'
 // Add your admin email(s) here - keep in sync with admin/page.tsx
 const ADMIN_EMAILS = [
   'admin@washcallai.com',
-  // Add your email here
+  'dakkota@dshpressure.com',
 ]
 
 type SetupStatus = 'pending' | 'in_review' | 'setting_up' | 'testing' | 'ready' | 'active'

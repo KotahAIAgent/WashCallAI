@@ -8,7 +8,7 @@ import { AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react'
 // Admin emails - keep in sync with layout.tsx and admin/page.tsx
 const ADMIN_EMAILS = [
   'admin@washcallai.com',
-  // Add your email here
+  'dakkota@dshpressure.com',
 ]
 
 export default async function AdminDisputesPage() {
