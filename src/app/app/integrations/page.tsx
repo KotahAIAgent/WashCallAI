@@ -114,14 +114,15 @@ export default async function IntegrationsPage() {
   // Check if user is admin
   const isAdmin = ADMIN_EMAILS.includes(session.user.email || '')
 
-  const { data: profile } = await supabase
+  // Get profile (handle case where profile doesn't exist)
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('organization_id')
     .eq('id', session.user.id)
-    .single()
+    .maybeSingle()
 
-  // Admins can access even without organization, but we still need organization_id for the component
-  if (!profile?.organization_id && !isAdmin) {
+  // If there's an error or no profile, and user is not admin, show error
+  if ((profileError || !profile) && !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="max-w-md">
@@ -186,7 +187,7 @@ export default async function IntegrationsPage() {
           </div>
           <IntegrationCard
             integration={integrations.find(i => i.id === 'zapier')!}
-            organizationId={profile?.organization_id || ''}
+            organizationId={organizationId}
             isConnected={false}
             isPro={plan === 'pro' || plan === 'growth' || isAdmin}
           />
@@ -280,7 +281,7 @@ export default async function IntegrationsPage() {
                   <li>• Shape the product roadmap</li>
                 </ul>
               </div>
-              <RequestIntegrationDialog organizationId={profile?.organization_id || ''} />
+              <RequestIntegrationDialog organizationId={organizationId} />
             </div>
           </div>
         </CardContent>
