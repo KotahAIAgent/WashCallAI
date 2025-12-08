@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 
   return {
-    title: `${industry.heroTitle} | NeverMiss AI`,
+    title: `${industry.heroTitle} | FusionCaller`,
     description: industry.heroDescription,
   }
 }
@@ -82,7 +82,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
             <div className="flex justify-center mb-6">
               <Badge variant="outline" className={`px-4 py-2 ${industry.bgColor} border-current`}>
                 <IconComponent className={`w-4 h-4 mr-2 ${industry.color}`} />
-                <span className={industry.color}>NeverMiss AI for {industry.name}</span>
+                <span className={industry.color}>FusionCaller for {industry.name}</span>
               </Badge>
             </div>
             
@@ -167,7 +167,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
 
             <div className="text-center mt-8">
               <p className="text-lg text-gray-600">
-                <span className="font-semibold text-teal-600">NeverMiss AI</span> solves all of these problems automatically.
+                <span className="font-semibold text-teal-600">FusionCaller</span> solves all of these problems automatically.
               </p>
             </div>
           </div>
@@ -526,7 +526,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
                 <div>
                   <p className="font-semibold text-teal-900 mb-1">Setup Fee Refund Policy</p>
                   <p className="text-sm text-gray-700">
-                    Your setup fee is fully refunded if you cancel during your 7-day free trial. No questions asked - we want you to be happy with NeverMiss AI.
+                    Your setup fee is fully refunded if you cancel during your 7-day free trial. No questions asked - we want you to be happy with FusionCaller.
                   </p>
                 </div>
               </div>
@@ -576,7 +576,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
             <div className="text-center mb-12">
               <Badge variant="outline" className="mb-4">FAQ</Badge>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Questions About NeverMiss AI for {industry.name}?
+                Questions About FusionCaller for {industry.name}?
               </h2>
             </div>
             
@@ -607,7 +607,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
               Ready to Transform Your {industry.name} Business?
             </h2>
             <p className="text-xl text-teal-100 mb-8 max-w-2xl mx-auto">
-              Join other {industry.name.toLowerCase()} businesses using NeverMiss AI to capture more leads 
+              Join other {industry.name.toLowerCase()} businesses using FusionCaller to capture more leads 
               and grow revenue.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

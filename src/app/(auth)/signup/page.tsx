@@ -21,7 +21,7 @@ function SignUpForm() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
         <CardDescription>
-          Get started with NeverMiss AI today
+          Get started with FusionCaller today
         </CardDescription>
       </CardHeader>
       <form action={signUp}>

@@ -89,7 +89,7 @@ export function SubscriptionGate({
                       {canStartTrial 
                         ? 'Start your free 7-day trial or choose a plan to go live. Setup fee fully refunded if you cancel during trial.'
                         : hasUsedTrial
-                          ? 'Your trial has ended. Subscribe to continue using NeverMiss AI.'
+                          ? 'Your trial has ended. Subscribe to continue using FusionCaller.'
                           : 'Choose a plan to start receiving AI-powered calls today. Setup includes CRM & Calendar integration.'
                       }
                     </p>

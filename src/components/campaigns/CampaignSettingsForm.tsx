@@ -167,7 +167,7 @@ export function CampaignSettingsForm({
           <div className="p-4 rounded-lg border border-dashed text-center">
             <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">
-              No phone numbers available. Contact NeverMiss AI support to add phone numbers.
+              No phone numbers available. Contact FusionCaller support to add phone numbers.
             </p>
           </div>
         )}

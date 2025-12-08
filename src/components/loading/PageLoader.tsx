@@ -120,7 +120,7 @@ export function PageLoader() {
           >
             {/* Company Name */}
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
-              NeverMiss AI
+              FusionCaller
             </h1>
             {TEST_MODE && (
               <motion.p

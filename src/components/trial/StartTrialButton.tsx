@@ -60,7 +60,7 @@ export function StartTrialButton({
       setIsDialogOpen(false)
       const planText = planName ? ` for ${planName}` : ''
       toast({
-        title: '🎉 Welcome to NeverMiss AI!',
+        title: '🎉 Welcome to FusionCaller!',
         description: `Your 7-day free trial${planText} has started. Enjoy full access to all features!`,
       })
       router.refresh()

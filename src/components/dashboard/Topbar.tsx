@@ -18,6 +18,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { LogOut, User, Settings } from 'lucide-react'
 import Link from 'next/link'
+import { useTransition } from 'react'
 
 interface TopbarProps {
   isAdmin?: boolean
@@ -26,6 +27,13 @@ interface TopbarProps {
 
 export function Topbar({ isAdmin = false, userId }: TopbarProps) {
   const { organization } = useOrganization()
+  const [isPending, startTransition] = useTransition()
+
+  const handleSignOut = () => {
+    startTransition(() => {
+      signOut()
+    })
+  }
 
   return (
     <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 glass border-b border-border/50">
@@ -78,14 +86,14 @@ export function Topbar({ isAdmin = false, userId }: TopbarProps) {
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator />
-              <form action={signOut}>
-                <button type="submit" className="w-full">
-                  <DropdownMenuItem className="cursor-pointer text-red-600">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </button>
-              </form>
+              <DropdownMenuItem 
+                onClick={handleSignOut}
+                disabled={isPending}
+                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>{isPending ? 'Logging out...' : 'Log out'}</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

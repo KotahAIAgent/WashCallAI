@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-white text-lg font-bold mb-4">NeverMiss AI</h3>
+            <h3 className="text-white text-lg font-bold mb-4">FusionCaller</h3>
             <p className="text-sm">
               AI-powered receptionist for service businesses. Never miss another customer again.
             </p>
@@ -62,7 +62,7 @@ export function Footer() {
         </div>
         
         <div className="mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} NeverMiss AI. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} FusionCaller. All rights reserved.</p>
         </div>
       </div>
     </footer>

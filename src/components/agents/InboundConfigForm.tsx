@@ -80,7 +80,7 @@ export function InboundConfigForm({
                 <p className="text-sm text-muted-foreground">
                   {config?.inbound_agent_id 
                     ? 'Your inbound agent is configured and ready'
-                    : 'Waiting for agent setup by NeverMiss AI team'}
+                    : 'Waiting for agent setup by FusionCaller team'}
                 </p>
               </div>
             </div>
@@ -132,7 +132,7 @@ export function InboundConfigForm({
               <div className="p-4 rounded-lg border border-dashed text-center">
                 <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  No phone number assigned yet. Contact NeverMiss AI support to get your business line set up.
+                  No phone number assigned yet. Contact FusionCaller support to get your business line set up.
                 </p>
               </div>
             )}

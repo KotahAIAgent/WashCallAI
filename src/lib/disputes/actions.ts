@@ -332,7 +332,7 @@ async function sendDisputeResolutionEmail({
     <body>
       <div class="container">
         <div class="header">
-          <h1 style="color: #1f2937; margin: 0;">NeverMiss AI</h1>
+          <h1 style="color: #1f2937; margin: 0;">FusionCaller</h1>
           <p style="color: #6b7280; margin: 5px 0 0 0;">Dispute Resolution</p>
         </div>
         
@@ -369,7 +369,7 @@ async function sendDisputeResolutionEmail({
         </div>
         
         <div class="footer">
-          <p>© ${new Date().getFullYear()} NeverMiss AI. All rights reserved.</p>
+          <p>© ${new Date().getFullYear()} FusionCaller. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -386,7 +386,7 @@ async function sendDisputeResolutionEmail({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.FROM_EMAIL || 'NeverMiss AI <noreply@nevermiss.ai>',
+          from: process.env.FROM_EMAIL || 'FusionCaller <noreply@fusioncaller.com>',
           to,
           subject,
           html: htmlContent,
@@ -402,7 +402,7 @@ async function sendDisputeResolutionEmail({
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }] }],
-          from: { email: process.env.FROM_EMAIL || 'noreply@nevermiss.ai' },
+          from: { email: process.env.FROM_EMAIL || 'noreply@fusioncaller.com' },
           subject,
           content: [{ type: 'text/html', value: htmlContent }],
         }),

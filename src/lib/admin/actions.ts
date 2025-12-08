@@ -7,32 +7,32 @@ type SetupStatus = 'pending' | 'in_review' | 'setting_up' | 'testing' | 'ready' 
 
 const STATUS_EMAIL_CONTENT: Record<SetupStatus, { subject: string; title: string; message: string }> = {
   pending: {
-    subject: 'Application Received - NeverMiss AI',
+    subject: 'Application Received - FusionCaller',
     title: 'Application Received!',
     message: 'We\'ve received your application and will begin reviewing it shortly. You\'ll hear from us within 24 hours.',
   },
   in_review: {
-    subject: 'Application Under Review - NeverMiss AI',
+    subject: 'Application Under Review - FusionCaller',
     title: 'Your Application is Being Reviewed',
     message: 'Great news! Our team is now reviewing your application and learning about your business to create the perfect AI agent for you.',
   },
   setting_up: {
-    subject: 'Setting Up Your AI Agent - NeverMiss AI',
+    subject: 'Setting Up Your AI Agent - FusionCaller',
     title: 'We\'re Building Your AI Agent! 🔧',
     message: 'Exciting news! We\'re now creating and customizing your AI agent based on your business preferences. This usually takes 1-2 days.',
   },
   testing: {
-    subject: 'Testing Your AI Agent - NeverMiss AI',
+    subject: 'Testing Your AI Agent - FusionCaller',
     title: 'Your AI Agent is Being Tested 🧪',
     message: 'Your AI agent is built! We\'re now running tests to make sure it sounds perfect and handles calls exactly how you want.',
   },
   ready: {
-    subject: '🎉 Your AI Agent is Ready! - NeverMiss AI',
+    subject: '🎉 Your AI Agent is Ready! - FusionCaller',
     title: 'Your AI Agent is Ready to Go Live! 🎉',
     message: 'Great news! Your custom AI agent is fully set up and tested. Choose a plan to activate it and start receiving AI-powered calls today!',
   },
   active: {
-    subject: 'You\'re Live! - NeverMiss AI',
+    subject: 'You\'re Live! - FusionCaller',
     title: 'Your AI Agent is Now Live! 🚀',
     message: 'Congratulations! Your AI agent is now live and handling calls for your business. Watch your dashboard for incoming leads!',
   },
@@ -102,7 +102,7 @@ async function sendStatusUpdateEmail(
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 30px;">
-      <h1 style="color: #3b82f6; margin: 0; font-size: 28px;">NeverMiss AI</h1>
+      <h1 style="color: #3b82f6; margin: 0; font-size: 28px;">FusionCaller</h1>
     </div>
     
     <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
@@ -122,7 +122,7 @@ async function sendStatusUpdateEmail(
       
       ${status === 'ready' ? `
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/pricing" 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/pricing" 
            style="display: inline-block; background: #22c55e; color: white; padding: 14px 32px; 
                   border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
           Choose a Plan & Go Live →
@@ -130,7 +130,7 @@ async function sendStatusUpdateEmail(
       </div>
       ` : `
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/dashboard" 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/dashboard" 
            style="display: inline-block; background: #3b82f6; color: white; padding: 14px 32px; 
                   border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
           Check Your Dashboard →
@@ -144,7 +144,7 @@ async function sendStatusUpdateEmail(
     </div>
     
     <div style="text-align: center; margin-top: 30px; color: #a1a1aa; font-size: 13px;">
-      <p style="margin: 0;">NeverMiss AI - Never Miss Another Call</p>
+      <p style="margin: 0;">FusionCaller - Never Miss Another Call</p>
     </div>
   </div>
 </body>
@@ -159,13 +159,13 @@ Hi there! Here's an update on your AI agent setup for ${businessName}:
 ${content.message}
 
 ${status === 'ready' 
-  ? `Choose a Plan & Go Live: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/pricing`
-  : `Check Your Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/app/dashboard`
+  ? `Choose a Plan & Go Live: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/pricing`
+  : `Check Your Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/dashboard`
 }
 
 Questions? Just reply to this email and we'll help you out.
 
-NeverMiss AI - Never Miss Another Call
+FusionCaller - Never Miss Another Call
   `.trim()
 
   // Try Resend
@@ -178,7 +178,7 @@ NeverMiss AI - Never Miss Another Call
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'NeverMiss AI <updates@nevermiss.ai>',
+          from: 'FusionCaller <updates@fusioncaller.com>',
           to: customerEmail,
           subject: content.subject,
           html: emailHtml,
@@ -206,7 +206,7 @@ NeverMiss AI - Never Miss Another Call
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: customerEmail }] }],
-          from: { email: 'updates@nevermiss.ai', name: 'NeverMiss AI' },
+          from: { email: 'updates@fusioncaller.com', name: 'FusionCaller' },
           subject: content.subject,
           content: [
             { type: 'text/plain', value: emailText },

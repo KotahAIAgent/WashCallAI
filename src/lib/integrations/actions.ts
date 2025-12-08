@@ -56,7 +56,7 @@ export async function submitIntegrationRequest(
 
   // Send email notification to admin
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || 'support@nevermiss.ai'
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@fusioncaller.com'
     
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -65,7 +65,7 @@ export async function submitIntegrationRequest(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'NeverMiss AI <notifications@nevermiss.ai>',
+        from: 'FusionCaller <notifications@fusioncaller.com>',
         to: adminEmail,
         subject: `🔌 Integration Request: ${request.integrationName}`,
         html: `

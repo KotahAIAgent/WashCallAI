@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ArrowLeft, FileText } from 'lucide-react'
 
 export const metadata = {
-  title: 'Terms of Service | NeverMiss AI',
-  description: 'Terms of Service for NeverMiss AI',
+  title: 'Terms of Service | FusionCaller',
+  description: 'Terms of Service for FusionCaller',
 }
 
 export default function TermsPage() {
@@ -36,7 +36,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Welcome to NeverMiss AI. These Terms of Service ("Terms") govern your access to and use of 
+                  Welcome to FusionCaller. These Terms of Service ("Terms") govern your access to and use of 
                   our AI-powered call answering and outbound calling services ("Service"). By accessing or using 
                   our Service, you agree to be bound by these Terms. If you disagree with any part of these Terms, 
                   you may not access the Service.
@@ -60,7 +60,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-semibold mb-4">3. Description of Services</h2>
                 <p className="text-muted-foreground leading-relaxed mb-4">
-                  NeverMiss AI provides AI-powered call answering and outbound calling services for businesses. 
+                  FusionCaller provides AI-powered call answering and outbound calling services for businesses. 
                   Our Service includes:
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
@@ -198,8 +198,8 @@ export default function TermsPage() {
                   If you have any questions about these Terms, please contact us at:
                 </p>
                 <p className="text-muted-foreground mt-2">
-                  <strong>Email:</strong> support@nevermiss.ai<br />
-                  <strong>Website:</strong> <Link href="/" className="text-teal-600 hover:underline">nevermiss.ai</Link>
+                  <strong>Email:</strong> support@fusioncaller.com<br />
+                  <strong>Website:</strong> <Link href="/" className="text-teal-600 hover:underline">fusioncaller.com</Link>
                 </p>
               </section>
 
@@ -219,7 +219,7 @@ export default function TermsPage() {
           <div className="mt-8 text-center">
             <Link href="/signup">
               <Button size="lg" className="bg-gradient-to-r from-teal-600 to-cyan-600">
-                Get Started with NeverMiss AI
+                Get Started with FusionCaller
               </Button>
             </Link>
           </div>

@@ -44,7 +44,7 @@ export function IntegrationCard({
   const { toast } = useToast()
 
   // Generate webhook URL for Zapier
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.nevermiss.ai'}/api/webhooks/zapier/${organizationId}`
+  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/api/webhooks/zapier/${organizationId}`
 
   const copyToClipboard = async (text: string) => {
     await navigator.clipboard.writeText(text)

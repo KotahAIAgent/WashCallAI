@@ -59,7 +59,7 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-xl blur-lg opacity-60 group-hover:opacity-80 transition-opacity"></div>
               <div className="relative px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500">
                 <span className="text-xl font-black text-white tracking-tight">
-                  NeverMiss AI
+                       FusionCaller
                 </span>
               </div>
             </div>

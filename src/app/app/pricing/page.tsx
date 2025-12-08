@@ -95,7 +95,7 @@ export default async function PricingPage() {
               </div>
               <h3 className="text-2xl font-bold mb-2">Not Ready to Commit?</h3>
               <p className="text-muted-foreground mb-6">
-                Start your <strong>7-day free trial</strong> and experience the full power of NeverMiss AI. 
+                Start your <strong>7-day free trial</strong> and experience the full power of FusionCaller. 
                 No credit card required. Cancel anytime.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">

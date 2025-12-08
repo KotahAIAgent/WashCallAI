@@ -68,7 +68,7 @@ export function MobileSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
           <div className="flex items-center flex-shrink-0 px-6 py-6 border-b border-border/50">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-lg blur opacity-50"></div>
-              <span className="relative text-xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">NeverMiss AI</span>
+              <span className="relative text-xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">FusionCaller</span>
             </div>
           </div>
           <nav className="flex-1 px-3 py-4 space-y-1">

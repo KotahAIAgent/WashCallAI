@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ArrowLeft, Shield } from 'lucide-react'
 
 export const metadata = {
-  title: 'Privacy Policy | NeverMiss AI',
-  description: 'Privacy Policy for NeverMiss AI',
+  title: 'Privacy Policy | FusionCaller',
+  description: 'Privacy Policy for FusionCaller',
 }
 
 export default function PrivacyPage() {
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  NeverMiss AI ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
+                  FusionCaller ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
                   explains how we collect, use, disclose, and safeguard your information when you use our AI-powered 
                   call answering and outbound calling services ("Service"). Please read this Privacy Policy carefully. 
                   By using our Service, you agree to the collection and use of information in accordance with this policy.
@@ -163,7 +163,7 @@ export default function PrivacyPage() {
                   <li><strong>Objection:</strong> Object to certain processing activities</li>
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-4">
-                  To exercise these rights, please contact us at support@nevermiss.ai. We will respond to your 
+                  To exercise these rights, please contact us at support@fusioncaller.com. We will respond to your 
                   request within 30 days.
                 </p>
               </section>
@@ -249,8 +249,8 @@ export default function PrivacyPage() {
                   If you have any questions about this Privacy Policy or our privacy practices, please contact us:
                 </p>
                 <p className="text-muted-foreground">
-                  <strong>Email:</strong> support@nevermiss.ai<br />
-                  <strong>Website:</strong> <Link href="/" className="text-teal-600 hover:underline">nevermiss.ai</Link>
+                  <strong>Email:</strong> support@fusioncaller.com<br />
+                  <strong>Website:</strong> <Link href="/" className="text-teal-600 hover:underline">fusioncaller.com</Link>
                 </p>
               </section>
             </CardContent>
@@ -260,7 +260,7 @@ export default function PrivacyPage() {
           <div className="mt-8 text-center">
             <Link href="/signup">
               <Button size="lg" className="bg-gradient-to-r from-teal-600 to-cyan-600">
-                Get Started with NeverMiss AI
+                Get Started with FusionCaller
               </Button>
             </Link>
           </div>

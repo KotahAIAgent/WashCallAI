@@ -100,7 +100,7 @@ export default function HelpPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Help & Support</h2>
           <p className="text-muted-foreground">
-            Everything you need to get the most out of NeverMiss AI
+            Everything you need to get the most out of FusionCaller
           </p>
         </div>
         <RestartTourButton />
@@ -114,7 +114,7 @@ export default function HelpPage() {
               <PlayCircle className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">New to NeverMiss AI?</h3>
+              <h3 className="font-semibold">New to FusionCaller?</h3>
               <p className="text-sm text-muted-foreground">
                 Take a quick guided tour to learn the basics
               </p>
@@ -192,13 +192,13 @@ export default function HelpPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <a 
-                href="mailto:support@nevermiss.ai" 
+                href="mailto:support@fusioncaller.com" 
                 className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
               >
                 <Mail className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">Email Support</p>
-                  <p className="text-sm text-muted-foreground">support@nevermiss.ai</p>
+                  <p className="text-sm text-muted-foreground">support@fusioncaller.com</p>
                 </div>
               </a>
               

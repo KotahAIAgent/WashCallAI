@@ -1,21 +1,49 @@
+'use client'
+
 import { signIn } from '@/lib/auth/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useRef } from 'react'
+import { AlertCircle } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
+  const formRef = useRef<HTMLFormElement>(null)
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && formRef.current) {
+      e.preventDefault()
+      const formData = new FormData(formRef.current)
+      signIn(formData)
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
         <CardDescription>
-          Sign in to your NeverMiss AI account
+          Sign in to your FusionCaller account
         </CardDescription>
       </CardHeader>
-      <form action={signIn}>
+      <form ref={formRef} action={signIn}>
         <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {error === 'Invalid login credentials' 
+                  ? 'Invalid email or password. Please try again.'
+                  : decodeURIComponent(error)}
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -24,6 +52,8 @@ export default function LoginPage() {
               type="email"
               placeholder="you@example.com"
               required
+              onKeyDown={handleKeyDown}
+              autoComplete="email"
             />
           </div>
           <div className="space-y-2">
@@ -33,6 +63,8 @@ export default function LoginPage() {
               name="password"
               type="password"
               required
+              onKeyDown={handleKeyDown}
+              autoComplete="current-password"
             />
           </div>
         </CardContent>
@@ -49,6 +81,21 @@ export default function LoginPage() {
         </CardFooter>
       </form>
     </Card>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <Card>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+          <CardDescription>Loading...</CardDescription>
+        </CardHeader>
+      </Card>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
 

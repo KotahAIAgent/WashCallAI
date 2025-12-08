@@ -1,3 +1,4 @@
+import { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,11 +17,16 @@ import {
   Vote
 } from 'lucide-react'
 
+export const metadata: Metadata = {
+  title: 'Integrations | FusionCaller',
+  description: 'Connect FusionCaller to 5,000+ apps. Automate workflows when leads come in or appointments are booked.',
+}
+
 const integrations = [
   {
     id: 'zapier',
     name: 'Zapier',
-    description: 'Connect NeverMiss AI to 5,000+ apps. Automate workflows when leads come in or appointments are booked.',
+    description: 'Connect FusionCaller to 5,000+ apps. Automate workflows when leads come in or appointments are booked.',
     icon: Webhook,
     category: 'Automation',
     status: 'available' as const,
@@ -128,7 +134,7 @@ export default async function IntegrationsPage() {
           Integrations
         </h2>
         <p className="text-muted-foreground">
-          Connect NeverMiss AI with your favorite tools and automate your workflow
+          Connect FusionCaller with your favorite tools and automate your workflow
         </p>
       </div>
 
@@ -145,7 +151,7 @@ export default async function IntegrationsPage() {
                 <Badge className="bg-green-100 text-green-700">Available Now</Badge>
               </div>
               <p className="text-muted-foreground mt-1">
-                Connect NeverMiss AI to 5,000+ apps. Create automated workflows when:
+                Connect FusionCaller to 5,000+ apps. Create automated workflows when:
               </p>
               <ul className="text-sm text-muted-foreground mt-2 space-y-1">
                 <li>• A new lead is captured</li>

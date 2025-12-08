@@ -1,4 +1,4 @@
-# NeverMiss AI - SaaS Platform
+# FusionCaller - SaaS Platform
 
 A complete AI-powered call center platform for service businesses, built with Next.js, Supabase, and Stripe.
 
@@ -35,7 +35,7 @@ A complete AI-powered call center platform for service businesses, built with Ne
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd nevermiss-ai
+cd fusioncaller
 ```
 
 2. Install dependencies:

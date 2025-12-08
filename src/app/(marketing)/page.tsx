@@ -83,7 +83,7 @@ export default function HomePage() {
             {/* Main headline */}
             <motion.h1 variants={item} className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
               <span className="bg-gradient-to-r from-gray-900 via-teal-800 to-teal-600 bg-clip-text text-transparent">
-                Never Miss
+                FusionCaller
               </span>
               <br />
               <span className="text-gray-900">Another Customer Again</span>
@@ -178,7 +178,7 @@ export default function HomePage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-red-600 flex items-center gap-2">
                   <span className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">❌</span>
-                  Without NeverMiss AI
+                  Without FusionCaller
                 </h3>
                 <div className="space-y-3">
                   {[
@@ -200,7 +200,7 @@ export default function HomePage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-green-600 flex items-center gap-2">
                   <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">✓</span>
-                  With NeverMiss AI
+                  With FusionCaller
                 </h3>
                 <div className="space-y-3">
                   {[
@@ -645,7 +645,7 @@ export default function HomePage() {
               Ready to Never Miss a Customer Again?
             </h2>
             <p className="text-xl text-teal-100 mb-8 max-w-2xl mx-auto">
-              Join 500+ service businesses using NeverMiss AI to capture more leads 
+              Join 500+ service businesses using FusionCaller to capture more leads 
               and grow their business.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -120,7 +120,7 @@ export function OutboundConfigForm({
                 <p className="text-sm text-muted-foreground">
                   {config?.outbound_agent_id 
                     ? 'Your outbound agent is configured and ready'
-                    : 'Waiting for agent setup by NeverMiss AI team'}
+                    : 'Waiting for agent setup by FusionCaller team'}
                 </p>
               </div>
             </div>
@@ -191,7 +191,7 @@ export function OutboundConfigForm({
               <div className="p-4 rounded-lg border border-dashed text-center">
                 <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  No phone numbers assigned yet. Contact NeverMiss AI support to add phone numbers to your account.
+                  No phone numbers assigned yet. Contact FusionCaller support to add phone numbers to your account.
                 </p>
               </div>
             )}

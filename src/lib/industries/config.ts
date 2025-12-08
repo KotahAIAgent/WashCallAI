@@ -152,7 +152,7 @@ export const industries: Record<IndustrySlug, IndustryConfig> = {
       },
       {
         question: "Does it work with my scheduling software?",
-        answer: "NeverMiss AI integrates with popular HVAC scheduling tools like ServiceTitan, Housecall Pro, and Jobber. We can also work with Google Calendar for simpler setups.",
+        answer: "FusionCaller integrates with popular HVAC scheduling tools like ServiceTitan, Housecall Pro, and Jobber. We can also work with Google Calendar for simpler setups.",
       },
       {
         question: "Can the AI give pricing estimates?",
@@ -592,7 +592,7 @@ export const industries: Record<IndustrySlug, IndustryConfig> = {
     faq: [
       {
         question: "Is this HIPAA compliant?",
-        answer: "Yes. NeverMiss AI is designed with healthcare practices in mind. We follow HIPAA guidelines for handling patient information and can sign a BAA.",
+        answer: "Yes. FusionCaller is designed with healthcare practices in mind. We follow HIPAA guidelines for handling patient information and can sign a BAA.",
       },
       {
         question: "Can it integrate with my practice management software?",
