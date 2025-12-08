@@ -88,7 +88,6 @@ export function Topbar({ isAdmin = false, userId }: TopbarProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={handleSignOut}
-                disabled={isPending}
                 className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer"
               >
                 <LogOut className="mr-2 h-4 w-4" />
