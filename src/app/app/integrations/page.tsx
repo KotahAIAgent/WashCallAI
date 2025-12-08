@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   description: 'Connect FusionCaller to 5,000+ apps. Automate workflows when leads come in or appointments are booked.',
 }
 
+// Admin emails - keep in sync with layout.tsx
+const ADMIN_EMAILS = [
+  'admin@washcallai.com',
+  'dakkota@dshpressure.com',
+]
+
 const integrations = [
   {
     id: 'zapier',
@@ -105,24 +111,41 @@ export default async function IntegrationsPage() {
     return <div>Not authenticated</div>
   }
 
+  // Check if user is admin
+  const isAdmin = ADMIN_EMAILS.includes(session.user.email || '')
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('organization_id')
     .eq('id', session.user.id)
     .single()
 
-  if (!profile?.organization_id) {
-    return <div>No organization found</div>
+  // Admins can access even without organization, but we still need organization_id for the component
+  if (!profile?.organization_id && !isAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">No organization found</h2>
+            <p className="text-muted-foreground">
+              Your account needs to be associated with an organization to access integrations.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  // Get organization's plan for feature gating
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('plan')
-    .eq('id', profile.organization_id)
-    .single()
-
-  const plan = org?.plan || 'starter'
+  // Get organization's plan for feature gating (use 'pro' for admins without org)
+  let plan = 'pro' // Default to pro for admins
+  if (profile?.organization_id) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('plan')
+      .eq('id', profile.organization_id)
+      .single()
+    plan = org?.plan || 'starter'
+  }
   const availableIntegrations = integrations.filter(i => i.status === 'available')
   const comingSoonIntegrations = integrations.filter(i => i.status === 'coming_soon')
 
@@ -163,9 +186,9 @@ export default async function IntegrationsPage() {
           </div>
           <IntegrationCard
             integration={integrations.find(i => i.id === 'zapier')!}
-            organizationId={profile.organization_id}
+            organizationId={profile?.organization_id || ''}
             isConnected={false}
-            isPro={plan === 'pro' || plan === 'growth'}
+            isPro={plan === 'pro' || plan === 'growth' || isAdmin}
           />
         </CardContent>
       </Card>
@@ -257,7 +280,7 @@ export default async function IntegrationsPage() {
                   <li>• Shape the product roadmap</li>
                 </ul>
               </div>
-              <RequestIntegrationDialog organizationId={profile.organization_id} />
+              <RequestIntegrationDialog organizationId={profile?.organization_id || ''} />
             </div>
           </div>
         </CardContent>
