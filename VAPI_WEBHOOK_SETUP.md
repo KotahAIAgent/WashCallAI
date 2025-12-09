@@ -29,12 +29,31 @@ https://your-app.vercel.app/api/vapi/webhook
 
 ### 2. Configure in Vapi Dashboard
 
-1. Go to [Vapi Dashboard](https://dashboard.vapi.ai)
-2. Navigate to your **Assistant** (the one you're using for inbound calls)
-3. Go to **Settings** or **Webhooks** section
-4. Find the **Webhook URL** field
-5. Paste your webhook URL: `https://yourdomain.com/api/vapi/webhook`
+**Option A: Via Dashboard UI**
+
+1. Go to your assistant: https://dashboard.vapi.ai/assistants/2d4b6384-4fb2-4f2e-a2bd-c7a6ec3bc0bb
+2. Click on the **"Advanced"** tab (not "Settings" or "Webhooks")
+3. Look for **"Server URL"** field (Vapi calls it "Server URL", not "Webhook URL")
+4. Paste your webhook URL: `https://yourdomain.com/api/vapi/webhook`
+5. Select which **Server Messages** (events) you want to receive
 6. **Save** the assistant
+
+**Option B: Via API (if UI doesn't show the field)**
+
+If you don't see the Server URL field in the Advanced tab, you can set it via API:
+
+```bash
+curl -X PATCH https://api.vapi.ai/assistant/2d4b6384-4fb2-4f2e-a2bd-c7a6ec3bc0bb \
+  -H "Authorization: Bearer YOUR_VAPI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "serverUrl": "https://yourdomain.com/api/vapi/webhook"
+  }'
+```
+
+Replace:
+- `YOUR_VAPI_API_KEY` with your actual Vapi API key (from Vapi Dashboard → Settings → API Keys)
+- `yourdomain.com` with your actual Vercel domain
 
 ### 3. Verify Webhook Events
 
