@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS phone_numbers (
 -- Enable Row Level Security for phone_numbers
 ALTER TABLE phone_numbers ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view phone_numbers for their organizations" ON phone_numbers;
+DROP POLICY IF EXISTS "Users can update phone_numbers for their organizations" ON phone_numbers;
+DROP POLICY IF EXISTS "Users can insert phone_numbers for their organizations" ON phone_numbers;
+DROP POLICY IF EXISTS "Service role can manage phone_numbers" ON phone_numbers;
+
 -- RLS Policies for phone_numbers
 CREATE POLICY "Users can view phone_numbers for their organizations"
   ON phone_numbers FOR SELECT
@@ -81,6 +87,12 @@ CREATE TABLE IF NOT EXISTS agent_configs (
 
 -- Enable Row Level Security
 ALTER TABLE agent_configs ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view agent_configs for their organizations" ON agent_configs;
+DROP POLICY IF EXISTS "Users can update agent_configs for their organizations" ON agent_configs;
+DROP POLICY IF EXISTS "Users can insert agent_configs for their organizations" ON agent_configs;
+DROP POLICY IF EXISTS "Service role can manage agent_configs" ON agent_configs;
 
 -- RLS Policies for agent_configs
 CREATE POLICY "Users can view agent_configs for their organizations"

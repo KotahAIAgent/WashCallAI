@@ -40,8 +40,9 @@ CREATE POLICY "Users can update phone_numbers for their organizations"
   );
 
 -- Allow service role to insert (for admin operations)
-CREATE POLICY IF NOT EXISTS "Service role can manage phone_numbers"
+DROP POLICY IF EXISTS "Service role can manage phone_numbers" ON phone_numbers;
+CREATE POLICY "Service role can manage phone_numbers"
   ON phone_numbers FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
