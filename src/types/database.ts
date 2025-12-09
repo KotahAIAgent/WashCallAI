@@ -461,6 +461,10 @@ export interface Database {
           daily_call_limit: number
           calls_made_today: number
           last_reset_date: string
+          custom_business_name: string | null
+          custom_service_area: string | null
+          custom_greeting: string | null
+          custom_variables: Json | null
         }
         Insert: {
           id?: string
@@ -478,6 +482,10 @@ export interface Database {
           daily_call_limit?: number
           calls_made_today?: number
           last_reset_date?: string
+          custom_business_name?: string | null
+          custom_service_area?: string | null
+          custom_greeting?: string | null
+          custom_variables?: Json | null
         }
         Update: {
           id?: string
@@ -495,6 +503,10 @@ export interface Database {
           daily_call_limit?: number
           calls_made_today?: number
           last_reset_date?: string
+          custom_business_name?: string | null
+          custom_service_area?: string | null
+          custom_greeting?: string | null
+          custom_variables?: Json | null
         }
       }
       campaigns: {
