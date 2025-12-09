@@ -396,15 +396,43 @@ export async function POST(request: Request) {
                           payload.message?.id ||
                           payload.message?.call?.id
     
-    // If no provider_call_id, create one from phone numbers + timestamp as fallback
-    // This ensures we can still track and deduplicate calls
-    const fallbackCallId = providerCallId || 
-                          `${fromNumber}_${toNumber}_${Date.now()}`.replace(/[^a-zA-Z0-9_-]/g, '_')
+    // If no provider_call_id, we need to check for existing calls first
+    // Then use a stable ID based on phone numbers + a time window
+    // This ensures we can deduplicate even without Vapi's call ID
+    let finalProviderCallId = providerCallId
+    
+    if (!finalProviderCallId && fromNumber && toNumber) {
+      // Check for existing call with same numbers within last 2 minutes
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+      const { data: recentCall } = await supabase
+        .from('calls')
+        .select('id, provider_call_id, created_at')
+        .eq('organization_id', organizationId)
+        .eq('from_number', fromNumber)
+        .eq('to_number', toNumber)
+        .eq('direction', direction)
+        .gte('created_at', twoMinutesAgo)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      
+      if (recentCall) {
+        // Use the existing call's provider_call_id to ensure upsert works
+        finalProviderCallId = recentCall.provider_call_id || `fallback_${recentCall.id}`
+        console.log('[Webhook] Found recent call, using existing provider_call_id:', finalProviderCallId)
+      } else {
+        // Generate a stable ID for this call
+        // Use a rounded timestamp (to nearest minute) so multiple webhook events share the same ID
+        const roundedTimestamp = Math.floor(Date.now() / 60000) * 60000 // Round to nearest minute
+        finalProviderCallId = `fallback_${fromNumber}_${toNumber}_${roundedTimestamp}`.replace(/[^a-zA-Z0-9_-]/g, '_')
+        console.log('[Webhook] Generated fallback provider_call_id:', finalProviderCallId)
+      }
+    }
     
     const callData = {
       organization_id: organizationId,
       direction: direction,
-      provider_call_id: providerCallId || fallbackCallId,
+      provider_call_id: finalProviderCallId,
       from_number: fromNumber,
       to_number: toNumber,
       status: mapVapiStatus(payload.status || payload.state || payload.message?.status),
@@ -421,26 +449,15 @@ export async function POST(request: Request) {
       direction: callData.direction,
       status: callData.status,
       provider_call_id: callData.provider_call_id,
-      hasProviderCallId: !!providerCallId,
-      usingFallback: !providerCallId,
+      hasVapiCallId: !!providerCallId,
     })
-    
-    // Log payload structure to debug missing call ID
-    if (!providerCallId) {
-      console.log('[Webhook] ⚠️ No provider_call_id found in payload. Keys:', Object.keys(payload))
-      if (payload.message) {
-        console.log('[Webhook] Message keys:', Object.keys(payload.message))
-      }
-    }
 
     // Create or update call
-    // First check if call already exists (to determine if this is a new call)
-    // Also check by phone numbers + recent timestamp as fallback if no provider_call_id
+    // First check if call already exists by provider_call_id
     let existingCall = null
     let existingCallId = null
     
     if (callData.provider_call_id) {
-      // Try to find by provider_call_id first
       const { data: existing, error: existingError } = await supabase
         .from('calls')
         .select('id, lead_id, status, created_at, provider_call_id')
@@ -454,27 +471,8 @@ export async function POST(request: Request) {
       existingCall = existing
       existingCallId = existing?.id || null
       
-      // If not found and we have phone numbers, try to find recent call with same numbers
-      // (within last 5 minutes to catch duplicate webhook events)
-      if (!existingCall && fromNumber && toNumber) {
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-        const { data: recentCall } = await supabase
-          .from('calls')
-          .select('id, lead_id, status, created_at, provider_call_id')
-          .eq('organization_id', organizationId)
-          .eq('from_number', fromNumber)
-          .eq('to_number', toNumber)
-          .eq('direction', direction)
-          .gte('created_at', fiveMinutesAgo)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        
-        if (recentCall) {
-          existingCall = recentCall
-          existingCallId = recentCall.id
-          console.log('[Webhook] Found existing call by phone numbers + timestamp:', recentCall.id)
-        }
+      if (existingCall) {
+        console.log('[Webhook] Found existing call by provider_call_id:', existingCall.id)
       }
     }
     

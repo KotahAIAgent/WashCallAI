@@ -15,8 +15,8 @@ interface AnalyticsChartProps {
 export function AnalyticsChart({ data }: AnalyticsChartProps) {
   const maxValue = Math.max(...data.map(d => d.inbound + d.outbound), 1)
   
-  // Show every 5th label to avoid crowding
-  const showLabel = (index: number) => index % 5 === 0 || index === data.length - 1
+  // Show all labels for monthly data (usually not too many months)
+  const showLabel = (index: number) => true
 
   return (
     <div className="space-y-4">
@@ -68,8 +68,8 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
               
               {/* Date label */}
               {showLabel(index) && (
-                <span className="text-xs text-muted-foreground mt-1 -rotate-45 origin-top-left">
-                  {day.date.slice(0, 6)}
+                <span className="text-xs text-muted-foreground mt-1 -rotate-45 origin-top-left whitespace-nowrap">
+                  {day.date}
                 </span>
               )}
             </motion.div>
@@ -91,7 +91,7 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
 
       {/* Summary */}
       <div className="text-center text-sm text-muted-foreground">
-        {data.reduce((acc, d) => acc + d.inbound + d.outbound, 0)} total calls in the last 30 days
+        {data.reduce((acc, d) => acc + d.inbound + d.outbound, 0)} total calls across {data.length} {data.length === 1 ? 'month' : 'months'}
       </div>
     </div>
   )

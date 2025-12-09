@@ -15,7 +15,7 @@ import {
   Percent,
   ArrowUpRight
 } from 'lucide-react'
-import { format, subDays, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays } from 'date-fns'
+import { format, subDays, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, differenceInDays } from 'date-fns'
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart'
 import { MetricCard } from '@/components/analytics/MetricCard'
 import { LineChart } from '@/components/analytics/LineChart'
@@ -249,32 +249,33 @@ async function getAnalyticsData(
 }
 
 function processChartData(calls: any[], fromDate: Date, toDate: Date) {
-  const days: Record<string, { date: string; inbound: number; outbound: number }> = {}
+  // Group by month instead of day for better visualization
+  const months: Record<string, { date: string; inbound: number; outbound: number }> = {}
   
-  // Initialize all days in the date range
-  const dateRange = eachDayOfInterval({ start: fromDate, end: toDate })
-  dateRange.forEach(date => {
-    const key = format(date, 'yyyy-MM-dd')
-    days[key] = {
-      date: format(date, 'MMM d'),
+  // Initialize all months in the date range
+  const monthRange = eachMonthOfInterval({ start: fromDate, end: toDate })
+  monthRange.forEach(date => {
+    const key = format(date, 'yyyy-MM')
+    months[key] = {
+      date: format(date, 'MMM yyyy'),
       inbound: 0,
       outbound: 0,
     }
   })
 
-  // Count calls per day
+  // Count calls per month
   calls.forEach(call => {
-    const key = format(new Date(call.created_at), 'yyyy-MM-dd')
-    if (days[key]) {
+    const key = format(new Date(call.created_at), 'yyyy-MM')
+    if (months[key]) {
       if (call.direction === 'inbound') {
-        days[key].inbound++
+        months[key].inbound++
       } else {
-        days[key].outbound++
+        months[key].outbound++
       }
     }
   })
 
-  return Object.values(days)
+  return Object.values(months)
 }
 
 export const dynamic = 'force-dynamic'

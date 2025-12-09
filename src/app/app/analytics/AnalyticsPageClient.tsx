@@ -146,7 +146,7 @@ export function AnalyticsPageClient({ initialData, initialDateFrom, initialDateT
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Call Volume</CardTitle>
-            <CardDescription>Inbound vs Outbound calls (last 30 days)</CardDescription>
+            <CardDescription>Inbound vs Outbound calls by month</CardDescription>
           </CardHeader>
           <CardContent>
             <AnalyticsChart data={data.chartData} />
@@ -224,7 +224,7 @@ export function AnalyticsPageClient({ initialData, initialDateFrom, initialDateT
         <Card>
           <CardHeader>
             <CardTitle>Call Trend</CardTitle>
-            <CardDescription>Daily call volume over the last 30 days</CardDescription>
+            <CardDescription>Monthly call volume trend</CardDescription>
           </CardHeader>
           <CardContent>
             <LineChart 
