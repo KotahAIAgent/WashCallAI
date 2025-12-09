@@ -62,6 +62,15 @@ function normalizePhoneNumber(phone: string | null | undefined): string | null {
   return phone
 }
 
+// Test endpoint to verify webhook is accessible
+export async function GET() {
+  return NextResponse.json({ 
+    message: 'Vapi webhook endpoint is active',
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/vapi/webhook'
+  })
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json()
