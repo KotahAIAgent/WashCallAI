@@ -73,8 +73,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json()
-    console.log('[Webhook] Received payload:', JSON.stringify(payload, null, 2))
+    const rawPayload = await request.json()
+    console.log('[Webhook] Received raw payload:', JSON.stringify(rawPayload, null, 2))
+    
+    // Vapi wraps the call data in a "message" field
+    const payload = rawPayload.message || rawPayload
+    
+    console.log('[Webhook] Extracted payload:', JSON.stringify(payload, null, 2))
+    
     // Use service role client to bypass RLS (webhooks don't have user sessions)
     const supabase = createServiceRoleClient()
     
@@ -166,13 +172,13 @@ export async function POST(request: Request) {
                              payload.phoneNumber_id ||
                              payload.phoneNumber?.id ||
                              payload.phone?.id ||
-                             payload.phoneNumberId ||
                              payload.call?.phoneNumberId
         const toNumber = payload.to || 
                         payload.callee?.number || 
                         payload.phone?.number ||
                         payload.phoneNumber?.number ||
-                        payload.call?.to
+                        payload.call?.to ||
+                        payload.phoneNumber?.phoneNumber
         
         console.log('[Webhook] Looking up organization - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
       
