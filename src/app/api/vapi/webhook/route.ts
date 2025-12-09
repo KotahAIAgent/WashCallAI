@@ -86,13 +86,22 @@ export async function POST(request: Request) {
       metadata: payload.metadata,
       assistantId: payload.assistantId,
       assistant: payload.assistant,
+      assistant_id: payload.assistant_id,
       phoneNumberId: payload.phoneNumberId,
+      phoneNumber: payload.phoneNumber,
       phone: payload.phone,
+      phoneNumber_id: payload.phoneNumber_id,
       to: payload.to,
       from: payload.from,
       direction: payload.direction,
       type: payload.type,
+      // Check nested structures
+      call: payload.call,
+      conversation: payload.conversation,
     })
+    
+    // Log the full payload structure (keys only to avoid huge logs)
+    console.log('[Webhook] Payload top-level keys:', Object.keys(payload))
     
     // Check if metadata contains organizationId (from our outbound calls)
     if (payload.metadata?.organizationId) {
@@ -100,7 +109,13 @@ export async function POST(request: Request) {
       console.log('[Webhook] Found organizationId from metadata:', organizationId)
     } else {
       // Try to find organization by assistant ID first (most reliable for inbound calls)
-      const assistantId = payload.assistantId || payload.assistant?.id || payload.assistantId
+      // Vapi may send assistant ID in various formats
+      const assistantId = payload.assistantId || 
+                         payload.assistant_id || 
+                         payload.assistant?.id || 
+                         payload.assistant?.assistantId ||
+                         payload.call?.assistantId ||
+                         payload.conversation?.assistantId
       
       if (assistantId) {
         console.log('[Webhook] Looking up organization by assistant ID:', assistantId)
@@ -147,8 +162,17 @@ export async function POST(request: Request) {
       // If not found by assistant ID, look up by phone number
       if (!organizationId) {
         // Vapi may send phoneNumberId (provider ID) or the actual phone number
-        const phoneNumberId = payload.phoneNumberId || payload.phone?.id
-        const toNumber = payload.to || payload.callee?.number || payload.phone?.number
+        const phoneNumberId = payload.phoneNumberId || 
+                             payload.phoneNumber_id ||
+                             payload.phoneNumber?.id ||
+                             payload.phone?.id ||
+                             payload.phoneNumberId ||
+                             payload.call?.phoneNumberId
+        const toNumber = payload.to || 
+                        payload.callee?.number || 
+                        payload.phone?.number ||
+                        payload.phoneNumber?.number ||
+                        payload.call?.to
         
         console.log('[Webhook] Looking up organization - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
       
@@ -256,14 +280,18 @@ export async function POST(request: Request) {
       
       // Store debug info for response
       const debugInfo = {
+        payloadTopLevelKeys: Object.keys(payload),
         payloadIdentifiers: {
           metadata: payload.metadata,
           assistantId: payload.assistantId,
+          assistant_id: payload.assistant_id,
           assistant: payload.assistant,
           phoneNumberId: payload.phoneNumberId,
+          phoneNumber: payload.phoneNumber,
           phone: payload.phone,
           to: payload.to,
           from: payload.from,
+          call: payload.call ? Object.keys(payload.call) : null,
         },
         availableOrganizations: allOrgs || [],
         availablePhoneNumbers: allPhones || [],
