@@ -86,6 +86,8 @@ export async function POST(request: Request) {
     
     // Try to identify organization from metadata or phone number
     let organizationId: string | null = null
+    // Track call direction based on which agent ID matched
+    let detectedDirection: 'inbound' | 'outbound' | null = null
     
     // Log all possible identifiers for debugging
     console.log('[Webhook] Payload identifiers:', {
@@ -122,9 +124,6 @@ export async function POST(request: Request) {
                          payload.assistant?.assistantId ||
                          payload.call?.assistantId ||
                          payload.conversation?.assistantId
-      
-      // Track call direction based on which agent ID matched
-      let detectedDirection: 'inbound' | 'outbound' | null = null
       
       if (assistantId) {
         console.log('[Webhook] Looking up organization by assistant ID:', assistantId)
