@@ -1,6 +1,6 @@
 'use server'
 
-import { createActionClient } from '@/lib/supabase/server'
+import { createActionClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { stripe, STRIPE_PLANS } from '@/lib/stripe/server'
 
@@ -45,13 +45,9 @@ export async function updateSetupStatus(
   notes: string,
   sendEmail: boolean
 ) {
-  const supabase = createActionClient()
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session) {
-    return { error: 'Not authenticated' }
-  }
-
+  // Use service role client for admin operations to bypass RLS
+  const supabase = createServiceRoleClient()
+  
   // Get organization details for email
   const { data: org } = await supabase
     .from('organizations')

@@ -38,6 +38,10 @@ export async function updateInboundConfig(formData: FormData) {
     organization_id: organizationId,
     inbound_phone_number_id: inboundPhoneNumberId || null,
     inbound_greeting: inboundGreeting || null,
+    // Store custom variables for overriding Vapi agent settings
+    custom_business_name: businessName || null,
+    custom_service_area: serviceArea || null,
+    custom_greeting: inboundGreeting || null,
     inbound_enabled: enableInbound && !!existing?.inbound_agent_id,
     updated_at: new Date().toISOString(),
   }
@@ -244,6 +248,28 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     return { error: scheduleCheck.reason }
   }
 
+  // Get organization data for custom variables
+  const { data: organization } = await supabase
+    .from('organizations')
+    .select('name, service_areas, city, state')
+    .eq('id', organizationId)
+    .single()
+
+  // Build custom variables to override Vapi agent settings
+  const customVariables: Record<string, any> = {
+    // Use custom business name from config, fallback to organization name
+    businessName: agentConfig.custom_business_name || organization?.name || 'Business',
+    // Use custom service area from config, fallback to organization service areas
+    serviceArea: agentConfig.custom_service_area || 
+                 (organization?.service_areas && organization.service_areas.length > 0 
+                   ? organization.service_areas.join(', ') 
+                   : `${organization?.city || ''} ${organization?.state || ''}`.trim()),
+    // Custom greeting if provided
+    ...(agentConfig.custom_greeting && { customGreeting: agentConfig.custom_greeting }),
+    // Merge any additional custom variables from JSONB field
+    ...(agentConfig.custom_variables || {}),
+  }
+
   // Make the call via Vapi
   try {
     const vapiApiKey = process.env.VAPI_API_KEY
@@ -264,6 +290,8 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
           number: lead.phone,
           name: lead.name || undefined,
         },
+        // Pass custom variables to override Vapi agent settings
+        variables: customVariables,
         // Pass metadata for webhook
         metadata: {
           organizationId,
