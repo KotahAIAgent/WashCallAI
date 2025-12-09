@@ -413,11 +413,16 @@ export async function POST(request: Request) {
     let existingCall = null
     let existingCallId = null
     if (callData.provider_call_id) {
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('calls')
         .select('id, lead_id, status, created_at')
         .eq('provider_call_id', callData.provider_call_id)
         .maybeSingle()
+      
+      if (existingError && existingError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.log('[Webhook] Error checking existing call:', existingError)
+      }
+      
       existingCall = existing
       existingCallId = existing?.id || null
     }
@@ -475,16 +480,16 @@ export async function POST(request: Request) {
     // BUT only create/update lead once per call, not on every webhook event
     // For outbound calls, only create if we have structured output
     // Only create lead if:
-    // 1. This is a new call (first webhook event), OR
-    // 2. The call status is 'completed' and we haven't created a lead yet (check existingCall.lead_id), OR
-    // 3. We have structured output/analysis (new data)
+    // 1. This is a new call (no existing call found), OR
+    // 2. The call exists but has no lead_id yet (first time creating lead for this call), OR
+    // 3. We have structured output/analysis (new data to update lead with)
     const isFinalStatus = callData.status === 'completed' || callData.status === 'answered'
     const hasNewData = !!(payload.lead || payload.structuredOutput || payload.analysis)
     const hasExistingLead = !!(existingCall?.lead_id)
     
-    // For inbound: create if new call, or if completed/answered and no lead exists yet
+    // For inbound: create if new call, or if call exists but no lead yet
     // For outbound: only if we have new structured data
-    const shouldCreateLead = (direction === 'inbound' && (isNewCall || (isFinalStatus && !hasExistingLead))) || 
+    const shouldCreateLead = (direction === 'inbound' && (isNewCall || !hasExistingLead)) || 
                              (direction === 'outbound' && hasNewData)
     
     console.log('[Webhook] Lead creation check:', {
@@ -496,6 +501,7 @@ export async function POST(request: Request) {
       shouldCreateLead,
       callStatus: callData.status,
       existingLeadId: existingCall?.lead_id,
+      providerCallId: callData.provider_call_id,
     })
 
     // Extract lead data if available (from structured output or transcript parsing)
