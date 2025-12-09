@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendLeadNotification, determineNotificationType } from '@/lib/notifications/sms'
+import { triggerWorkflows } from '@/lib/workflows/engine'
 
 // Status outcomes that count toward monthly billing (actual conversations)
 const BILLABLE_STATUSES = ['answered', 'interested', 'not_interested', 'callback', 'completed']
@@ -230,15 +231,32 @@ export async function POST(request: Request) {
       if (hasAppointment && leadId) {
         const appointmentTime = extractedData.appointmentTime || extractedData.scheduledTime
         if (appointmentTime) {
-          await supabase.from('appointments').insert({
+          const { data: appointment } = await supabase.from('appointments').insert({
             organization_id: organizationId,
             lead_id: leadId,
             title: `Estimate for ${lead.name || 'Lead'}`,
             start_time: new Date(appointmentTime).toISOString(),
             end_time: new Date(new Date(appointmentTime).getTime() + 60 * 60 * 1000).toISOString(), // 1 hour
             notes: lead.service_type ? `Service: ${lead.service_type}` : null,
-          })
+          }).select().single()
+
+          // Trigger appointment_booked workflow
+          if (appointment) {
+            triggerWorkflows('appointment_booked', {
+              organizationId,
+              appointmentId: appointment.id,
+              leadId,
+            }).catch(err => console.error('Workflow trigger error:', err))
+          }
         }
+      }
+
+      // Trigger new_lead workflow if this is a new lead
+      if (!existingLead && leadId) {
+        triggerWorkflows('new_lead', {
+          organizationId,
+          leadId,
+        }).catch(err => console.error('Workflow trigger error:', err))
       }
     }
 
@@ -340,6 +358,15 @@ export async function POST(request: Request) {
           .catch(err => {
             console.error('SMS notification error:', err)
           })
+      }
+
+      // Trigger call_completed workflow
+      if (call?.id) {
+        triggerWorkflows('call_completed', {
+          organizationId,
+          callId: call.id,
+          leadId: leadId || undefined,
+        }).catch(err => console.error('Workflow trigger error:', err))
       }
     }
 

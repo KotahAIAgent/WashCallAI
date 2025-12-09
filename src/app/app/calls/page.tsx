@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ExportButton } from '@/components/export/ExportButton'
+import { MobileTable } from '@/components/ui/mobile-table'
 import { format } from 'date-fns'
 
 async function getCalls(organizationId: string, searchParams: { direction?: string; status?: string; dateFrom?: string; dateTo?: string }) {
@@ -123,50 +124,100 @@ export default async function CallsPage({
               <Button type="submit">Filter</Button>
             </form>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Direction</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>To</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {calls.length === 0 ? (
+          
+          {/* Mobile Card View */}
+          <div className="block md:hidden">
+            <MobileTable
+              items={calls}
+              columns={[
+                {
+                  key: 'direction',
+                  label: 'Direction',
+                  render: (call) => (
+                    <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
+                      {call.direction}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: 'from_number',
+                  label: 'From',
+                  render: (call) => call.from_number || 'N/A',
+                },
+                {
+                  key: 'to_number',
+                  label: 'To',
+                  render: (call) => call.to_number || 'N/A',
+                },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  render: (call) => (
+                    <Badge variant="outline">{call.status}</Badge>
+                  ),
+                },
+                {
+                  key: 'duration_seconds',
+                  label: 'Duration',
+                  render: (call) => call.duration_seconds ? `${call.duration_seconds}s` : 'N/A',
+                },
+                {
+                  key: 'created_at',
+                  label: 'Date',
+                  render: (call) => format(new Date(call.created_at), 'MMM d, yyyy h:mm a'),
+                },
+              ]}
+              emptyMessage="No calls found"
+            />
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    No calls found
-                  </TableCell>
+                  <TableHead>Direction</TableHead>
+                  <TableHead>From</TableHead>
+                  <TableHead>To</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
-              ) : (
-                calls.map((call) => (
-                  <TableRow key={call.id}>
-                    <TableCell>
-                      <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                        {call.direction}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{call.from_number || 'N/A'}</TableCell>
-                    <TableCell>{call.to_number || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{call.status}</Badge>
-                    </TableCell>
-                    <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
-                    <TableCell>
-                      {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
-                    </TableCell>
-                    <TableCell>
-                      <CallDetailSheet call={call} />
+              </TableHeader>
+              <TableBody>
+                {calls.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      No calls found
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  calls.map((call) => (
+                    <TableRow key={call.id}>
+                      <TableCell>
+                        <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
+                          {call.direction}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{call.from_number || 'N/A'}</TableCell>
+                      <TableCell>{call.to_number || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{call.status}</Badge>
+                      </TableCell>
+                      <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
+                      <TableCell>
+                        {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
+                      </TableCell>
+                      <TableCell>
+                        <CallDetailSheet call={call} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

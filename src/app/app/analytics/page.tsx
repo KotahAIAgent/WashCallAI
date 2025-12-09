@@ -18,6 +18,9 @@ import {
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns'
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart'
 import { MetricCard } from '@/components/analytics/MetricCard'
+import { LineChart } from '@/components/analytics/LineChart'
+import { PieChart } from '@/components/analytics/PieChart'
+import { ConversionFunnel } from '@/components/analytics/ConversionFunnel'
 
 async function getAnalyticsData(organizationId: string) {
   const supabase = createServerClient()
@@ -151,6 +154,58 @@ async function getAnalyticsData(organizationId: string) {
     return acc
   }, {})
 
+  // Prepare pie chart data
+  const pieChartData = [
+    { name: 'Inbound', value: inboundCalls.count || 0, color: '#10b981' },
+    { name: 'Outbound', value: outboundCalls.count || 0, color: '#3b82f6' },
+  ].filter(item => item.value > 0)
+
+  // Prepare line chart data (daily calls trend)
+  const lineChartData = chartData.map(day => ({
+    date: day.date,
+    value: day.inbound + day.outbound,
+  }))
+
+  // Prepare conversion funnel data
+  const totalCalls = callsThisMonth.count || 0
+  const totalLeadsCount = totalLeads.count || 0
+  const interestedCount = interestedLeads.count || 0
+  const bookedCount = statusCounts.booked || 0
+  const customerCount = statusCounts.customer || 0
+
+  const funnelStages = [
+    {
+      name: 'Calls',
+      value: totalCalls,
+      percentage: 100,
+      color: '#8b5cf6',
+    },
+    {
+      name: 'Leads',
+      value: totalLeadsCount,
+      percentage: totalCalls > 0 ? Math.round((totalLeadsCount / totalCalls) * 100) : 0,
+      color: '#a78bfa',
+    },
+    {
+      name: 'Interested',
+      value: interestedCount,
+      percentage: totalLeadsCount > 0 ? Math.round((interestedCount / totalLeadsCount) * 100) : 0,
+      color: '#c4b5fd',
+    },
+    {
+      name: 'Booked',
+      value: bookedCount,
+      percentage: interestedCount > 0 ? Math.round((bookedCount / interestedCount) * 100) : 0,
+      color: '#ddd6fe',
+    },
+    {
+      name: 'Customers',
+      value: customerCount,
+      percentage: bookedCount > 0 ? Math.round((customerCount / bookedCount) * 100) : 0,
+      color: '#ede9fe',
+    },
+  ].filter(stage => stage.value > 0)
+
   return {
     metrics: {
       callsThisMonth: callsThisMonth.count || 0,
@@ -166,6 +221,9 @@ async function getAnalyticsData(organizationId: string) {
     },
     chartData,
     statusCounts,
+    pieChartData,
+    lineChartData,
+    funnelStages,
   }
 }
 
@@ -218,154 +276,6 @@ export default async function AnalyticsPage() {
 
   const data = await getAnalyticsData(profile.organization_id)
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Analytics</h2>
-        <p className="text-muted-foreground">
-          Track your performance and growth over time
-        </p>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Total Calls"
-          value={data.metrics.callsThisMonth}
-          change={data.metrics.callsChange}
-          icon={Phone}
-          description="This month"
-        />
-        <MetricCard
-          title="New Leads"
-          value={data.metrics.leadsThisMonth}
-          change={data.metrics.leadsChange}
-          icon={Users}
-          description="This month"
-        />
-        <MetricCard
-          title="Appointments"
-          value={data.metrics.appointmentsThisMonth}
-          icon={Calendar}
-          description="Booked this month"
-        />
-        <MetricCard
-          title="Conversion Rate"
-          value={`${data.metrics.conversionRate}%`}
-          icon={Target}
-          description="Leads → Interested"
-        />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Call Volume Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Call Volume</CardTitle>
-            <CardDescription>Inbound vs Outbound calls (last 30 days)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AnalyticsChart data={data.chartData} />
-          </CardContent>
-        </Card>
-
-        {/* Call Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Call Breakdown</CardTitle>
-            <CardDescription>This month's call types</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <PhoneIncoming className="h-4 w-4 text-green-500" />
-                    <span className="text-sm font-medium">Inbound</span>
-                  </div>
-                  <span className="font-bold">{data.metrics.inboundCalls}</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div 
-                    className="h-full bg-green-500 transition-all"
-                    style={{ 
-                      width: `${data.metrics.callsThisMonth > 0 
-                        ? (data.metrics.inboundCalls / data.metrics.callsThisMonth * 100) 
-                        : 0}%` 
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <PhoneOutgoing className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-medium">Outbound</span>
-                  </div>
-                  <span className="font-bold">{data.metrics.outboundCalls}</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div 
-                    className="h-full bg-blue-500 transition-all"
-                    style={{ 
-                      width: `${data.metrics.callsThisMonth > 0 
-                        ? (data.metrics.outboundCalls / data.metrics.callsThisMonth * 100) 
-                        : 0}%` 
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Avg. Call Duration</span>
-                <span className="font-medium">
-                  {Math.floor(data.metrics.avgCallDuration / 60)}:{(data.metrics.avgCallDuration % 60).toString().padStart(2, '0')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Total Leads (All Time)</span>
-                <span className="font-medium">{data.metrics.totalLeads}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Lead Status Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lead Status Distribution</CardTitle>
-          <CardDescription>Current status of all your leads</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-            {[
-              { status: 'new', label: 'New', color: 'bg-blue-500' },
-              { status: 'interested', label: 'Interested', color: 'bg-green-500' },
-              { status: 'not_interested', label: 'Not Interested', color: 'bg-gray-400' },
-              { status: 'call_back', label: 'Call Back', color: 'bg-amber-500' },
-              { status: 'booked', label: 'Booked', color: 'bg-purple-500' },
-              { status: 'customer', label: 'Customer', color: 'bg-emerald-500' },
-            ].map(({ status, label, color }) => (
-              <div key={status} className="p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${color}`} />
-                  <span className="text-sm font-medium">{label}</span>
-                </div>
-                <p className="text-2xl font-bold">
-                  {data.statusCounts[status] || 0}
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+  return <AnalyticsPageClient initialData={data} />
 }
 

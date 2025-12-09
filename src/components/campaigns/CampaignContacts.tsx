@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Table,
   TableBody,
@@ -60,6 +61,8 @@ export function CampaignContacts({
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null)
   const { toast } = useToast()
 
   const filteredContacts = contacts.filter(contact => {
@@ -74,12 +77,19 @@ export function CampaignContacts({
   })
 
   async function handleDelete(contactId: string) {
-    const result = await deleteContact(contactId, campaignId)
+    setContactToDelete(contactId)
+    setDeleteDialogOpen(true)
+  }
+
+  async function confirmDelete() {
+    if (!contactToDelete) return
+    const result = await deleteContact(contactToDelete, campaignId)
     if (result.error) {
       toast({ title: 'Error', description: result.error, variant: 'destructive' })
     } else {
       toast({ title: 'Contact deleted' })
     }
+    setContactToDelete(null)
   }
 
   async function handleConvertToLead(contactId: string) {

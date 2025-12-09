@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   const searchTerm = `%${query}%`
 
   // Search in parallel
-  const [leads, calls, campaigns] = await Promise.all([
+  const [leads, calls, campaigns, transcripts] = await Promise.all([
     // Search leads
     supabase
       .from('leads')
@@ -39,12 +39,12 @@ export async function GET(request: Request) {
       .or(`name.ilike.${searchTerm},phone.ilike.${searchTerm},email.ilike.${searchTerm}`)
       .limit(5),
     
-    // Search calls (by phone number)
+    // Search calls (by phone number and transcript)
     supabase
       .from('calls')
-      .select('id, from_number, to_number, direction, status, created_at')
+      .select('id, from_number, to_number, direction, status, created_at, transcript, summary')
       .eq('organization_id', organizationId)
-      .or(`from_number.ilike.${searchTerm},to_number.ilike.${searchTerm}`)
+      .or(`from_number.ilike.${searchTerm},to_number.ilike.${searchTerm},transcript.ilike.${searchTerm},summary.ilike.${searchTerm}`)
       .order('created_at', { ascending: false })
       .limit(5),
     
@@ -55,6 +55,16 @@ export async function GET(request: Request) {
       .eq('organization_id', organizationId)
       .or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
       .limit(5),
+    
+    // Search call transcripts separately for better highlighting
+    supabase
+      .from('calls')
+      .select('id, transcript, summary, from_number, to_number, created_at')
+      .eq('organization_id', organizationId)
+      .or(`transcript.ilike.${searchTerm},summary.ilike.${searchTerm}`)
+      .not('transcript', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(3),
   ])
 
   // Format results
@@ -66,13 +76,22 @@ export async function GET(request: Request) {
       subtitle: lead.phone || lead.email || 'No contact info',
       href: `/app/leads/${lead.id}`,
     })),
-    ...(calls.data || []).map(call => ({
-      type: 'call' as const,
-      id: call.id,
-      title: `${call.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`,
-      subtitle: call.from_number || call.to_number || 'Unknown number',
-      href: `/app/calls?id=${call.id}`,
-    })),
+    ...(calls.data || []).map(call => {
+      const hasTranscriptMatch = call.transcript?.toLowerCase().includes(query.toLowerCase()) || 
+                                 call.summary?.toLowerCase().includes(query.toLowerCase())
+      const transcriptSnippet = hasTranscriptMatch && call.transcript
+        ? call.transcript.substring(0, 100) + '...'
+        : call.summary || call.from_number || call.to_number || 'Unknown number'
+      
+      return {
+        type: 'call' as const,
+        id: call.id,
+        title: `${call.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`,
+        subtitle: transcriptSnippet,
+        href: `/app/calls?id=${call.id}`,
+        highlight: hasTranscriptMatch,
+      }
+    }),
     ...(campaigns.data || []).map(campaign => ({
       type: 'campaign' as const,
       id: campaign.id,
@@ -81,6 +100,26 @@ export async function GET(request: Request) {
       href: `/app/campaigns/${campaign.id}`,
     })),
   ]
+
+  // Add transcript-specific results
+  if (transcripts.data && transcripts.data.length > 0) {
+    transcripts.data.forEach(call => {
+      if (!results.find(r => r.type === 'call' && r.id === call.id)) {
+        const transcriptSnippet = call.transcript
+          ? call.transcript.substring(0, 150) + '...'
+          : call.summary || 'Call transcript'
+        
+        results.push({
+          type: 'call' as const,
+          id: call.id,
+          title: 'Call Transcript Match',
+          subtitle: transcriptSnippet,
+          href: `/app/calls?id=${call.id}`,
+          highlight: true,
+        })
+      }
+    })
+  }
 
   return NextResponse.json({ results })
 }

@@ -29,6 +29,7 @@ interface SearchResult {
   title: string
   subtitle: string
   href: string
+  highlight?: boolean
 }
 
 export function GlobalSearch() {
@@ -143,11 +144,12 @@ export function GlobalSearch() {
               <Search className="h-5 w-5 text-muted-foreground" />
               <Input
                 ref={inputRef}
-                placeholder="Search leads, calls, campaigns..."
+                placeholder="Search leads, calls, transcripts, campaigns..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="border-0 focus-visible:ring-0 text-lg h-auto py-0"
+                data-global-search
               />
               {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
@@ -183,8 +185,13 @@ export function GlobalSearch() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{result.title}</p>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className={`text-sm truncate ${result.highlight ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                             {result.subtitle}
+                            {result.highlight && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                Transcript Match
+                              </Badge>
+                            )}
                           </p>
                         </div>
                         <Badge variant="outline" className="text-xs">
@@ -206,9 +213,13 @@ export function GlobalSearch() {
                 <div className="flex flex-wrap justify-center gap-2 mt-2">
                   <Badge variant="outline">Leads</Badge>
                   <Badge variant="outline">Calls</Badge>
+                  <Badge variant="outline">Transcripts</Badge>
                   <Badge variant="outline">Campaigns</Badge>
                   <Badge variant="outline">Appointments</Badge>
                 </div>
+                <p className="text-xs mt-3 text-muted-foreground">
+                  Search within call transcripts and summaries
+                </p>
               </div>
             )}
           </div>

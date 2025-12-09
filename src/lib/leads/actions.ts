@@ -2,6 +2,7 @@
 
 import { createActionClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { triggerWorkflows } from '@/lib/workflows/engine'
 
 export async function updateLead(formData: FormData) {
   const supabase = createActionClient()
@@ -37,6 +38,25 @@ export async function updateLead(formData: FormData) {
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Get organization ID for workflow trigger
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('organization_id, status')
+    .eq('id', leadId)
+    .single()
+
+  // Trigger workflow if status changed
+  if (lead?.organization_id) {
+    const oldStatus = formData.get('oldStatus') as string
+    if (oldStatus && oldStatus !== status) {
+      await triggerWorkflows('lead_status_changed', {
+        organizationId: lead.organization_id,
+        leadId,
+        triggerData: { oldStatus, newStatus: status },
+      })
+    }
   }
 
   revalidatePath(`/app/leads/${leadId}`)

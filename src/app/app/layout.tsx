@@ -95,19 +95,21 @@ export default async function AppLayout({
               <main className="flex-1 relative overflow-y-auto focus:outline-none">
                 <div className="py-6">
                   <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                    <SubscriptionGate
-                      organizationId={organizationId}
-                      onboardingCompleted={onboardingCompleted}
-                      hasPlan={hasPlan}
-                      setupStatus={setupStatus}
-                      isOnTrial={isOnTrial}
-                      trialDaysRemaining={trialDaysRemaining}
-                      trialEndsAt={trialEndsAt}
-                      canStartTrial={canStartTrial}
-                      hasUsedTrial={hasUsedTrial}
-                    >
-                      {children}
-                    </SubscriptionGate>
+      <KeyboardShortcutsProvider>
+        <SubscriptionGate
+          organizationId={organizationId}
+          onboardingCompleted={onboardingCompleted}
+          hasPlan={hasPlan}
+          setupStatus={setupStatus}
+          isOnTrial={isOnTrial}
+          trialDaysRemaining={trialDaysRemaining}
+          trialEndsAt={trialEndsAt}
+          canStartTrial={canStartTrial}
+          hasUsedTrial={hasUsedTrial}
+        >
+          {children}
+        </SubscriptionGate>
+      </KeyboardShortcutsProvider>
                   </div>
                 </div>
               </main>

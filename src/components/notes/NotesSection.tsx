@@ -173,8 +173,17 @@ export function NotesSection({ organizationId, leadId, authorId, authorName }: N
 
         {/* Notes list */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="space-y-3 py-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                  <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-4 w-full bg-muted animate-pulse rounded" />
+                <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+              </div>
+            ))}
           </div>
         ) : notes.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">

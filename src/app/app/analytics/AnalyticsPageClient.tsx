@@ -1,0 +1,250 @@
+'use client'
+
+import { useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { 
+  Phone,
+  PhoneIncoming,
+  PhoneOutgoing,
+  Users,
+  Calendar,
+  Target,
+} from 'lucide-react'
+import { AnalyticsChart } from '@/components/analytics/AnalyticsChart'
+import { MetricCard } from '@/components/analytics/MetricCard'
+import { LineChart } from '@/components/analytics/LineChart'
+import { PieChart } from '@/components/analytics/PieChart'
+import { ConversionFunnel } from '@/components/analytics/ConversionFunnel'
+import { FilterBar } from '@/components/analytics/FilterBar'
+import { subDays } from 'date-fns'
+
+interface AnalyticsPageClientProps {
+  initialData: {
+    metrics: any
+    chartData: any[]
+    statusCounts: Record<string, number>
+    pieChartData: any[]
+    lineChartData: any[]
+    funnelStages: any[]
+  }
+}
+
+export function AnalyticsPageClient({ initialData }: AnalyticsPageClientProps) {
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  })
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [data, setData] = useState(initialData)
+
+  const handleReset = () => {
+    setDateRange({ from: subDays(new Date(), 30), to: new Date() })
+    setStatusFilter('all')
+    setData(initialData)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Analytics</h2>
+        <p className="text-muted-foreground">
+          Track your performance and growth over time
+        </p>
+      </div>
+
+      {/* Filters */}
+      <FilterBar
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        onReset={handleReset}
+      />
+
+      {/* Key Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Calls"
+          value={data.metrics.callsThisMonth}
+          change={data.metrics.callsChange}
+          icon={Phone}
+          description="This month"
+        />
+        <MetricCard
+          title="New Leads"
+          value={data.metrics.leadsThisMonth}
+          change={data.metrics.leadsChange}
+          icon={Users}
+          description="This month"
+        />
+        <MetricCard
+          title="Appointments"
+          value={data.metrics.appointmentsThisMonth}
+          icon={Calendar}
+          description="Booked this month"
+        />
+        <MetricCard
+          title="Conversion Rate"
+          value={`${data.metrics.conversionRate}%`}
+          icon={Target}
+          description="Leads → Interested"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Call Volume Chart */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Call Volume</CardTitle>
+            <CardDescription>Inbound vs Outbound calls (last 30 days)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AnalyticsChart data={data.chartData} />
+          </CardContent>
+        </Card>
+
+        {/* Call Breakdown */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Call Breakdown</CardTitle>
+            <CardDescription>This month's call types</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <PhoneIncoming className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-medium">Inbound</span>
+                  </div>
+                  <span className="font-bold">{data.metrics.inboundCalls}</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div 
+                    className="h-full bg-green-500 transition-all"
+                    style={{ 
+                      width: `${data.metrics.callsThisMonth > 0 
+                        ? (data.metrics.inboundCalls / data.metrics.callsThisMonth * 100) 
+                        : 0}%` 
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <PhoneOutgoing className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium">Outbound</span>
+                  </div>
+                  <span className="font-bold">{data.metrics.outboundCalls}</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 transition-all"
+                    style={{ 
+                      width: `${data.metrics.callsThisMonth > 0 
+                        ? (data.metrics.outboundCalls / data.metrics.callsThisMonth * 100) 
+                        : 0}%` 
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Avg. Call Duration</span>
+                <span className="font-medium">
+                  {Math.floor(data.metrics.avgCallDuration / 60)}:{(data.metrics.avgCallDuration % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total Leads (All Time)</span>
+                <span className="font-medium">{data.metrics.totalLeads}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Charts Row */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Call Trend Line Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Call Trend</CardTitle>
+            <CardDescription>Daily call volume over the last 30 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LineChart 
+              data={data.lineChartData} 
+              dataKey="value" 
+              name="Total Calls"
+              color="#8b5cf6"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Call Type Pie Chart */}
+        {data.pieChartData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Call Distribution</CardTitle>
+              <CardDescription>Inbound vs Outbound calls this month</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PieChart data={data.pieChartData} />
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Conversion Funnel */}
+      {data.funnelStages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Conversion Funnel</CardTitle>
+            <CardDescription>Track leads from calls to customers</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ConversionFunnel stages={data.funnelStages} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lead Status Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lead Status Distribution</CardTitle>
+          <CardDescription>Current status of all your leads</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            {[
+              { status: 'new', label: 'New', color: 'bg-blue-500' },
+              { status: 'interested', label: 'Interested', color: 'bg-green-500' },
+              { status: 'not_interested', label: 'Not Interested', color: 'bg-gray-400' },
+              { status: 'call_back', label: 'Call Back', color: 'bg-amber-500' },
+              { status: 'booked', label: 'Booked', color: 'bg-purple-500' },
+              { status: 'customer', label: 'Customer', color: 'bg-emerald-500' },
+            ].map(({ status, label, color }) => (
+              <div key={status} className="p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-3 h-3 rounded-full ${color}`} />
+                  <span className="text-sm font-medium">{label}</span>
+                </div>
+                <p className="text-2xl font-bold">
+                  {data.statusCounts[status] || 0}
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+

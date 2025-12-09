@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { format, formatDistanceToNow } from 'date-fns'
+import { motion } from 'framer-motion'
 import { 
   Phone, 
   PhoneIncoming, 
@@ -87,8 +88,15 @@ export function RecentActivityFeed({ calls, leads }: RecentActivityFeedProps) {
           </div>
         ) : (
           <div className="space-y-1">
-            {activities.map((activity) => (
-              <ActivityItemComponent key={`${activity.type}-${activity.id}`} activity={activity} />
+            {activities.map((activity, index) => (
+              <motion.div
+                key={`${activity.type}-${activity.id}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+              >
+                <ActivityItemComponent activity={activity} />
+              </motion.div>
             ))}
           </div>
         )}

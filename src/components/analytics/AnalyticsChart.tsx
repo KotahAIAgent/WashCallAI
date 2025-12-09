@@ -1,5 +1,7 @@
 'use client'
 
+import { motion } from 'framer-motion'
+
 interface ChartData {
   date: string
   inbound: number
@@ -25,7 +27,13 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
           const outboundHeight = (day.outbound / maxValue) * 100
           
           return (
-            <div key={index} className="flex-1 flex flex-col items-center gap-1 group">
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, scaleY: 0 }}
+              animate={{ opacity: 1, scaleY: 1 }}
+              transition={{ duration: 0.5, delay: index * 0.05, ease: [0.4, 0, 0.2, 1] }}
+              className="flex-1 flex flex-col items-center gap-1 group"
+            >
               {/* Tooltip on hover */}
               <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-center mb-1 whitespace-nowrap">
                 <div className="font-medium">{day.date}</div>
@@ -36,18 +44,22 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
               {/* Stacked bars */}
               <div className="w-full flex flex-col items-center justify-end h-48">
                 {/* Outbound on top */}
-                <div 
-                  className="w-full max-w-3 bg-blue-500 rounded-t transition-all duration-300 group-hover:bg-blue-600"
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${outboundHeight}%` }}
+                  transition={{ duration: 0.5, delay: index * 0.05 + 0.1, ease: [0.4, 0, 0.2, 1] }}
+                  className="w-full max-w-3 bg-blue-500 rounded-t transition-colors duration-300 group-hover:bg-blue-600"
                   style={{ 
-                    height: `${outboundHeight}%`,
                     minHeight: day.outbound > 0 ? '2px' : '0'
                   }}
                 />
                 {/* Inbound on bottom */}
-                <div 
-                  className="w-full max-w-3 bg-green-500 transition-all duration-300 group-hover:bg-green-600"
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${inboundHeight}%` }}
+                  transition={{ duration: 0.5, delay: index * 0.05 + 0.15, ease: [0.4, 0, 0.2, 1] }}
+                  className="w-full max-w-3 bg-green-500 transition-colors duration-300 group-hover:bg-green-600"
                   style={{ 
-                    height: `${inboundHeight}%`,
                     minHeight: day.inbound > 0 ? '2px' : '0',
                     borderRadius: day.outbound === 0 ? '2px 2px 0 0' : '0'
                   }}
@@ -60,7 +72,7 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
                   {day.date.slice(0, 6)}
                 </span>
               )}
-            </div>
+            </motion.div>
           )
         })}
       </div>
