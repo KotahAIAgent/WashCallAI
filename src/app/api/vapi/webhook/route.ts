@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendLeadNotification, determineNotificationType } from '@/lib/notifications/sms'
 import { triggerWorkflows } from '@/lib/workflows/engine'
+import { chargeVapiCall, shouldChargeCall } from '@/lib/vapi/stripe-billing'
 
 // Status outcomes that count toward monthly billing (actual conversations)
 const BILLABLE_STATUSES = ['answered', 'interested', 'not_interested', 'callback', 'completed']
@@ -332,6 +333,29 @@ export async function POST(request: Request) {
         }
 
         console.log(`📊 Billable call counted: ${contactStatus} for org ${organizationId}`)
+
+        // 💳 CHARGE VAPI CALL VIA STRIPE (if overage)
+        // Check if this call exceeds plan limits and should be charged
+        const chargeCheck = await shouldChargeCall(organizationId)
+        
+        if (chargeCheck.shouldCharge && call?.id) {
+          const callDuration = callData.duration_seconds || 0
+          
+          // Charge for overage call
+          const chargeResult = await chargeVapiCall({
+            organizationId,
+            callId: call.id,
+            callDuration,
+            callDirection: direction as 'inbound' | 'outbound',
+            isOverage: true,
+          })
+
+          if (chargeResult.success) {
+            console.log(`💳 Stripe charge created: ${chargeResult.message}`)
+          } else {
+            console.error(`❌ Failed to charge call: ${chargeResult.error}`)
+          }
+        }
       } else {
         console.log(`📊 Non-billable call (${contactStatus}) - not counted toward monthly limit`)
       }
