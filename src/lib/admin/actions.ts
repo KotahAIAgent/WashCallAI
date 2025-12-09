@@ -63,6 +63,8 @@ export async function updateSetupStatus(
     return { error: 'Organization not found' }
   }
 
+  let checkoutUrl: string | null = null
+
   // Get full organization data to check for plan/subscription
   const { data: fullOrg } = await supabase
     .from('organizations')
@@ -151,6 +153,8 @@ export async function updateSetupStatus(
             console.log(`✅ Auto-created checkout session for org ${organizationId} with plan ${fullOrg.plan}`)
             console.log(`Checkout URL: ${checkoutSession.url}`)
             
+            checkoutUrl = checkoutSession.url
+            
             // Store checkout URL in organization notes for admin reference
             await supabase
               .from('organizations')
@@ -169,7 +173,7 @@ export async function updateSetupStatus(
 
   // Send email if requested and email exists
   if (sendEmail && org.email) {
-    await sendStatusUpdateEmail(org.email, org.name, status)
+    await sendStatusUpdateEmail(org.email, org.name, status, checkoutUrl)
   }
 
   revalidatePath('/app/admin')
@@ -179,7 +183,8 @@ export async function updateSetupStatus(
 async function sendStatusUpdateEmail(
   customerEmail: string,
   businessName: string,
-  status: SetupStatus
+  status: SetupStatus,
+  checkoutUrl: string | null = null
 ) {
   const content = STATUS_EMAIL_CONTENT[status]
   
@@ -213,11 +218,22 @@ async function sendStatusUpdateEmail(
       
       ${status === 'ready' ? `
       <div style="text-align: center; margin: 30px 0;">
+        ${checkoutUrl ? `
+        <a href="${checkoutUrl}" 
+           style="display: inline-block; background: #22c55e; color: white; padding: 14px 32px; 
+                  border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          Complete Payment & Go Live →
+        </a>
+        <p style="color: #71717a; font-size: 13px; margin-top: 10px;">
+          Your subscription is ready! Complete payment to activate immediately.
+        </p>
+        ` : `
         <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/pricing" 
            style="display: inline-block; background: #22c55e; color: white; padding: 14px 32px; 
                   border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
           Choose a Plan & Go Live →
         </a>
+        `}
       </div>
       ` : `
       <div style="text-align: center; margin: 30px 0;">
@@ -250,7 +266,9 @@ Hi there! Here's an update on your AI agent setup for ${businessName}:
 ${content.message}
 
 ${status === 'ready' 
-  ? `Choose a Plan & Go Live: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/pricing`
+  ? (checkoutUrl 
+      ? `Complete Payment & Go Live: ${checkoutUrl}\n\nYour subscription is ready! Complete payment to activate immediately.`
+      : `Choose a Plan & Go Live: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/pricing`)
   : `Check Your Dashboard: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/dashboard`
 }
 
