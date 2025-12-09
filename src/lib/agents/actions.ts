@@ -463,6 +463,26 @@ export async function adminSetAgentId(
   return { success: true }
 }
 
+// Normalize phone number to E.164 format for consistent storage
+function normalizePhoneNumberForStorage(phone: string): string {
+  if (!phone) return phone
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '')
+  // If it starts with 1 and has 11 digits, it's already E.164
+  // If it has 10 digits, add +1
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`
+  }
+  if (digits.length === 10) {
+    return `+1${digits}`
+  }
+  // If it already starts with +, return as is
+  if (phone.startsWith('+')) {
+    return phone
+  }
+  return phone
+}
+
 export async function adminAddPhoneNumber(
   organizationId: string,
   phoneNumber: string,
@@ -474,9 +494,13 @@ export async function adminAddPhoneNumber(
   // Use service role client for admin operations to bypass RLS
   const supabase = createServiceRoleClient()
   
+  // Normalize phone number to E.164 format for consistent storage
+  const normalizedPhone = normalizePhoneNumberForStorage(phoneNumber)
+  console.log('[Admin] Adding phone number:', phoneNumber, '-> normalized:', normalizedPhone)
+  
   const { error } = await supabase.from('phone_numbers').insert({
     organization_id: organizationId,
-    phone_number: phoneNumber,
+    phone_number: normalizedPhone,
     provider_phone_id: providerPhoneId,
     friendly_name: friendlyName || null,
     type,

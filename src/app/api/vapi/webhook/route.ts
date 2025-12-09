@@ -42,9 +42,30 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
   return { hasAccess: false, reason: 'No active subscription or trial' }
 }
 
+// Normalize phone number to E.164 format for matching
+function normalizePhoneNumber(phone: string | null | undefined): string | null {
+  if (!phone) return null
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '')
+  // If it starts with 1 and has 11 digits, it's already E.164
+  // If it has 10 digits, add +1
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`
+  }
+  if (digits.length === 10) {
+    return `+1${digits}`
+  }
+  // If it already starts with +, return as is
+  if (phone.startsWith('+')) {
+    return phone
+  }
+  return phone
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json()
+    console.log('[Webhook] Received payload:', JSON.stringify(payload, null, 2))
     const supabase = createServerClient()
     
     // Try to identify organization from metadata or phone number
@@ -53,24 +74,66 @@ export async function POST(request: Request) {
     // Check if metadata contains organizationId (from our outbound calls)
     if (payload.metadata?.organizationId) {
       organizationId = payload.metadata.organizationId
+      console.log('[Webhook] Found organizationId from metadata:', organizationId)
     } else {
       // For inbound calls, look up by phone number
-      const toNumber = payload.to || payload.callee?.number
+      const toNumber = payload.to || payload.callee?.number || payload.phoneNumberId
+      console.log('[Webhook] Looking up by phone number:', toNumber)
+      
       if (toNumber) {
-        const { data: phoneNumber } = await supabase
+        // Try exact match first
+        let { data: phoneNumber } = await supabase
           .from('phone_numbers')
-          .select('organization_id')
+          .select('organization_id, phone_number')
           .eq('phone_number', toNumber)
-          .single() as { data: { organization_id: string } | null }
+          .single() as { data: { organization_id: string; phone_number: string } | null }
+        
+        // If not found, try normalized versions
+        if (!phoneNumber) {
+          const normalized = normalizePhoneNumber(toNumber)
+          console.log('[Webhook] Trying normalized phone:', normalized)
+          
+          if (normalized) {
+            // Try normalized version
+            const { data: phoneNumberNormalized } = await supabase
+              .from('phone_numbers')
+              .select('organization_id, phone_number')
+              .eq('phone_number', normalized)
+              .single() as { data: { organization_id: string; phone_number: string } | null }
+            
+            if (phoneNumberNormalized) {
+              phoneNumber = phoneNumberNormalized
+            } else {
+              // Try matching any format - get all phone numbers and compare
+              const { data: allPhones } = await supabase
+                .from('phone_numbers')
+                .select('organization_id, phone_number')
+              
+              if (allPhones) {
+                const matched = allPhones.find(p => {
+                  const pNormalized = normalizePhoneNumber(p.phone_number)
+                  return pNormalized === normalized || pNormalized === normalizePhoneNumber(toNumber)
+                })
+                if (matched) {
+                  phoneNumber = matched
+                }
+              }
+            }
+          }
+        }
         
         if (phoneNumber) {
           organizationId = phoneNumber.organization_id
+          console.log('[Webhook] Found organization:', organizationId, 'for phone:', phoneNumber.phone_number)
+        } else {
+          console.log('[Webhook] No phone number match found for:', toNumber)
         }
       }
     }
 
-    // Fallback: get the first organization (for testing)
+    // Fallback: get the first organization (for testing) - REMOVE IN PRODUCTION
     if (!organizationId) {
+      console.log('[Webhook] Using fallback - getting first organization')
       const { data: organizations } = await supabase
         .from('organizations')
         .select('id')
@@ -78,9 +141,11 @@ export async function POST(request: Request) {
         .single() as { data: { id: string } | null }
 
       if (!organizations) {
+        console.error('[Webhook] No organizations found in database')
         return NextResponse.json({ error: 'No organization found' }, { status: 400 })
       }
       organizationId = organizations.id
+      console.log('[Webhook] Using fallback organization:', organizationId)
     }
 
     // 🔒 CHECK ACCESS - Verify organization has active trial or subscription
@@ -160,20 +225,39 @@ export async function POST(request: Request) {
     // Declare leadId at function scope
     let leadId: string | undefined
 
+    // For inbound calls, ALWAYS create a lead (even without structured output)
+    // For outbound calls, only create if we have structured output
+    const shouldCreateLead = direction === 'inbound' || payload.lead || payload.structuredOutput || payload.analysis
+
     // Extract lead data if available (from structured output or transcript parsing)
-    if (payload.lead || payload.structuredOutput || payload.analysis) {
-      const extractedData = payload.lead || payload.structuredOutput || payload.analysis
+    if (shouldCreateLead) {
+      const extractedData = payload.lead || payload.structuredOutput || payload.analysis || {}
       
-      leadStatus = extractedData.interested === true ? 'interested' : 
-                   extractedData.interested === false ? 'not_interested' : 
-                   extractedData.wantsCallback ? 'callback' : 'new'
+      // For inbound calls without structured data, default to 'new' status
+      if (direction === 'inbound' && !extractedData.interested && !extractedData.wantsCallback) {
+        leadStatus = 'new'
+      } else {
+        leadStatus = extractedData.interested === true ? 'interested' : 
+                     extractedData.interested === false ? 'not_interested' : 
+                     extractedData.wantsCallback ? 'callback' : 'new'
+      }
       
       hasAppointment = !!extractedData.appointment || !!extractedData.scheduledTime
       
+      // For inbound calls, use from_number (caller's number)
+      // For outbound calls, use to_number (who we called)
+      const leadPhone = direction === 'inbound' 
+        ? (extractedData.phone || callData.from_number)
+        : (extractedData.phone || callData.to_number)
+      
+      if (!leadPhone) {
+        console.error('[Webhook] No phone number found for lead creation')
+      }
+      
       const lead = {
         organization_id: organizationId,
-        name: extractedData.name || extractNameFromTranscript(payload.transcript),
-        phone: extractedData.phone || callData.from_number,
+        name: extractedData.name || extractNameFromTranscript(payload.transcript) || null,
+        phone: leadPhone || callData.from_number || callData.to_number || 'unknown',
         email: extractedData.email || null,
         address: extractedData.address || null,
         city: extractedData.city || null,
@@ -182,7 +266,7 @@ export async function POST(request: Request) {
         property_type: mapPropertyType(extractedData.propertyType || extractedData.property_type),
         service_type: extractedData.serviceType || extractedData.service_type || null,
         status: hasAppointment ? 'booked' : leadStatus,
-        notes: extractedData.notes || callData.summary || null,
+        notes: extractedData.notes || callData.summary || (direction === 'inbound' ? 'Inbound call' : null),
         source: direction === 'inbound' ? 'inbound' : 'manual',
       }
 
