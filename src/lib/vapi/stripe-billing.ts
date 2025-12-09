@@ -121,10 +121,10 @@ export async function shouldChargeCall(organizationId: string): Promise<{
 
   const plan = org.plan as 'starter' | 'growth' | 'pro' | null
   const planConfig = plan ? STRIPE_PLANS[plan] : null
-  const planLimit = planConfig?.limits.outboundCalls || 0
+  const planLimit: number = planConfig?.limits.outboundCalls ?? 0
 
-  // Unlimited plans don't charge
-  if (planLimit === -1) {
+  // Unlimited plans don't charge (-1 means unlimited)
+  if (planLimit === -1 || planLimit < 0) {
     return {
       shouldCharge: false,
       reason: 'Unlimited plan',
