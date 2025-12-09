@@ -21,6 +21,7 @@ import { MetricCard } from '@/components/analytics/MetricCard'
 import { LineChart } from '@/components/analytics/LineChart'
 import { PieChart } from '@/components/analytics/PieChart'
 import { ConversionFunnel } from '@/components/analytics/ConversionFunnel'
+import { AnalyticsPageClient } from './AnalyticsPageClient'
 
 async function getAnalyticsData(organizationId: string) {
   const supabase = createServerClient()
