@@ -232,7 +232,28 @@ export async function POST(request: Request) {
 
     // Fallback: get the first organization (for testing) - REMOVE IN PRODUCTION
     if (!organizationId) {
-      console.log('[Webhook] Using fallback - getting first organization')
+      console.log('[Webhook] ⚠️ Using fallback - could not find organization')
+      console.log('[Webhook] Full payload for debugging:', JSON.stringify(payload, null, 2))
+      
+      // List all organizations with their phone numbers and assistant IDs for debugging
+      const { data: allOrgs } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .limit(10)
+      console.log('[Webhook] Available organizations:', JSON.stringify(allOrgs, null, 2))
+      
+      // List all phone numbers
+      const { data: allPhones } = await supabase
+        .from('phone_numbers')
+        .select('organization_id, phone_number, provider_phone_id, type')
+      console.log('[Webhook] All phone numbers in database:', JSON.stringify(allPhones, null, 2))
+      
+      // List all agent configs
+      const { data: allAgentConfigs } = await supabase
+        .from('agent_configs')
+        .select('organization_id, inbound_agent_id, outbound_agent_id')
+      console.log('[Webhook] All agent configs:', JSON.stringify(allAgentConfigs, null, 2))
+      
       const { data: organizations } = await supabase
         .from('organizations')
         .select('id')
