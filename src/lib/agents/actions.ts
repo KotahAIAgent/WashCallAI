@@ -2,6 +2,7 @@
 
 import { createActionClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { updateAssistantWebhook } from '@/lib/vapi/assistant-utils'
 
 const VAPI_API_URL = 'https://api.vapi.ai'
 
@@ -458,6 +459,17 @@ export async function adminSetAgentId(
       console.error('[Admin] Error inserting agent ID:', error)
       return { error: error.message }
     }
+  }
+
+  // Automatically set webhook URL for the assistant
+  // This ensures all assistants use the same webhook endpoint
+  const webhookResult = await updateAssistantWebhook(agentId)
+  if (!webhookResult.success) {
+    console.warn('[Admin] Failed to set webhook URL for assistant:', webhookResult.error)
+    // Don't fail the whole operation, just log a warning
+    // The webhook can be set manually later if needed
+  } else {
+    console.log('[Admin] Webhook URL automatically configured for assistant:', agentId)
   }
 
   return { success: true }
