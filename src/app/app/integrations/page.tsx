@@ -284,7 +284,13 @@ export default async function IntegrationsPage() {
                   <li>• Shape the product roadmap</li>
                 </ul>
               </div>
-              <RequestIntegrationDialog organizationId={organizationId} />
+              {organizationId ? (
+                <RequestIntegrationDialog organizationId={organizationId} />
+              ) : (
+                <div className="text-sm text-muted-foreground p-4 bg-muted rounded-lg">
+                  <p>You need an organization to request integrations. Contact support to set up your account.</p>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

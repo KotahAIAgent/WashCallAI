@@ -62,6 +62,15 @@ export function RequestIntegrationDialog({ organizationId }: RequestIntegrationD
       return
     }
 
+    if (!organizationId) {
+      toast({
+        title: 'Organization required',
+        description: 'Your account needs to be associated with an organization to request integrations.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setLoading(true)
 
     const result = await submitIntegrationRequest(organizationId, formData)

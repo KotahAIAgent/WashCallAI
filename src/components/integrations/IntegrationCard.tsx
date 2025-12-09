@@ -43,8 +43,19 @@ export function IntegrationCard({
   const [copied, setCopied] = useState(false)
   const { toast } = useToast()
 
-  // Generate webhook URL for Zapier
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/api/webhooks/zapier/${organizationId}`
+  // Generate webhook URL for Zapier (only if organizationId exists)
+  const webhookUrl = organizationId 
+    ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/api/webhooks/zapier/${organizationId}`
+    : ''
+
+  // If no organizationId, show message instead of connect button
+  if (!organizationId) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        <p>Organization required to connect integrations</p>
+      </div>
+    )
+  }
 
   const copyToClipboard = async (text: string) => {
     await navigator.clipboard.writeText(text)

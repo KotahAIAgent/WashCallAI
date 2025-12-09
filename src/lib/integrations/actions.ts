@@ -22,18 +22,22 @@ export async function submitIntegrationRequest(
     return { error: 'Not authenticated' }
   }
 
+  if (!organizationId) {
+    return { error: 'Organization ID is required' }
+  }
+
   // Get organization and user info for the request
   const { data: org } = await supabase
     .from('organizations')
     .select('name, email')
     .eq('id', organizationId)
-    .single()
+    .maybeSingle()
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name')
     .eq('id', session.user.id)
-    .single()
+    .maybeSingle()
 
   // Store the integration request in the database
   const { error: insertError } = await supabase
