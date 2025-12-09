@@ -27,6 +27,37 @@ export async function POST(request: Request) {
   const supabase = createServerClient()
 
   try {
+    // Handle checkout session completed (when customer completes payment)
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session
+      const organizationId = session.metadata?.organization_id
+      const plan = session.metadata?.plan as string
+
+      if (organizationId && plan) {
+        // Get subscription from session
+        const subscriptionId = typeof session.subscription === 'string' 
+          ? session.subscription 
+          : session.subscription?.id
+
+        if (subscriptionId) {
+          // Fetch subscription to get full details
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          
+          // Update organization with plan and subscription start date
+          await supabase
+            .from('organizations')
+            .update({
+              plan: plan,
+              subscription_started_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', organizationId)
+
+          console.log(`✓ Checkout completed for org ${organizationId}: plan=${plan}`)
+        }
+      }
+    }
+
     // Handle subscription created/updated
     if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
       const subscription = event.data.object as Stripe.Subscription
