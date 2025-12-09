@@ -49,7 +49,7 @@ export function BulkActions({
   }
 
   const handleBulkDelete = async () => {
-    if (!onBulkDelete || selectedIds.length === 0) return
+    if (!onBulkDelete || selectedIds.length === 0 || isProcessing) return
     setIsProcessing(true)
     try {
       await onBulkDelete(selectedIds)
@@ -67,7 +67,7 @@ export function BulkActions({
   }
 
   const handleBulkTag = async () => {
-    if (!onBulkTag || selectedIds.length === 0) return
+    if (!onBulkTag || selectedIds.length === 0 || isProcessing) return
     setIsProcessing(true)
     try {
       await onBulkTag(selectedIds)
@@ -84,7 +84,7 @@ export function BulkActions({
   }
 
   const handleBulkExport = async () => {
-    if (!onBulkExport || selectedIds.length === 0) return
+    if (!onBulkExport || selectedIds.length === 0 || isProcessing) return
     setIsProcessing(true)
     try {
       await onBulkExport(selectedIds)
@@ -136,13 +136,19 @@ export function BulkActions({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {onBulkTag && (
-            <DropdownMenuItem onClick={handleBulkTag} disabled={isProcessing}>
+            <DropdownMenuItem 
+              onClick={handleBulkTag} 
+              className={isProcessing ? 'opacity-50 cursor-not-allowed' : ''}
+            >
               <Tag className="h-4 w-4 mr-2" />
               Add Tag
             </DropdownMenuItem>
           )}
           {onBulkExport && (
-            <DropdownMenuItem onClick={handleBulkExport} disabled={isProcessing}>
+            <DropdownMenuItem 
+              onClick={handleBulkExport} 
+              className={isProcessing ? 'opacity-50 cursor-not-allowed' : ''}
+            >
               <FileDown className="h-4 w-4 mr-2" />
               Export Selected
             </DropdownMenuItem>
@@ -152,8 +158,7 @@ export function BulkActions({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleBulkDelete}
-                disabled={isProcessing}
-                className="text-red-600"
+                className={`text-red-600 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Selected
