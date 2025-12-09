@@ -1,6 +1,6 @@
 'use server'
 
-import { createActionClient } from '@/lib/supabase/server'
+import { createActionClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 const VAPI_API_URL = 'https://api.vapi.ai'
@@ -395,9 +395,9 @@ export async function adminSetAgentId(
   agentType: 'inbound' | 'outbound',
   agentId: string
 ) {
-  const supabase = createActionClient()
+  // Use service role client for admin operations to bypass RLS
+  const supabase = createServiceRoleClient()
   
-  // In production, add admin check here
   const { data: existing } = await supabase
     .from('agent_configs')
     .select('id')
@@ -414,7 +414,10 @@ export async function adminSetAgentId(
       .update(updateData)
       .eq('id', existing.id)
     
-    if (error) return { error: error.message }
+    if (error) {
+      console.error('[Admin] Error updating agent ID:', error)
+      return { error: error.message }
+    }
   } else {
     const { error } = await supabase
       .from('agent_configs')
@@ -423,7 +426,10 @@ export async function adminSetAgentId(
         ...updateData,
       })
     
-    if (error) return { error: error.message }
+    if (error) {
+      console.error('[Admin] Error inserting agent ID:', error)
+      return { error: error.message }
+    }
   }
 
   return { success: true }
@@ -437,19 +443,23 @@ export async function adminAddPhoneNumber(
   type: 'inbound' | 'outbound' | 'both',
   dailyLimit: number = 100
 ) {
-  const supabase = createActionClient()
+  // Use service role client for admin operations to bypass RLS
+  const supabase = createServiceRoleClient()
   
   const { error } = await supabase.from('phone_numbers').insert({
     organization_id: organizationId,
     phone_number: phoneNumber,
     provider_phone_id: providerPhoneId,
-    friendly_name: friendlyName,
+    friendly_name: friendlyName || null,
     type,
     daily_limit: dailyLimit,
     active: true,
   })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error('[Admin] Error adding phone number:', error)
+    return { error: error.message }
+  }
   return { success: true }
 }
 
