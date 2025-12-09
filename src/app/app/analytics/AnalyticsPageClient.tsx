@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   Phone,
@@ -27,20 +28,67 @@ interface AnalyticsPageClientProps {
     lineChartData: any[]
     funnelStages: any[]
   }
+  initialDateFrom?: string
+  initialDateTo?: string
 }
 
-export function AnalyticsPageClient({ initialData }: AnalyticsPageClientProps) {
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: subDays(new Date(), 30),
-    to: new Date(),
-  })
+export function AnalyticsPageClient({ initialData, initialDateFrom, initialDateTo }: AnalyticsPageClientProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  const getInitialDateRange = () => {
+    if (initialDateFrom && initialDateTo) {
+      return {
+        from: new Date(initialDateFrom),
+        to: new Date(initialDateTo),
+      }
+    }
+    return {
+      from: subDays(new Date(), 30),
+      to: new Date(),
+    }
+  }
+
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(getInitialDateRange())
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [data, setData] = useState(initialData)
 
-  const handleReset = () => {
-    setDateRange({ from: subDays(new Date(), 30), to: new Date() })
-    setStatusFilter('all')
+  // Update date range and data when searchParams change
+  useEffect(() => {
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
+    if (dateFrom && dateTo) {
+      setDateRange({
+        from: new Date(dateFrom),
+        to: new Date(dateTo),
+      })
+    }
+    // Update data when initialData changes (from server re-render)
     setData(initialData)
+  }, [searchParams, initialData])
+
+  const handleDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setDateRange(range)
+    
+    // Update URL with searchParams
+    const params = new URLSearchParams(searchParams.toString())
+    if (range.from && range.to) {
+      params.set('dateFrom', range.from.toISOString().split('T')[0])
+      params.set('dateTo', range.to.toISOString().split('T')[0])
+    } else {
+      params.delete('dateFrom')
+      params.delete('dateTo')
+    }
+    router.push(`/app/analytics?${params.toString()}`)
+  }
+
+  const handleReset = () => {
+    const defaultRange = { from: subDays(new Date(), 30), to: new Date() }
+    setDateRange(defaultRange)
+    setStatusFilter('all')
+    
+    // Clear searchParams
+    router.push('/app/analytics')
   }
 
   return (
@@ -56,7 +104,7 @@ export function AnalyticsPageClient({ initialData }: AnalyticsPageClientProps) {
       {/* Filters */}
       <FilterBar
         dateRange={dateRange}
-        onDateRangeChange={setDateRange}
+        onDateRangeChange={handleDateRangeChange}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         onReset={handleReset}

@@ -409,6 +409,17 @@ export async function POST(request: Request) {
     })
 
     // Create or update call
+    // First check if call already exists
+    let existingCall = null
+    if (callData.provider_call_id) {
+      const { data: existing } = await supabase
+        .from('calls')
+        .select('id, lead_id, status')
+        .eq('provider_call_id', callData.provider_call_id)
+        .single()
+      existingCall = existing
+    }
+    
     const { data: call, error: callError } = await supabase
       .from('calls')
       .upsert(callData, {
@@ -422,6 +433,13 @@ export async function POST(request: Request) {
       console.error('Error creating call:', callError)
       return NextResponse.json({ error: callError.message }, { status: 500 })
     }
+    
+    console.log('[Webhook] Call upserted:', {
+      callId: call?.id,
+      providerCallId: callData.provider_call_id,
+      status: callData.status,
+      wasExisting: !!existingCall,
+    })
 
     // Variables for SMS notification
     let leadStatus = 'new'
@@ -442,8 +460,27 @@ export async function POST(request: Request) {
     let leadId: string | undefined
 
     // For inbound calls, ALWAYS create a lead (even without structured output)
+    // BUT only create/update lead once per call, not on every webhook event
     // For outbound calls, only create if we have structured output
-    const shouldCreateLead = direction === 'inbound' || payload.lead || payload.structuredOutput || payload.analysis
+    // Only create lead if:
+    // 1. This is the first time we're seeing this call (no existing call), OR
+    // 2. The call status is 'completed' or 'answered' (final states), OR
+    // 3. We have structured output/analysis (new data)
+    const isNewCall = !existingCall
+    const isFinalStatus = callData.status === 'completed' || callData.status === 'answered'
+    const hasNewData = !!(payload.lead || payload.structuredOutput || payload.analysis)
+    
+    const shouldCreateLead = (direction === 'inbound' && (isNewCall || isFinalStatus)) || 
+                             (direction === 'outbound' && hasNewData)
+    
+    console.log('[Webhook] Lead creation check:', {
+      direction,
+      isNewCall,
+      isFinalStatus,
+      hasNewData,
+      shouldCreateLead,
+      callStatus: callData.status,
+    })
 
     // Extract lead data if available (from structured output or transcript parsing)
     if (shouldCreateLead) {

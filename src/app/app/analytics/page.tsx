@@ -15,7 +15,7 @@ import {
   Percent,
   ArrowUpRight
 } from 'lucide-react'
-import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns'
+import { format, subDays, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays } from 'date-fns'
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart'
 import { MetricCard } from '@/components/analytics/MetricCard'
 import { LineChart } from '@/components/analytics/LineChart'
@@ -23,11 +23,24 @@ import { PieChart } from '@/components/analytics/PieChart'
 import { ConversionFunnel } from '@/components/analytics/ConversionFunnel'
 import { AnalyticsPageClient } from './AnalyticsPageClient'
 
-async function getAnalyticsData(organizationId: string) {
+async function getAnalyticsData(
+  organizationId: string,
+  dateFrom?: string,
+  dateTo?: string
+) {
   const supabase = createServerClient()
   const now = new Date()
-  const thirtyDaysAgo = subDays(now, 30)
-  const sixtyDaysAgo = subDays(now, 60)
+  
+  // Use provided dates or default to last 30 days
+  const fromDate = dateFrom ? new Date(dateFrom) : subDays(now, 30)
+  const toDate = dateTo ? new Date(dateTo) : now
+  
+  // For comparison period (previous period of same length)
+  // Add 1 to include both start and end dates
+  const periodLength = differenceInDays(toDate, fromDate) + 1
+  const previousPeriodEnd = subDays(fromDate, 1)
+  const previousPeriodStart = subDays(previousPeriodEnd, periodLength - 1)
+  
   const thisMonthStart = startOfMonth(now)
   const lastMonthStart = startOfMonth(subMonths(now, 1))
   const lastMonthEnd = endOfMonth(subMonths(now, 1))
@@ -47,38 +60,41 @@ async function getAnalyticsData(organizationId: string) {
     outboundCalls,
     avgCallDuration,
   ] = await Promise.all([
-    // Calls this month
+    // Calls in selected period
     supabase
       .from('calls')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
-      .gte('created_at', thisMonthStart.toISOString()),
-    // Calls last month
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString()),
+    // Calls in previous period (for comparison)
     supabase
       .from('calls')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
-      .gte('created_at', lastMonthStart.toISOString())
-      .lte('created_at', lastMonthEnd.toISOString()),
-    // Leads this month
+      .gte('created_at', previousPeriodStart.toISOString())
+      .lte('created_at', previousPeriodEnd.toISOString()),
+    // Leads in selected period
     supabase
       .from('leads')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
-      .gte('created_at', thisMonthStart.toISOString()),
-    // Leads last month
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString()),
+    // Leads in previous period
     supabase
       .from('leads')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
-      .gte('created_at', lastMonthStart.toISOString())
-      .lte('created_at', lastMonthEnd.toISOString()),
-    // Appointments this month
+      .gte('created_at', previousPeriodStart.toISOString())
+      .lte('created_at', previousPeriodEnd.toISOString()),
+    // Appointments in selected period
     supabase
       .from('appointments')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
-      .gte('created_at', thisMonthStart.toISOString()),
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString()),
     // Interested leads
     supabase
       .from('leads')
@@ -90,12 +106,13 @@ async function getAnalyticsData(organizationId: string) {
       .from('leads')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId),
-    // Calls by day (last 30 days)
+    // Calls by day (selected period)
     supabase
       .from('calls')
       .select('created_at, direction')
       .eq('organization_id', organizationId)
-      .gte('created_at', thirtyDaysAgo.toISOString())
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString())
       .order('created_at', { ascending: true }),
     // Leads by status
     supabase
@@ -108,21 +125,24 @@ async function getAnalyticsData(organizationId: string) {
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('direction', 'inbound')
-      .gte('created_at', thisMonthStart.toISOString()),
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString()),
     // Outbound calls count
     supabase
       .from('calls')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('direction', 'outbound')
-      .gte('created_at', thisMonthStart.toISOString()),
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString()),
     // Avg call duration
     supabase
       .from('calls')
       .select('duration_seconds')
       .eq('organization_id', organizationId)
       .not('duration_seconds', 'is', null)
-      .gte('created_at', thisMonthStart.toISOString()),
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString()),
   ])
 
   // Calculate changes
@@ -147,7 +167,7 @@ async function getAnalyticsData(organizationId: string) {
     : 0
 
   // Process calls by day for chart
-  const chartData = processChartData(callsByDay.data || [])
+  const chartData = processChartData(callsByDay.data || [], fromDate, toDate)
 
   // Process leads by status
   const statusCounts = (leadsByStatus.data || []).reduce((acc: Record<string, number>, lead: any) => {
@@ -228,19 +248,19 @@ async function getAnalyticsData(organizationId: string) {
   }
 }
 
-function processChartData(calls: any[]) {
+function processChartData(calls: any[], fromDate: Date, toDate: Date) {
   const days: Record<string, { date: string; inbound: number; outbound: number }> = {}
   
-  // Initialize last 30 days
-  for (let i = 29; i >= 0; i--) {
-    const date = subDays(new Date(), i)
+  // Initialize all days in the date range
+  const dateRange = eachDayOfInterval({ start: fromDate, end: toDate })
+  dateRange.forEach(date => {
     const key = format(date, 'yyyy-MM-dd')
     days[key] = {
       date: format(date, 'MMM d'),
       inbound: 0,
       outbound: 0,
     }
-  }
+  })
 
   // Count calls per day
   calls.forEach(call => {
@@ -257,7 +277,13 @@ function processChartData(calls: any[]) {
   return Object.values(days)
 }
 
-export default async function AnalyticsPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dateFrom?: string; dateTo?: string }>
+}) {
   const supabase = createServerClient()
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -275,8 +301,13 @@ export default async function AnalyticsPage() {
     return <div>No organization found</div>
   }
 
-  const data = await getAnalyticsData(profile.organization_id)
+  const params = await searchParams
+  const data = await getAnalyticsData(
+    profile.organization_id,
+    params.dateFrom,
+    params.dateTo
+  )
 
-  return <AnalyticsPageClient initialData={data} />
+  return <AnalyticsPageClient initialData={data} initialDateFrom={params.dateFrom} initialDateTo={params.dateTo} />
 }
 
