@@ -156,16 +156,22 @@ export async function updateOutboundConfig(formData: FormData) {
 
 interface InitiateCallParams {
   organizationId: string
-  leadId: string
+  leadId?: string
   phoneNumberId: string
+  campaignContactId?: string
 }
 
-export async function initiateOutboundCall({ organizationId, leadId, phoneNumberId }: InitiateCallParams) {
+export async function initiateOutboundCall({ organizationId, leadId, phoneNumberId, campaignContactId }: InitiateCallParams) {
   const supabase = createActionClient()
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
     return { error: 'Not authenticated' }
+  }
+
+  // Must have either leadId or campaignContactId
+  if (!leadId && !campaignContactId) {
+    return { error: 'Either leadId or campaignContactId is required' }
   }
 
   // Get agent config
@@ -214,33 +220,78 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     return { error: 'Daily call limit reached for this phone number' }
   }
 
-  // Check calls to this lead today
-  const { data: callLimit } = await supabase
-    .from('call_limits')
-    .select('*')
-    .eq('organization_id', organizationId)
-    .eq('lead_id', leadId)
-    .eq('last_reset_date', today)
-    .single()
+  // Get contact info - either from lead or campaign contact
+  let contactPhone: string
+  let contactName: string | null = null
+  let actualLeadId: string | null = leadId || null
 
-  if (callLimit && callLimit.calls_today >= 2) {
-    return { error: 'Maximum 2 calls per lead per day reached' }
-  }
+  if (campaignContactId) {
+    // Get campaign contact info
+    const { data: contact, error: contactError } = await supabase
+      .from('campaign_contacts')
+      .select('*')
+      .eq('id', campaignContactId)
+      .eq('organization_id', organizationId)
+      .single()
 
-  // Get lead info
-  const { data: lead, error: leadError } = await supabase
-    .from('leads')
-    .select('*')
-    .eq('id', leadId)
-    .eq('organization_id', organizationId)
-    .single()
+    if (contactError || !contact) {
+      return { error: 'Campaign contact not found' }
+    }
 
-  if (leadError || !lead) {
-    return { error: 'Lead not found' }
-  }
+    if (!contact.phone) {
+      return { error: 'Contact has no phone number' }
+    }
 
-  if (!lead.phone) {
-    return { error: 'Lead has no phone number' }
+    // Check if contact has already been called 2+ times today
+    if (contact.last_call_at) {
+      const lastCallDate = new Date(contact.last_call_at).toISOString().split('T')[0]
+      if (lastCallDate === today && contact.call_count >= 2) {
+        return { error: 'Maximum 2 calls per contact per day reached' }
+      }
+    }
+
+    contactPhone = contact.phone
+    contactName = contact.name || contact.business_name
+
+    // Update contact status to queued
+    await supabase
+      .from('campaign_contacts')
+      .update({ status: 'queued' })
+      .eq('id', campaignContactId)
+  } else if (leadId) {
+    // Check calls to this lead today
+    const { data: callLimit } = await supabase
+      .from('call_limits')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('lead_id', leadId)
+      .eq('last_reset_date', today)
+      .single()
+
+    if (callLimit && callLimit.calls_today >= 2) {
+      return { error: 'Maximum 2 calls per lead per day reached' }
+    }
+
+    // Get lead info
+    const { data: lead, error: leadError } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('id', leadId)
+      .eq('organization_id', organizationId)
+      .single()
+
+    if (leadError || !lead) {
+      return { error: 'Lead not found' }
+    }
+
+    if (!lead.phone) {
+      return { error: 'Lead has no phone number' }
+    }
+
+    contactPhone = lead.phone
+    contactName = lead.name
+  } else {
+    return { error: 'Either leadId or campaignContactId is required' }
   }
 
   // Check schedule
@@ -288,16 +339,17 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
         assistantId: agentConfig.outbound_agent_id,
         phoneNumberId: phoneNumber.provider_phone_id,
         customer: {
-          number: lead.phone,
-          name: lead.name || undefined,
+          number: contactPhone,
+          name: contactName || undefined,
         },
         // Pass custom variables to override Vapi agent settings
         variables: customVariables,
         // Pass metadata for webhook
         metadata: {
           organizationId,
-          leadId,
+          leadId: actualLeadId,
           phoneNumberId,
+          campaignContactId: campaignContactId || undefined,
         },
       }),
     })
@@ -313,11 +365,12 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     // Log the call
     await supabase.from('calls').insert({
       organization_id: organizationId,
-      lead_id: leadId,
+      lead_id: actualLeadId,
+      campaign_contact_id: campaignContactId || null,
       direction: 'outbound',
       provider_call_id: callData.id,
       from_number: phoneNumber.phone_number,
-      to_number: lead.phone,
+      to_number: contactPhone,
       status: 'queued',
       raw_payload: callData,
     })
@@ -328,24 +381,51 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       .update({ calls_today: phoneNumber.calls_today + 1 })
       .eq('id', phoneNumberId)
 
-    // Update or create call limit record
-    if (callLimit) {
-      await supabase
+    // Update or create call limit record (only for leads, not campaign contacts)
+    if (actualLeadId) {
+      const { data: callLimit } = await supabase
         .from('call_limits')
-        .update({ 
-          calls_today: callLimit.calls_today + 1,
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('lead_id', actualLeadId)
+        .eq('last_reset_date', today)
+        .single()
+
+      if (callLimit) {
+        await supabase
+          .from('call_limits')
+          .update({ 
+            calls_today: callLimit.calls_today + 1,
+            last_call_at: new Date().toISOString(),
+          })
+          .eq('id', callLimit.id)
+      } else {
+        await supabase.from('call_limits').insert({
+          organization_id: organizationId,
+          lead_id: actualLeadId,
+          phone_number_id: phoneNumberId,
+          calls_today: 1,
           last_call_at: new Date().toISOString(),
+          last_reset_date: today,
         })
-        .eq('id', callLimit.id)
-    } else {
-      await supabase.from('call_limits').insert({
-        organization_id: organizationId,
-        lead_id: leadId,
-        phone_number_id: phoneNumberId,
-        calls_today: 1,
-        last_call_at: new Date().toISOString(),
-        last_reset_date: today,
-      })
+      }
+    }
+
+    // Update campaign contact call count if applicable
+    if (campaignContactId) {
+      const { data: contact } = await supabase
+        .from('campaign_contacts')
+        .select('call_count')
+        .eq('id', campaignContactId)
+        .single()
+
+      await supabase
+        .from('campaign_contacts')
+        .update({ 
+          call_count: (contact?.call_count || 0) + 1,
+          status: 'calling',
+        })
+        .eq('id', campaignContactId)
     }
 
     // Update agent config call count

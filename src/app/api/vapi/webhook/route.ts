@@ -387,10 +387,24 @@ export async function POST(request: Request) {
                     payload.message?.to ||
                     payload.message?.callee?.number
     
+    // Extract provider_call_id from multiple possible locations
+    const providerCallId = payload.callId || 
+                          payload.id || 
+                          payload.call?.id ||
+                          payload.call?.callId ||
+                          payload.message?.callId || 
+                          payload.message?.id ||
+                          payload.message?.call?.id
+    
+    // If no provider_call_id, create one from phone numbers + timestamp as fallback
+    // This ensures we can still track and deduplicate calls
+    const fallbackCallId = providerCallId || 
+                          `${fromNumber}_${toNumber}_${Date.now()}`.replace(/[^a-zA-Z0-9_-]/g, '_')
+    
     const callData = {
       organization_id: organizationId,
       direction: direction,
-      provider_call_id: payload.callId || payload.id || payload.message?.callId || payload.message?.id,
+      provider_call_id: providerCallId || fallbackCallId,
       from_number: fromNumber,
       to_number: toNumber,
       status: mapVapiStatus(payload.status || payload.state || payload.message?.status),
@@ -406,16 +420,30 @@ export async function POST(request: Request) {
       to_number: callData.to_number,
       direction: callData.direction,
       status: callData.status,
+      provider_call_id: callData.provider_call_id,
+      hasProviderCallId: !!providerCallId,
+      usingFallback: !providerCallId,
     })
+    
+    // Log payload structure to debug missing call ID
+    if (!providerCallId) {
+      console.log('[Webhook] ⚠️ No provider_call_id found in payload. Keys:', Object.keys(payload))
+      if (payload.message) {
+        console.log('[Webhook] Message keys:', Object.keys(payload.message))
+      }
+    }
 
     // Create or update call
     // First check if call already exists (to determine if this is a new call)
+    // Also check by phone numbers + recent timestamp as fallback if no provider_call_id
     let existingCall = null
     let existingCallId = null
+    
     if (callData.provider_call_id) {
+      // Try to find by provider_call_id first
       const { data: existing, error: existingError } = await supabase
         .from('calls')
-        .select('id, lead_id, status, created_at')
+        .select('id, lead_id, status, created_at, provider_call_id')
         .eq('provider_call_id', callData.provider_call_id)
         .maybeSingle()
       
@@ -425,6 +453,29 @@ export async function POST(request: Request) {
       
       existingCall = existing
       existingCallId = existing?.id || null
+      
+      // If not found and we have phone numbers, try to find recent call with same numbers
+      // (within last 5 minutes to catch duplicate webhook events)
+      if (!existingCall && fromNumber && toNumber) {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+        const { data: recentCall } = await supabase
+          .from('calls')
+          .select('id, lead_id, status, created_at, provider_call_id')
+          .eq('organization_id', organizationId)
+          .eq('from_number', fromNumber)
+          .eq('to_number', toNumber)
+          .eq('direction', direction)
+          .gte('created_at', fiveMinutesAgo)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        if (recentCall) {
+          existingCall = recentCall
+          existingCallId = recentCall.id
+          console.log('[Webhook] Found existing call by phone numbers + timestamp:', recentCall.id)
+        }
+      }
     }
     
     const { data: call, error: callError } = await supabase
