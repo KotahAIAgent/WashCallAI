@@ -28,7 +28,7 @@ export function UpgradeButton({ planKey, planName, isUpgrade, isOnTrial = false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          plan: planKey,
+          planId: planKey,
           isTrialConversion 
         }),
       })
