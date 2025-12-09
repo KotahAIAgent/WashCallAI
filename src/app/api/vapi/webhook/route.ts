@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendLeadNotification, determineNotificationType } from '@/lib/notifications/sms'
 import { triggerWorkflows } from '@/lib/workflows/engine'
@@ -75,7 +75,8 @@ export async function POST(request: Request) {
   try {
     const payload = await request.json()
     console.log('[Webhook] Received payload:', JSON.stringify(payload, null, 2))
-    const supabase = createServerClient()
+    // Use service role client to bypass RLS (webhooks don't have user sessions)
+    const supabase = createServiceRoleClient()
     
     // Try to identify organization from metadata or phone number
     let organizationId: string | null = null
