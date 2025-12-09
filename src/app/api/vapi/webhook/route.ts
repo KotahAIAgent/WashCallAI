@@ -86,12 +86,30 @@ export async function POST(request: Request) {
       organizationId = payload.metadata.organizationId
       console.log('[Webhook] Found organizationId from metadata:', organizationId)
     } else {
-      // For inbound calls, look up by phone number
-      // Vapi may send phoneNumberId (provider ID) or the actual phone number
-      const phoneNumberId = payload.phoneNumberId || payload.phone?.id
-      const toNumber = payload.to || payload.callee?.number || payload.phone?.number
+      // Try to find organization by assistant ID first (most reliable for inbound calls)
+      const assistantId = payload.assistantId || payload.assistant?.id || payload.assistantId
       
-      console.log('[Webhook] Looking up organization - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
+      if (assistantId) {
+        console.log('[Webhook] Looking up organization by assistant ID:', assistantId)
+        const { data: agentConfig } = await supabase
+          .from('agent_configs')
+          .select('organization_id')
+          .or(`inbound_agent_id.eq.${assistantId},outbound_agent_id.eq.${assistantId}`)
+          .single() as { data: { organization_id: string } | null }
+        
+        if (agentConfig) {
+          organizationId = agentConfig.organization_id
+          console.log('[Webhook] Found organization by assistant ID:', organizationId)
+        }
+      }
+      
+      // If not found by assistant ID, look up by phone number
+      if (!organizationId) {
+        // Vapi may send phoneNumberId (provider ID) or the actual phone number
+        const phoneNumberId = payload.phoneNumberId || payload.phone?.id
+        const toNumber = payload.to || payload.callee?.number || payload.phone?.number
+        
+        console.log('[Webhook] Looking up organization - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
       
       let phoneNumber: { organization_id: string; phone_number: string } | null = null
       
@@ -158,14 +176,15 @@ export async function POST(request: Request) {
         }
       }
       
-      if (phoneNumber) {
-        organizationId = phoneNumber.organization_id
-        console.log('[Webhook] Found organization:', organizationId, 'for phone:', phoneNumber.phone_number)
-      } else {
-        console.log('[Webhook] No phone number match found - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
-        console.log('[Webhook] Full payload keys:', Object.keys(payload))
-        if (payload.phone) {
-          console.log('[Webhook] payload.phone:', JSON.stringify(payload.phone, null, 2))
+        if (phoneNumber) {
+          organizationId = phoneNumber.organization_id
+          console.log('[Webhook] Found organization:', organizationId, 'for phone:', phoneNumber.phone_number)
+        } else {
+          console.log('[Webhook] No phone number match found - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
+          console.log('[Webhook] Full payload keys:', Object.keys(payload))
+          if (payload.phone) {
+            console.log('[Webhook] payload.phone:', JSON.stringify(payload.phone, null, 2))
+          }
         }
       }
     }
