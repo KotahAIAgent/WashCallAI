@@ -81,39 +81,67 @@ export async function POST(request: Request) {
     // Try to identify organization from metadata or phone number
     let organizationId: string | null = null
     
+    // Log all possible identifiers for debugging
+    console.log('[Webhook] Payload identifiers:', {
+      metadata: payload.metadata,
+      assistantId: payload.assistantId,
+      assistant: payload.assistant,
+      phoneNumberId: payload.phoneNumberId,
+      phone: payload.phone,
+      to: payload.to,
+      from: payload.from,
+      direction: payload.direction,
+      type: payload.type,
+    })
+    
     // Check if metadata contains organizationId (from our outbound calls)
     if (payload.metadata?.organizationId) {
       organizationId = payload.metadata.organizationId
       console.log('[Webhook] Found organizationId from metadata:', organizationId)
     } else {
       // Try to find organization by assistant ID first (most reliable for inbound calls)
-      const assistantId = payload.assistantId || payload.assistant?.id
+      const assistantId = payload.assistantId || payload.assistant?.id || payload.assistantId
       
       if (assistantId) {
         console.log('[Webhook] Looking up organization by assistant ID:', assistantId)
         // Try inbound first
-        let { data: agentConfig } = await supabase
+        let { data: agentConfig, error: inboundError } = await supabase
           .from('agent_configs')
-          .select('organization_id')
+          .select('organization_id, inbound_agent_id, outbound_agent_id')
           .eq('inbound_agent_id', assistantId)
-          .single() as { data: { organization_id: string } | null }
+          .single() as { data: { organization_id: string; inbound_agent_id: string | null; outbound_agent_id: string | null } | null; error: any }
+        
+        if (inboundError) {
+          console.log('[Webhook] Inbound lookup error:', inboundError)
+        }
         
         // If not found, try outbound
         if (!agentConfig) {
-          const { data: outboundConfig } = await supabase
+          const { data: outboundConfig, error: outboundError } = await supabase
             .from('agent_configs')
-            .select('organization_id')
+            .select('organization_id, inbound_agent_id, outbound_agent_id')
             .eq('outbound_agent_id', assistantId)
-            .single() as { data: { organization_id: string } | null }
+            .single() as { data: { organization_id: string; inbound_agent_id: string | null; outbound_agent_id: string | null } | null; error: any }
+          
+          if (outboundError) {
+            console.log('[Webhook] Outbound lookup error:', outboundError)
+          }
           agentConfig = outboundConfig
         }
         
         if (agentConfig) {
           organizationId = agentConfig.organization_id
-          console.log('[Webhook] Found organization by assistant ID:', organizationId)
+          console.log('[Webhook] ✅ Found organization by assistant ID:', organizationId)
         } else {
-          console.log('[Webhook] No organization found for assistant ID:', assistantId)
+          console.log('[Webhook] ❌ No organization found for assistant ID:', assistantId)
+          // Debug: List all agent configs to see what we have
+          const { data: allConfigs } = await supabase
+            .from('agent_configs')
+            .select('organization_id, inbound_agent_id, outbound_agent_id')
+          console.log('[Webhook] All agent configs in database:', JSON.stringify(allConfigs, null, 2))
         }
+      } else {
+        console.log('[Webhook] ⚠️ No assistant ID found in payload')
       }
       
       // If not found by assistant ID, look up by phone number
