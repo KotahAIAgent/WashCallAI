@@ -4,6 +4,7 @@ import { Topbar } from '@/components/dashboard/Topbar'
 import { SubscriptionGate } from '@/components/onboarding/SubscriptionGate'
 import { ThemeProvider } from '@/components/theme/ThemeProvider'
 import { TourProvider } from '@/components/onboarding/OnboardingTour'
+import { KeyboardShortcutsProvider } from '@/components/keyboard/KeyboardShortcutsProvider'
 import { createServerClient } from '@/lib/supabase/server'
 
 // Add your admin email(s) here - keep in sync with admin/page.tsx
