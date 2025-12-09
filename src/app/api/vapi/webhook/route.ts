@@ -354,19 +354,42 @@ export async function POST(request: Request) {
     const direction = payload.direction || (payload.type === 'inbound' ? 'inbound' : 'outbound')
 
     // Extract call data from Vapi webhook payload
+    // Vapi may send phone numbers in various formats, check all possibilities
+    const fromNumber = payload.from || 
+                      payload.caller?.number || 
+                      payload.caller?.phoneNumber ||
+                      payload.customer?.number ||
+                      payload.customer?.phoneNumber ||
+                      payload.message?.from ||
+                      payload.message?.caller?.number
+    const toNumber = payload.to || 
+                    payload.callee?.number || 
+                    payload.callee?.phoneNumber ||
+                    payload.phoneNumber?.number ||
+                    payload.phoneNumber?.phoneNumber ||
+                    payload.message?.to ||
+                    payload.message?.callee?.number
+    
     const callData = {
       organization_id: organizationId,
       direction: direction,
-      provider_call_id: payload.callId || payload.id,
-      from_number: payload.from || payload.caller?.number,
-      to_number: payload.to || payload.callee?.number,
-      status: mapVapiStatus(payload.status || payload.state),
-      duration_seconds: payload.duration || null,
-      recording_url: payload.recording?.url || null,
-      transcript: payload.transcript || payload.conversation?.transcript || null,
-      summary: payload.summary || payload.conversation?.summary || null,
+      provider_call_id: payload.callId || payload.id || payload.message?.callId || payload.message?.id,
+      from_number: fromNumber,
+      to_number: toNumber,
+      status: mapVapiStatus(payload.status || payload.state || payload.message?.status),
+      duration_seconds: payload.duration || payload.message?.duration || null,
+      recording_url: payload.recording?.url || payload.message?.recording?.url || null,
+      transcript: payload.transcript || payload.conversation?.transcript || payload.message?.transcript || null,
+      summary: payload.summary || payload.conversation?.summary || payload.message?.summary || null,
       raw_payload: payload,
     }
+    
+    console.log('[Webhook] Extracted call data:', {
+      from_number: callData.from_number,
+      to_number: callData.to_number,
+      direction: callData.direction,
+      status: callData.status,
+    })
 
     // Create or update call
     const { data: call, error: callError } = await supabase
