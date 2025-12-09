@@ -254,6 +254,22 @@ export async function POST(request: Request) {
         .select('organization_id, inbound_agent_id, outbound_agent_id')
       console.log('[Webhook] All agent configs:', JSON.stringify(allAgentConfigs, null, 2))
       
+      // Store debug info for response
+      const debugInfo = {
+        payloadIdentifiers: {
+          metadata: payload.metadata,
+          assistantId: payload.assistantId,
+          assistant: payload.assistant,
+          phoneNumberId: payload.phoneNumberId,
+          phone: payload.phone,
+          to: payload.to,
+          from: payload.from,
+        },
+        availableOrganizations: allOrgs || [],
+        availablePhoneNumbers: allPhones || [],
+        availableAgentConfigs: allAgentConfigs || [],
+      }
+      
       const { data: organizations } = await supabase
         .from('organizations')
         .select('id')
@@ -262,10 +278,16 @@ export async function POST(request: Request) {
 
       if (!organizations) {
         console.error('[Webhook] No organizations found in database')
-        return NextResponse.json({ error: 'No organization found' }, { status: 400 })
+        return NextResponse.json({ 
+          error: 'No organization found',
+          debug: debugInfo
+        }, { status: 400 })
       }
       organizationId = organizations.id
       console.log('[Webhook] Using fallback organization:', organizationId)
+      
+      // Log debug info in response for easier debugging
+      console.log('[Webhook] DEBUG INFO:', JSON.stringify(debugInfo, null, 2))
     }
 
     // 🔒 CHECK ACCESS - Verify organization has active trial or subscription
