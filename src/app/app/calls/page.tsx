@@ -19,11 +19,11 @@ async function getCalls(organizationId: string, searchParams: { direction?: stri
     .order('created_at', { ascending: false })
     .limit(50)
 
-  if (searchParams.direction) {
+  if (searchParams.direction && searchParams.direction !== 'all') {
     query = query.eq('direction', searchParams.direction)
   }
 
-  if (searchParams.status) {
+  if (searchParams.status && searchParams.status !== 'all') {
     query = query.eq('status', searchParams.status)
   }
 
@@ -44,7 +44,7 @@ export const dynamic = 'force-dynamic'
 export default async function CallsPage({
   searchParams,
 }: {
-  searchParams: { direction?: string; status?: string; dateFrom?: string; dateTo?: string }
+  searchParams: Promise<{ direction?: string; status?: string; dateFrom?: string; dateTo?: string }>
 }) {
   const supabase = createServerClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -72,7 +72,8 @@ export default async function CallsPage({
     )
   }
 
-  const calls = await getCalls(profile.organization_id, searchParams)
+  const params = await searchParams
+  const calls = await getCalls(profile.organization_id, params)
 
   return (
     <div className="space-y-6">
@@ -94,7 +95,7 @@ export default async function CallsPage({
         <CardContent>
           <div className="mb-4 flex flex-wrap gap-4">
             <form method="get" className="flex flex-wrap gap-4">
-              <Select name="direction" defaultValue={searchParams.direction || 'all'}>
+              <Select name="direction" defaultValue={params.direction || 'all'}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Directions" />
                 </SelectTrigger>
@@ -104,7 +105,7 @@ export default async function CallsPage({
                   <SelectItem value="outbound">Outbound</SelectItem>
                 </SelectContent>
               </Select>
-              <Select name="status" defaultValue={searchParams.status || 'all'}>
+              <Select name="status" defaultValue={params.status || 'all'}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -122,14 +123,14 @@ export default async function CallsPage({
                 type="date"
                 name="dateFrom"
                 placeholder="From Date"
-                defaultValue={searchParams.dateFrom}
+                defaultValue={params.dateFrom}
                 className="w-[180px]"
               />
               <Input
                 type="date"
                 name="dateTo"
                 placeholder="To Date"
-                defaultValue={searchParams.dateTo}
+                defaultValue={params.dateTo}
                 className="w-[180px]"
               />
               <Button type="submit">Filter</Button>

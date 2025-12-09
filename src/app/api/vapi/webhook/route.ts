@@ -123,6 +123,9 @@ export async function POST(request: Request) {
                          payload.call?.assistantId ||
                          payload.conversation?.assistantId
       
+      // Track call direction based on which agent ID matched
+      let detectedDirection: 'inbound' | 'outbound' | null = null
+      
       if (assistantId) {
         console.log('[Webhook] Looking up organization by assistant ID:', assistantId)
         // Try inbound first
@@ -136,8 +139,11 @@ export async function POST(request: Request) {
           console.log('[Webhook] Inbound lookup error:', inboundError)
         }
         
-        // If not found, try outbound
-        if (!agentConfig) {
+        // If found by inbound agent ID, this is an inbound call
+        if (agentConfig) {
+          detectedDirection = 'inbound'
+        } else {
+          // If not found, try outbound
           const { data: outboundConfig, error: outboundError } = await supabase
             .from('agent_configs')
             .select('organization_id, inbound_agent_id, outbound_agent_id')
@@ -148,11 +154,16 @@ export async function POST(request: Request) {
             console.log('[Webhook] Outbound lookup error:', outboundError)
           }
           agentConfig = outboundConfig
+          
+          // If found by outbound agent ID, this is an outbound call
+          if (agentConfig) {
+            detectedDirection = 'outbound'
+          }
         }
         
         if (agentConfig) {
           organizationId = agentConfig.organization_id
-          console.log('[Webhook] ✅ Found organization by assistant ID:', organizationId)
+          console.log('[Webhook] ✅ Found organization by assistant ID:', organizationId, 'Direction:', detectedDirection)
         } else {
           console.log('[Webhook] ❌ No organization found for assistant ID:', assistantId)
           // Debug: List all agent configs to see what we have
@@ -351,7 +362,14 @@ export async function POST(request: Request) {
     }
 
     // Determine call direction
-    const direction = payload.direction || (payload.type === 'inbound' ? 'inbound' : 'outbound')
+    // Priority: 1) Detected from assistant ID lookup, 2) Payload direction, 3) Payload type, 4) Default to outbound
+    const direction = detectedDirection || 
+                     payload.direction || 
+                     (payload.type === 'inbound' ? 'inbound' : null) ||
+                     (payload.type === 'outbound' ? 'outbound' : null) ||
+                     (payload.message?.direction) ||
+                     (payload.message?.type === 'inbound' ? 'inbound' : null) ||
+                     'outbound' // Default fallback
 
     // Extract call data from Vapi webhook payload
     // Vapi may send phone numbers in various formats, check all possibilities
