@@ -77,19 +77,42 @@ export async function POST(request: Request) {
       console.log('[Webhook] Found organizationId from metadata:', organizationId)
     } else {
       // For inbound calls, look up by phone number
-      const toNumber = payload.to || payload.callee?.number || payload.phoneNumberId
-      console.log('[Webhook] Looking up by phone number:', toNumber)
+      // Vapi may send phoneNumberId (provider ID) or the actual phone number
+      const phoneNumberId = payload.phoneNumberId || payload.phone?.id
+      const toNumber = payload.to || payload.callee?.number || payload.phone?.number
       
-      if (toNumber) {
+      console.log('[Webhook] Looking up organization - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
+      
+      let phoneNumber: { organization_id: string; phone_number: string } | null = null
+      
+      // First, try to match by provider_phone_id (Vapi's phone number ID)
+      if (phoneNumberId) {
+        const { data: phoneByProviderId } = await supabase
+          .from('phone_numbers')
+          .select('organization_id, phone_number, provider_phone_id')
+          .eq('provider_phone_id', phoneNumberId)
+          .single() as { data: { organization_id: string; phone_number: string; provider_phone_id: string } | null }
+        
+        if (phoneByProviderId) {
+          phoneNumber = phoneByProviderId
+          console.log('[Webhook] Found by provider_phone_id:', phoneNumberId)
+        }
+      }
+      
+      // If not found by provider ID, try matching by actual phone number
+      if (!phoneNumber && toNumber) {
         // Try exact match first
-        let { data: phoneNumber } = await supabase
+        const { data: phoneByNumber } = await supabase
           .from('phone_numbers')
           .select('organization_id, phone_number')
           .eq('phone_number', toNumber)
           .single() as { data: { organization_id: string; phone_number: string } | null }
         
-        // If not found, try normalized versions
-        if (!phoneNumber) {
+        if (phoneByNumber) {
+          phoneNumber = phoneByNumber
+          console.log('[Webhook] Found by exact phone number match:', toNumber)
+        } else {
+          // Try normalized versions
           const normalized = normalizePhoneNumber(toNumber)
           console.log('[Webhook] Trying normalized phone:', normalized)
           
@@ -103,6 +126,7 @@ export async function POST(request: Request) {
             
             if (phoneNumberNormalized) {
               phoneNumber = phoneNumberNormalized
+              console.log('[Webhook] Found by normalized phone number')
             } else {
               // Try matching any format - get all phone numbers and compare
               const { data: allPhones } = await supabase
@@ -116,17 +140,22 @@ export async function POST(request: Request) {
                 })
                 if (matched) {
                   phoneNumber = matched
+                  console.log('[Webhook] Found by cross-format matching')
                 }
               }
             }
           }
         }
-        
-        if (phoneNumber) {
-          organizationId = phoneNumber.organization_id
-          console.log('[Webhook] Found organization:', organizationId, 'for phone:', phoneNumber.phone_number)
-        } else {
-          console.log('[Webhook] No phone number match found for:', toNumber)
+      }
+      
+      if (phoneNumber) {
+        organizationId = phoneNumber.organization_id
+        console.log('[Webhook] Found organization:', organizationId, 'for phone:', phoneNumber.phone_number)
+      } else {
+        console.log('[Webhook] No phone number match found - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
+        console.log('[Webhook] Full payload keys:', Object.keys(payload))
+        if (payload.phone) {
+          console.log('[Webhook] payload.phone:', JSON.stringify(payload.phone, null, 2))
         }
       }
     }
