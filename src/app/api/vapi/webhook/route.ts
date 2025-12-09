@@ -156,6 +156,9 @@ export async function POST(request: Request) {
       phone: callData.from_number || '',
     }
 
+    // Declare leadId at function scope
+    let leadId: string | undefined
+
     // Extract lead data if available (from structured output or transcript parsing)
     if (payload.lead || payload.structuredOutput || payload.analysis) {
       const extractedData = payload.lead || payload.structuredOutput || payload.analysis
@@ -200,8 +203,6 @@ export async function POST(request: Request) {
         .eq('organization_id', organizationId)
         .eq('phone', lead.phone)
         .single() as { data: { id: string } | null }
-
-      let leadId: string
       if (existingLead) {
         const { data: updatedLead } = await (supabase
           .from('leads') as any)
@@ -365,7 +366,7 @@ export async function POST(request: Request) {
         triggerWorkflows('call_completed', {
           organizationId,
           callId: call.id,
-          leadId: leadId || undefined,
+          leadId,
         }).catch(err => console.error('Workflow trigger error:', err))
       }
     }
