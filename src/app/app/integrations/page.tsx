@@ -139,13 +139,16 @@ export default async function IntegrationsPage() {
 
   // Get organization's plan for feature gating (use 'pro' for admins without org)
   let plan = 'pro' // Default to pro for admins
+  let organizationId = profile?.organization_id || ''
+  
   if (profile?.organization_id) {
     const { data: org } = await supabase
       .from('organizations')
       .select('plan')
       .eq('id', profile.organization_id)
-      .single()
+      .maybeSingle()
     plan = org?.plan || 'starter'
+    organizationId = profile.organization_id
   }
   const availableIntegrations = integrations.filter(i => i.status === 'available')
   const comingSoonIntegrations = integrations.filter(i => i.status === 'coming_soon')
