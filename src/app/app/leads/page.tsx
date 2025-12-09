@@ -1,16 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ExportButton } from '@/components/export/ExportButton'
-import Link from 'next/link'
-import { format } from 'date-fns'
-import { ArrowRight } from 'lucide-react'
-import { LeadsTable } from '@/components/leads/LeadsTable'
-import { MobileTable } from '@/components/ui/mobile-table'
-import { BulkActions } from '@/components/leads/BulkActions'
+import { LeadsPageClient } from './LeadsPageClient'
 
 async function getLeads(organizationId: string, status?: string) {
   const supabase = createServerClient()
