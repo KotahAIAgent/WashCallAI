@@ -24,8 +24,11 @@ interface Organization {
   id: string
   name: string
   slug: string
-  plan: string
+  plan: string | null
   created_at: string
+  onboarding_completed: boolean | null
+  setup_status: string | null
+  email: string | null
   agent_configs: {
     inbound_agent_id: string | null
     outbound_agent_id: string | null
@@ -62,6 +65,7 @@ export function AdminOrganizationList({ organizations }: { organizations: Organi
           <TableHeader>
             <TableRow>
               <TableHead>Organization</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Inbound Agent</TableHead>
               <TableHead>Outbound Agent</TableHead>
@@ -85,12 +89,54 @@ export function AdminOrganizationList({ organizations }: { organizations: Organi
                           Owner: {org.profiles[0].full_name}
                         </p>
                       )}
+                      {org.email && (
+                        <p className="text-xs text-muted-foreground">
+                          {org.email}
+                        </p>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={org.plan === 'pro' ? 'default' : org.plan === 'growth' ? 'secondary' : 'outline'}>
-                      {org.plan}
-                    </Badge>
+                    <div className="space-y-1">
+                      {org.onboarding_completed ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          Onboarded
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                          Not Onboarded
+                        </Badge>
+                      )}
+                      {org.setup_status && (
+                        <Badge 
+                          variant="outline" 
+                          className={
+                            org.setup_status === 'pending' 
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : org.setup_status === 'in_review'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : org.setup_status === 'setting_up'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : org.setup_status === 'testing'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              : org.setup_status === 'ready' || org.setup_status === 'active'
+                              ? 'bg-green-50 text-green-700 border-green-200'
+                              : 'bg-gray-50 text-gray-700 border-gray-200'
+                          }
+                        >
+                          {org.setup_status}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {org.plan ? (
+                      <Badge variant={org.plan === 'pro' ? 'default' : org.plan === 'growth' ? 'secondary' : 'outline'}>
+                        {org.plan}
+                      </Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No plan</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {config?.inbound_agent_id ? (

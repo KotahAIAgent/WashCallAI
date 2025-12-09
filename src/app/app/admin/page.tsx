@@ -16,7 +16,7 @@ const ADMIN_EMAILS = [
 
 async function getAllOrganizations() {
   const supabase = createServerClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('organizations')
     .select(`
       *,
@@ -28,6 +28,10 @@ async function getAllOrganizations() {
       )
     `)
     .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching organizations:', error)
+  }
 
   return data || []
 }

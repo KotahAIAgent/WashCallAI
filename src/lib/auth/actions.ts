@@ -12,10 +12,12 @@ export async function signUp(formData: FormData): Promise<void> {
   const fullName = formData.get('fullName') as string
   const organizationName = formData.get('organizationName') as string
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.fusioncaller.com'
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: `${baseUrl}/auth/callback`,
       data: {
         full_name: fullName,
         organization_name: organizationName || 'My Pressure Washing Company',

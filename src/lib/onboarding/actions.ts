@@ -40,7 +40,7 @@ export async function submitOnboardingForm(organizationId: string, formData: Onb
   }
 
   // Update organization with form data
-  const { error: orgError } = await supabase
+  const { data: updatedOrg, error: orgError } = await supabase
     .from('organizations')
     .update({
       name: formData.businessName,
@@ -58,11 +58,26 @@ export async function submitOnboardingForm(organizationId: string, formData: Onb
       updated_at: new Date().toISOString(),
     })
     .eq('id', organizationId)
+    .select()
+    .single()
 
   if (orgError) {
     console.error('Error updating organization:', orgError)
+    console.error('Organization ID:', organizationId)
     return { error: orgError.message }
   }
+
+  if (!updatedOrg) {
+    console.error('Organization update returned no data for ID:', organizationId)
+    return { error: 'Failed to update organization' }
+  }
+
+  console.log('Organization updated successfully:', {
+    id: updatedOrg.id,
+    name: updatedOrg.name,
+    onboarding_completed: updatedOrg.onboarding_completed,
+    setup_status: updatedOrg.setup_status,
+  })
 
   // Update profile with owner name
   const { error: profileError } = await supabase
@@ -83,6 +98,7 @@ export async function submitOnboardingForm(organizationId: string, formData: Onb
   ])
 
   revalidatePath('/app')
+  revalidatePath('/app/admin')
   return { success: true }
 }
 
