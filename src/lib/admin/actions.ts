@@ -2,6 +2,7 @@
 
 import { createActionClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { stripe, STRIPE_PLANS } from '@/lib/stripe/server'
 
 type SetupStatus = 'pending' | 'in_review' | 'setting_up' | 'testing' | 'ready' | 'active'
 
@@ -62,6 +63,13 @@ export async function updateSetupStatus(
     return { error: 'Organization not found' }
   }
 
+  // Get full organization data to check for plan/subscription
+  const { data: fullOrg } = await supabase
+    .from('organizations')
+    .select('plan, billing_customer_id, trial_plan')
+    .eq('id', organizationId)
+    .single()
+
   // Update organization status
   const { error: updateError } = await supabase
     .from('organizations')
@@ -74,6 +82,89 @@ export async function updateSetupStatus(
 
   if (updateError) {
     return { error: updateError.message }
+  }
+
+  // When setup is ready/active and assistant is connected, start subscription if plan is selected
+  // This ensures payment is charged immediately when they pay
+  if ((status === 'ready' || status === 'active') && fullOrg?.plan && stripe) {
+    try {
+      // Check if they already have a Stripe subscription
+      if (fullOrg.billing_customer_id) {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: fullOrg.billing_customer_id,
+          status: 'active',
+          limit: 1,
+        })
+
+        // If no active subscription, create checkout session for immediate payment
+        if (subscriptions.data.length === 0) {
+          const plan = STRIPE_PLANS[fullOrg.plan as keyof typeof STRIPE_PLANS]
+          if (plan) {
+            // Create checkout session that charges immediately
+            const checkoutSession = await stripe.checkout.sessions.create({
+              customer: fullOrg.billing_customer_id,
+              payment_method_types: ['card'],
+              line_items: [
+                {
+                  price: plan.priceId,
+                  quantity: 1,
+                },
+              ],
+              mode: 'subscription',
+              subscription_data: {
+                metadata: {
+                  organization_id: organizationId,
+                  plan: fullOrg.plan,
+                  setup_fee_amount: plan.setupFee.toString(),
+                  auto_started: 'true', // Flag that this was auto-started
+                },
+              },
+              // Add setup fee as invoice item (charged immediately with first invoice)
+              ...(plan.setupFee > 0 && plan.setupFeePriceId ? {
+                payment_intent_data: {
+                  description: `Setup fee + first month for ${plan.name}`,
+                },
+              } : {}),
+              success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/settings?success=true&auto_started=true`,
+              cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/app/settings?canceled=true`,
+              metadata: {
+                organization_id: organizationId,
+                plan: fullOrg.plan,
+                setup_fee_amount: plan.setupFee.toString(),
+              },
+            })
+
+            // Add setup fee as invoice item (will be charged immediately with subscription)
+            if (plan.setupFee > 0 && plan.setupFeePriceId) {
+              await stripe.invoiceItems.create({
+                customer: fullOrg.billing_customer_id,
+                price: plan.setupFeePriceId,
+                description: `One-time setup fee for ${plan.name} plan`,
+                metadata: {
+                  organization_id: organizationId,
+                  plan: fullOrg.plan,
+                  setup_fee: 'true',
+                },
+              })
+            }
+
+            console.log(`✅ Auto-created checkout session for org ${organizationId} with plan ${fullOrg.plan}`)
+            console.log(`Checkout URL: ${checkoutSession.url}`)
+            
+            // Store checkout URL in organization notes for admin reference
+            await supabase
+              .from('organizations')
+              .update({
+                setup_notes: `${notes || ''}\n\n[Auto] Checkout created: ${checkoutSession.url}`.trim(),
+              })
+              .eq('id', organizationId)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error auto-starting subscription:', error)
+      // Don't fail the status update if subscription creation fails
+    }
   }
 
   // Send email if requested and email exists
