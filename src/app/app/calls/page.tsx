@@ -55,10 +55,19 @@ export default async function CallsPage({
     .from('profiles')
     .select('organization_id')
     .eq('id', session.user.id)
-    .single()
+    .maybeSingle()
 
   if (!profile?.organization_id) {
-    return <div>No organization found</div>
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold tracking-tight mb-2">No Organization Found</h2>
+          <p className="text-muted-foreground">
+            Please contact support to set up your organization.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   const calls = await getCalls(profile.organization_id, searchParams)
