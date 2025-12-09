@@ -78,14 +78,16 @@ export function InboundConfigForm({
               <div>
                 <p className="font-medium">Agent Status</p>
                 <p className="text-sm text-muted-foreground">
-                  {config?.inbound_agent_id 
-                    ? 'Your inbound agent is configured and ready'
+                  {config?.inbound_enabled 
+                    ? 'Your inbound agent is active and answering calls'
+                    : config?.inbound_agent_id 
+                    ? 'Configured - Enable to start'
                     : 'Waiting for agent setup by FusionCaller team'}
                 </p>
               </div>
             </div>
-            <Badge variant={config?.inbound_agent_id ? 'default' : 'secondary'}>
-              {config?.inbound_agent_id ? 'Active' : 'Pending Setup'}
+            <Badge variant={config?.inbound_enabled ? 'default' : config?.inbound_agent_id ? 'secondary' : 'outline'}>
+              {config?.inbound_enabled ? 'Active' : config?.inbound_agent_id ? 'Configured' : 'Pending Setup'}
             </Badge>
           </div>
 
@@ -144,11 +146,11 @@ export function InboundConfigForm({
             <Input
               id="businessName"
               name="businessName"
-              defaultValue={organization?.name || ''}
+              defaultValue={config?.custom_business_name || organization?.name || ''}
               placeholder="My Business Name"
             />
             <p className="text-sm text-muted-foreground">
-              Your AI will introduce itself as representing this business
+              Your AI will introduce itself as representing this business. This overrides the Vapi agent's default business name.
             </p>
           </div>
 
@@ -157,11 +159,12 @@ export function InboundConfigForm({
             <Textarea
               id="serviceArea"
               name="serviceArea"
+              defaultValue={config?.custom_service_area || ''}
               placeholder="e.g., Greater Houston area, surrounding suburbs, 25-mile radius"
               rows={2}
             />
             <p className="text-sm text-muted-foreground">
-              Help your AI know which areas you serve to qualify leads properly
+              Help your AI know which areas you serve to qualify leads properly. This overrides the Vapi agent's default service area.
             </p>
           </div>
 

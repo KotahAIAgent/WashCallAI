@@ -82,6 +82,37 @@ export async function updateSetupStatus(
     return { error: updateError.message }
   }
 
+  // If status is set to "active", automatically enable agents if they're configured
+  if (status === 'active') {
+    const { data: agentConfig } = await supabase
+      .from('agent_configs')
+      .select('id, inbound_agent_id, outbound_agent_id')
+      .eq('organization_id', organizationId)
+      .single()
+
+    if (agentConfig) {
+      const updates: any = {}
+      
+      // Enable inbound if agent ID exists
+      if (agentConfig.inbound_agent_id) {
+        updates.inbound_enabled = true
+      }
+      
+      // Enable outbound if agent ID exists
+      if (agentConfig.outbound_agent_id) {
+        updates.outbound_enabled = true
+      }
+
+      // Only update if there are changes
+      if (Object.keys(updates).length > 0) {
+        await supabase
+          .from('agent_configs')
+          .update(updates)
+          .eq('id', agentConfig.id)
+      }
+    }
+  }
+
   // When setup is ready/active and assistant is connected, start subscription if plan is selected
   // This ensures payment is charged immediately when they pay
   if ((status === 'ready' || status === 'active') && fullOrg?.plan && stripe) {
