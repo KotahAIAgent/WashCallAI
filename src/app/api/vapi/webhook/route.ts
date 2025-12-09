@@ -87,19 +87,32 @@ export async function POST(request: Request) {
       console.log('[Webhook] Found organizationId from metadata:', organizationId)
     } else {
       // Try to find organization by assistant ID first (most reliable for inbound calls)
-      const assistantId = payload.assistantId || payload.assistant?.id || payload.assistantId
+      const assistantId = payload.assistantId || payload.assistant?.id
       
       if (assistantId) {
         console.log('[Webhook] Looking up organization by assistant ID:', assistantId)
-        const { data: agentConfig } = await supabase
+        // Try inbound first
+        let { data: agentConfig } = await supabase
           .from('agent_configs')
           .select('organization_id')
-          .or(`inbound_agent_id.eq.${assistantId},outbound_agent_id.eq.${assistantId}`)
+          .eq('inbound_agent_id', assistantId)
           .single() as { data: { organization_id: string } | null }
+        
+        // If not found, try outbound
+        if (!agentConfig) {
+          const { data: outboundConfig } = await supabase
+            .from('agent_configs')
+            .select('organization_id')
+            .eq('outbound_agent_id', assistantId)
+            .single() as { data: { organization_id: string } | null }
+          agentConfig = outboundConfig
+        }
         
         if (agentConfig) {
           organizationId = agentConfig.organization_id
           console.log('[Webhook] Found organization by assistant ID:', organizationId)
+        } else {
+          console.log('[Webhook] No organization found for assistant ID:', assistantId)
         }
       }
       
