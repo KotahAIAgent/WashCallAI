@@ -409,15 +409,17 @@ export async function POST(request: Request) {
     })
 
     // Create or update call
-    // First check if call already exists
+    // First check if call already exists (to determine if this is a new call)
     let existingCall = null
+    let existingCallId = null
     if (callData.provider_call_id) {
       const { data: existing } = await supabase
         .from('calls')
-        .select('id, lead_id, status')
+        .select('id, lead_id, status, created_at')
         .eq('provider_call_id', callData.provider_call_id)
-        .single()
+        .maybeSingle()
       existingCall = existing
+      existingCallId = existing?.id || null
     }
     
     const { data: call, error: callError } = await supabase
@@ -434,11 +436,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: callError.message }, { status: 500 })
     }
     
+    // Determine if this was a new call by comparing created_at
+    // If the call was just created (within last 5 seconds), it's new
+    // Otherwise, it's an update to an existing call
+    const callCreatedAt = existingCall?.created_at ? new Date(existingCall.created_at) : null
+    const now = new Date()
+    const isNewCall = !existingCall || (callCreatedAt && (now.getTime() - callCreatedAt.getTime()) < 5000)
+    
     console.log('[Webhook] Call upserted:', {
       callId: call?.id,
       providerCallId: callData.provider_call_id,
       status: callData.status,
       wasExisting: !!existingCall,
+      existingCallId,
+      isNewCall,
+      callCreatedAt: callCreatedAt?.toISOString(),
     })
 
     // Variables for SMS notification
@@ -463,14 +475,16 @@ export async function POST(request: Request) {
     // BUT only create/update lead once per call, not on every webhook event
     // For outbound calls, only create if we have structured output
     // Only create lead if:
-    // 1. This is the first time we're seeing this call (no existing call), OR
-    // 2. The call status is 'completed' or 'answered' (final states), OR
+    // 1. This is a new call (first webhook event), OR
+    // 2. The call status is 'completed' and we haven't created a lead yet (check existingCall.lead_id), OR
     // 3. We have structured output/analysis (new data)
-    const isNewCall = !existingCall
     const isFinalStatus = callData.status === 'completed' || callData.status === 'answered'
     const hasNewData = !!(payload.lead || payload.structuredOutput || payload.analysis)
+    const hasExistingLead = !!(existingCall?.lead_id)
     
-    const shouldCreateLead = (direction === 'inbound' && (isNewCall || isFinalStatus)) || 
+    // For inbound: create if new call, or if completed/answered and no lead exists yet
+    // For outbound: only if we have new structured data
+    const shouldCreateLead = (direction === 'inbound' && (isNewCall || (isFinalStatus && !hasExistingLead))) || 
                              (direction === 'outbound' && hasNewData)
     
     console.log('[Webhook] Lead creation check:', {
@@ -478,8 +492,10 @@ export async function POST(request: Request) {
       isNewCall,
       isFinalStatus,
       hasNewData,
+      hasExistingLead,
       shouldCreateLead,
       callStatus: callData.status,
+      existingLeadId: existingCall?.lead_id,
     })
 
     // Extract lead data if available (from structured output or transcript parsing)

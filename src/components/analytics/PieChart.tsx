@@ -17,14 +17,22 @@ interface PieChartProps {
 const COLORS = ['#8b5cf6', '#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#ef4444']
 
 export function PieChart({ data }: PieChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-64 flex items-center justify-center text-muted-foreground">
+        No data available
+      </div>
+    )
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
-      className="w-full h-64"
+      className="w-full h-64 min-h-[256px]"
     >
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minHeight={256}>
         <RechartsPieChart>
           <Pie
             data={data}
