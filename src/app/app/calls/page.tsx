@@ -39,6 +39,8 @@ async function getCalls(organizationId: string, searchParams: { direction?: stri
   return data || []
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function CallsPage({
   searchParams,
 }: {

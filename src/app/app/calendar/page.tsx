@@ -62,6 +62,8 @@ async function getUpcomingAppointments(organizationId: string) {
   return data || []
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function CalendarPage() {
   const supabase = createServerClient()
   const { data: { session } } = await supabase.auth.getSession()

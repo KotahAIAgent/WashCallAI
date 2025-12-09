@@ -1,12 +1,14 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Shield, Users, Phone, Bot, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Shield, Users, Phone, Bot, Clock, RefreshCw } from 'lucide-react'
 import { AdminOrganizationList } from '@/components/admin/AdminOrganizationList'
 import { AdminAddPhoneNumber } from '@/components/admin/AdminAddPhoneNumber'
 import { AdminSetAgent } from '@/components/admin/AdminSetAgent'
 import { AdminUpdateStatus } from '@/components/admin/AdminUpdateStatus'
+import { RefreshButton } from '@/components/admin/RefreshButton'
 
 // Add your admin email(s) here
 const ADMIN_EMAILS = [
@@ -15,26 +17,94 @@ const ADMIN_EMAILS = [
 ]
 
 async function getAllOrganizations() {
-  const supabase = createServerClient()
-  const { data, error } = await supabase
-    .from('organizations')
-    .select(`
-      *,
-      agent_configs (*),
-      phone_numbers (*),
-      profiles!profiles_organization_id_fkey (
-        id,
-        full_name
-      )
-    `)
-    .order('created_at', { ascending: false })
+  try {
+    // Check if service role key is configured before attempting to create client
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const error = 'SUPABASE_SERVICE_ROLE_KEY is not configured. Please add it to your .env.local file.'
+      console.error('[Admin]', error)
+      throw new Error(error)
+    }
 
-  if (error) {
-    console.error('Error fetching organizations:', error)
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const error = 'NEXT_PUBLIC_SUPABASE_URL is not configured. Please add it to your .env.local file.'
+      console.error('[Admin]', error)
+      throw new Error(error)
+    }
+
+    // Use service role client to bypass RLS for admin queries
+    const supabase = createServiceRoleClient()
+    
+    // First, get all organizations
+    const { data: orgs, error: orgError } = await supabase
+      .from('organizations')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (orgError) {
+      console.error('[Admin] Error fetching organizations:', orgError)
+      console.error('[Admin] Error details:', JSON.stringify(orgError, null, 2))
+      return []
+    }
+
+    console.log(`[Admin] Found ${orgs?.length || 0} organizations`)
+
+    if (!orgs || orgs.length === 0) {
+      console.log('[Admin] No organizations found in database')
+      return []
+    }
+
+    // Then get related data for each organization
+    const orgIds = orgs.map(org => org.id)
+    
+    // Get agent configs
+    const { data: agentConfigs, error: agentError } = await supabase
+      .from('agent_configs')
+      .select('*')
+      .in('organization_id', orgIds)
+
+    if (agentError) {
+      console.error('[Admin] Error fetching agent_configs:', agentError)
+    }
+
+    // Get phone numbers
+    const { data: phoneNumbers, error: phoneError } = await supabase
+      .from('phone_numbers')
+      .select('*')
+      .in('organization_id', orgIds)
+
+    if (phoneError) {
+      console.error('[Admin] Error fetching phone_numbers:', phoneError)
+    }
+
+    // Get profiles
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name, organization_id')
+      .in('organization_id', orgIds)
+
+    if (profileError) {
+      console.error('[Admin] Error fetching profiles:', profileError)
+    }
+
+    // Combine the data
+    const result = orgs.map(org => ({
+      ...org,
+      agent_configs: agentConfigs?.filter(ac => ac.organization_id === org.id) || [],
+      phone_numbers: phoneNumbers?.filter(pn => pn.organization_id === org.id) || [],
+      profiles: profiles?.filter(p => p.organization_id === org.id) || [],
+    }))
+
+    console.log(`[Admin] Returning ${result.length} organizations with related data`)
+    return result
+  } catch (error) {
+    console.error('[Admin] Fatal error in getAllOrganizations:', error)
+    return []
   }
-
-  return data || []
 }
+
+// Force dynamic rendering to prevent caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function AdminPage() {
   const supabase = createServerClient()
@@ -63,7 +133,32 @@ export default async function AdminPage() {
     )
   }
 
-  const organizations = await getAllOrganizations()
+  let organizations: any[] = []
+  let errorMessage: string | null = null
+
+  // Check if service role key is configured FIRST
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    errorMessage = `SUPABASE_SERVICE_ROLE_KEY is not set. ${
+      process.env.NODE_ENV === 'production' 
+        ? 'Please add it to Vercel environment variables (Settings → Environment Variables) and redeploy.' 
+        : 'Please add it to your .env.local file and restart your development server.'
+    }`
+  } else {
+    try {
+      organizations = await getAllOrganizations()
+      console.log(`[Admin] Page render - ${organizations.length} organizations`)
+    } catch (error: any) {
+      console.error('[Admin] Error loading organizations:', error)
+      errorMessage = error?.message || 'Failed to load organizations'
+      
+      // If it's a configuration error, provide more helpful message
+      if (error?.message?.includes('SUPABASE_SERVICE_ROLE_KEY') || error?.message?.includes('Missing Supabase service role credentials')) {
+        errorMessage = process.env.NODE_ENV === 'production'
+          ? 'SUPABASE_SERVICE_ROLE_KEY is not configured in Vercel. Please add it to Environment Variables and redeploy.'
+          : 'SUPABASE_SERVICE_ROLE_KEY is not configured. Please add it to your .env.local file and restart your development server.'
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -77,9 +172,12 @@ export default async function AdminPage() {
             Manage organizations, agents, and phone numbers
           </p>
         </div>
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-          Admin Access
-        </Badge>
+        <div className="flex items-center gap-2">
+          <RefreshButton />
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            Admin Access
+          </Badge>
+        </div>
       </div>
 
       {/* Stats Overview */}
@@ -139,6 +237,30 @@ export default async function AdminPage() {
         <AdminSetAgent organizations={organizations} />
         <AdminAddPhoneNumber organizations={organizations} />
       </div>
+
+      {/* Error Message */}
+      {errorMessage && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-700">
+              <Shield className="h-5 w-5" />
+              <div className="flex-1">
+                <p className="font-semibold">Configuration Error</p>
+                <p className="text-sm mt-1">{errorMessage}</p>
+                <div className="mt-3 p-3 bg-red-100 rounded text-xs">
+                  <p className="font-semibold mb-1">Debug Info:</p>
+                  <p>Environment: {process.env.NODE_ENV || 'unknown'}</p>
+                  <p>Service Role Key Set: {process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Yes' : 'No'}</p>
+                  <p>Supabase URL Set: {process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Yes' : 'No'}</p>
+                </div>
+                <p className="text-xs mt-2 text-red-600">
+                  If you're on production, make sure SUPABASE_SERVICE_ROLE_KEY is added to Vercel environment variables and you've redeployed.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Organizations List */}
       <AdminOrganizationList organizations={organizations} />

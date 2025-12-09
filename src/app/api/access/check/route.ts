@@ -8,6 +8,8 @@ import { NextResponse } from 'next/server'
  * GET /api/access/check?phone=+1234567890
  * GET /api/access/check?org_id=uuid
  */
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
