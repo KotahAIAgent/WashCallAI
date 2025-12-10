@@ -18,7 +18,12 @@ CREATE TABLE IF NOT EXISTS call_limits (
 ALTER TABLE call_limits ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for call_limits
-CREATE POLICY IF NOT EXISTS "Users can view call_limits for their organizations"
+-- Drop policies if they exist (to allow re-running this migration)
+DROP POLICY IF EXISTS "Users can view call_limits for their organizations" ON call_limits;
+DROP POLICY IF EXISTS "Users can insert call_limits for their organizations" ON call_limits;
+DROP POLICY IF EXISTS "Users can update call_limits for their organizations" ON call_limits;
+
+CREATE POLICY "Users can view call_limits for their organizations"
   ON call_limits FOR SELECT
   USING (
     organization_id IN (
@@ -27,7 +32,7 @@ CREATE POLICY IF NOT EXISTS "Users can view call_limits for their organizations"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Users can insert call_limits for their organizations"
+CREATE POLICY "Users can insert call_limits for their organizations"
   ON call_limits FOR INSERT
   WITH CHECK (
     organization_id IN (
@@ -36,7 +41,7 @@ CREATE POLICY IF NOT EXISTS "Users can insert call_limits for their organization
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Users can update call_limits for their organizations"
+CREATE POLICY "Users can update call_limits for their organizations"
   ON call_limits FOR UPDATE
   USING (
     organization_id IN (
