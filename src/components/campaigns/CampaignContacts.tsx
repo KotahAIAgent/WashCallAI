@@ -245,8 +245,12 @@ export function CampaignContacts({
                       <DropdownMenuContent align="end">
                         {(contact.status === 'pending' || contact.status === 'no_answer' || contact.status === 'voicemail') && (
                           <DropdownMenuItem 
-                            onClick={() => handleMakeCall(contact.id)}
-                            disabled={callingContactId === contact.id}
+                            onClick={() => {
+                              if (callingContactId !== contact.id) {
+                                handleMakeCall(contact.id)
+                              }
+                            }}
+                            className={callingContactId === contact.id ? 'opacity-50 cursor-not-allowed' : ''}
                           >
                             <Phone className="h-4 w-4 mr-2" />
                             {callingContactId === contact.id ? 'Calling...' : 'Make Call'}

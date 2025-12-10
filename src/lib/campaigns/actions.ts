@@ -278,10 +278,12 @@ export async function deleteContact(contactId: string, campaignId: string) {
     return { error: 'Not authenticated' }
   }
 
+  // Delete contact only if it belongs to the specified campaign
   const { error } = await supabase
     .from('campaign_contacts')
     .delete()
     .eq('id', contactId)
+    .eq('campaign_id', campaignId)
 
   if (error) {
     return { error: error.message }
