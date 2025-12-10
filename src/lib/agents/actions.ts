@@ -329,9 +329,19 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
 
   // Make the call via Vapi
   try {
+    // Access environment variable - in Next.js server actions, we need to check if it exists
     const vapiApiKey = process.env.VAPI_API_KEY
-    if (!vapiApiKey) {
-      return { error: 'Vapi API key not configured' }
+    
+    if (!vapiApiKey || vapiApiKey.trim() === '') {
+      console.error('[initiateOutboundCall] ❌ VAPI_API_KEY is missing or empty')
+      console.error('[initiateOutboundCall] Environment check:', {
+        hasVapiKey: !!process.env.VAPI_API_KEY,
+        vapiKeyLength: process.env.VAPI_API_KEY?.length || 0,
+        nodeEnv: process.env.NODE_ENV,
+      })
+      return { 
+        error: 'Vapi API key not configured. Please add VAPI_API_KEY to your Vercel environment variables and redeploy.' 
+      }
     }
 
     const response = await fetch(`${VAPI_API_URL}/call/phone`, {
