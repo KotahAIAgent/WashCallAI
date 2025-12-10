@@ -197,6 +197,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
 
   // Get phone number
   let phoneNumber
+  let actualPhoneNumberId: string
   
   if (phoneNumberId) {
     // Use specified phone number
@@ -211,6 +212,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       return { error: 'Phone number not found' }
     }
     phoneNumber = phone
+    actualPhoneNumberId = phoneNumberId
   } else {
     // Get first available outbound phone number for this organization
     const { data: phoneNumbers, error: phoneError } = await supabase
@@ -225,6 +227,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       return { error: 'No outbound phone number available. Please add a phone number in the admin panel.' }
     }
     phoneNumber = phoneNumbers[0]
+    actualPhoneNumberId = phoneNumber.id
   }
 
   // Verify phone number has provider_phone_id (Vapi phone number ID)
@@ -239,7 +242,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     await supabase
       .from('phone_numbers')
       .update({ calls_today: 0, last_reset_date: today })
-      .eq('id', phoneNumberId)
+      .eq('id', actualPhoneNumberId)
     phoneNumber.calls_today = 0
   }
 
@@ -388,7 +391,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
         metadata: {
           organizationId,
           leadId: actualLeadId,
-          phoneNumberId,
+          phoneNumberId: actualPhoneNumberId,
           campaignContactId: campaignContactId || undefined,
         },
       }),
@@ -419,7 +422,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     await supabase
       .from('phone_numbers')
       .update({ calls_today: phoneNumber.calls_today + 1 })
-      .eq('id', phoneNumberId)
+      .eq('id', actualPhoneNumberId)
 
     // Update or create call limit record (only for leads, not campaign contacts)
     if (actualLeadId) {
@@ -443,7 +446,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
         await supabase.from('call_limits').insert({
           organization_id: organizationId,
           lead_id: actualLeadId,
-          phone_number_id: phoneNumberId,
+          phone_number_id: actualPhoneNumberId,
           calls_today: 1,
           last_call_at: new Date().toISOString(),
           last_reset_date: today,
