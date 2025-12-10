@@ -468,6 +468,7 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
   })
 
   // Use initiateOutboundCall from agents/actions
+  // Manual calls bypass schedule restrictions
   const { initiateOutboundCall } = await import('@/lib/agents/actions')
   const result = await initiateOutboundCall({
     organizationId,
@@ -479,6 +480,7 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
       endTime: campaignSchedule.endTime || '17:00',
       timezone: campaignSchedule.timezone || 'America/New_York',
     } : null,
+    skipScheduleCheck: true, // Manual calls override schedule
   })
 
   if (result.error) {

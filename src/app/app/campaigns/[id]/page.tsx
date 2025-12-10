@@ -22,6 +22,7 @@ import { CampaignStatusButton } from '@/components/campaigns/CampaignStatusButto
 import { AddContactDialog } from '@/components/campaigns/AddContactDialog'
 import { ImportContactsDialog } from '@/components/campaigns/ImportContactsDialog'
 import { ExportButton } from '@/components/export/ExportButton'
+import { DeleteCampaignButton } from '@/components/campaigns/DeleteCampaignButton'
 
 async function getCampaign(campaignId: string, organizationId: string) {
   const supabase = createServerClient()
@@ -128,6 +129,7 @@ export default async function CampaignDetailPage({
               Settings
             </Button>
           </Link>
+          <DeleteCampaignButton campaignId={campaign.id} />
         </div>
       </div>
 

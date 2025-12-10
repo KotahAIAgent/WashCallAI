@@ -160,9 +160,10 @@ interface InitiateCallParams {
   phoneNumberId?: string
   campaignContactId?: string
   campaignSchedule?: Schedule | null // Optional campaign schedule to override agent config schedule
+  skipScheduleCheck?: boolean // If true, bypass schedule restrictions (for manual calls)
 }
 
-export async function initiateOutboundCall({ organizationId, leadId, phoneNumberId, campaignContactId, campaignSchedule }: InitiateCallParams) {
+export async function initiateOutboundCall({ organizationId, leadId, phoneNumberId, campaignContactId, campaignSchedule, skipScheduleCheck = false }: InitiateCallParams) {
   const supabase = createActionClient()
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -295,11 +296,13 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     return { error: 'Either leadId or campaignContactId is required' }
   }
 
-  // Check schedule - use campaign schedule if provided, otherwise use agent config schedule
-  const scheduleToCheck = campaignSchedule || agentConfig.schedule
-  const scheduleCheck = isWithinSchedule(scheduleToCheck)
-  if (!scheduleCheck.allowed) {
-    return { error: scheduleCheck.reason }
+  // Check schedule - skip if manual call, otherwise use campaign schedule if provided, or agent config schedule
+  if (!skipScheduleCheck) {
+    const scheduleToCheck = campaignSchedule || agentConfig.schedule
+    const scheduleCheck = isWithinSchedule(scheduleToCheck)
+    if (!scheduleCheck.allowed) {
+      return { error: scheduleCheck.reason }
+    }
   }
 
   // Get organization data for custom variables
