@@ -260,12 +260,13 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
   let contactPhone: string
   let contactName: string | null = null
   let actualLeadId: string | null = leadId || null
+  let campaignData: { script_type?: string; description?: string; name?: string } | null = null
 
   if (campaignContactId) {
-    // Get campaign contact info
+    // Get campaign contact info with campaign data
     const { data: contact, error: contactError } = await supabase
       .from('campaign_contacts')
-      .select('*')
+      .select('*, campaigns(script_type, description, name)')
       .eq('id', campaignContactId)
       .eq('organization_id', organizationId)
       .single()
@@ -288,6 +289,16 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
 
     contactPhone = contact.phone
     contactName = contact.name || contact.business_name
+
+    // Extract campaign data for dynamic prompts
+    const campaign = (contact as any).campaigns
+    if (campaign) {
+      campaignData = {
+        script_type: campaign.script_type,
+        description: campaign.description,
+        name: campaign.name,
+      }
+    }
 
     // Update contact status to queued
     await supabase
@@ -361,6 +372,12 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     ...(agentConfig.custom_variables || {}),
   }
 
+  // Generate campaign-specific prompt context if campaign data is available
+  let campaignPromptContext: Record<string, any> = {}
+  if (campaignData) {
+    campaignPromptContext = generateCampaignPromptContext(campaignData.script_type, campaignData.description, campaignData.name)
+  }
+
   // Make the call via Vapi
   try {
     // Access environment variable - in Next.js server actions, we need to check if it exists
@@ -395,7 +412,15 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       },
     }
     
-    // Note: Custom variables should be configured in the Vapi assistant settings, not passed here
+    // Add variableValues for dynamic prompts if campaign context is available
+    // Vapi supports variableValues to dynamically customize the assistant's prompt
+    if (Object.keys(campaignPromptContext).length > 0) {
+      requestBody.variableValues = {
+        ...customVariables,
+        ...campaignPromptContext,
+      }
+      console.log('[initiateOutboundCall] Adding campaign-specific variables:', campaignPromptContext)
+    }
 
     console.log('[initiateOutboundCall] Making Vapi API call:', {
       url: `${VAPI_API_URL}/call/phone`,
@@ -576,6 +601,75 @@ function isWithinSchedule(schedule: Schedule | null): { allowed: boolean; reason
   }
 
   return { allowed: true }
+}
+
+/**
+ * Generate campaign-specific prompt context based on script type and description
+ * This creates dynamic variables that can be used in Vapi assistant prompts
+ */
+function generateCampaignPromptContext(
+  scriptType?: string,
+  description?: string,
+  campaignName?: string
+): Record<string, string> {
+  const context: Record<string, string> = {}
+
+  // Map script types to industry-specific contexts
+  const scriptTypeMap: Record<string, { industry: string; services: string; context: string }> = {
+    cold_restaurants: {
+      industry: 'restaurants',
+      services: 'pressure washing, deep cleaning, kitchen exhaust cleaning, and exterior maintenance',
+      context: 'You are calling restaurants to offer professional cleaning services. Focus on how clean exteriors and kitchen exhaust systems improve customer perception and health code compliance. Restaurants need regular deep cleaning to maintain hygiene standards.',
+    },
+    property_managers: {
+      industry: 'property management',
+      services: 'pressure washing, building maintenance, common area cleaning, and exterior cleaning',
+      context: 'You are calling property managers to offer building maintenance and cleaning services. Property managers are responsible for maintaining multiple properties and need reliable, professional cleaning services to keep their properties attractive and well-maintained.',
+    },
+    past_customers: {
+      industry: 'returning customers',
+      services: 'follow-up cleaning services, maintenance programs, and additional services',
+      context: 'You are calling past customers who have used our services before. They already know our quality and service. Focus on offering maintenance programs, additional services, or scheduling their next cleaning appointment.',
+    },
+    new_leads: {
+      industry: 'new prospects',
+      services: 'pressure washing, cleaning services, and maintenance programs',
+      context: 'You are calling new leads who have expressed interest or been referred. They may not be familiar with our services yet. Focus on introducing our services, explaining the benefits, and understanding their specific cleaning needs.',
+    },
+    estimate_reminder: {
+      industry: 'estimate follow-up',
+      services: 'pressure washing and cleaning services',
+      context: 'You are calling to follow up on a previous estimate or quote. The prospect has already shown interest. Focus on answering any questions they may have, addressing concerns, and helping them move forward with scheduling service.',
+    },
+    general: {
+      industry: 'general commercial',
+      services: 'pressure washing, cleaning services, and maintenance',
+      context: 'You are calling businesses to offer professional cleaning and pressure washing services. Focus on understanding their specific needs and explaining how our services can help maintain their property and improve its appearance.',
+    },
+  }
+
+  // Get base context from script type
+  const baseContext = scriptTypeMap[scriptType || 'general'] || scriptTypeMap.general
+  context.industry = baseContext.industry
+  context.services = baseContext.services
+  context.campaignContext = baseContext.context
+
+  // Add custom description if provided
+  if (description) {
+    context.campaignDescription = description
+    // Enhance context with description
+    context.campaignContext = `${baseContext.context} Campaign Details: ${description}`
+  }
+
+  // Add campaign name if provided
+  if (campaignName) {
+    context.campaignName = campaignName
+  }
+
+  // Create a comprehensive prompt that combines everything
+  context.dynamicPrompt = `You are making a call for a ${baseContext.industry} campaign. ${baseContext.context}${description ? ` Additional campaign details: ${description}` : ''} Focus on discussing ${baseContext.services}. Be professional, friendly, and focus on understanding their needs and how we can help.`
+
+  return context
 }
 
 // ============================================
