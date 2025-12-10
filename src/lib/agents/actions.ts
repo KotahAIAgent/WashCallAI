@@ -553,6 +553,21 @@ export async function adminSetAgentId(
     console.log('[Admin] ✅ Webhook URL automatically configured for assistant:', agentId)
   }
 
+  // Automatically enable the agent when ID is set
+  if (agentType === 'outbound' && agentId) {
+    await supabase
+      .from('agent_configs')
+      .update({ outbound_enabled: true })
+      .eq('organization_id', organizationId)
+    console.log('[Admin] ✅ Outbound calling automatically enabled')
+  } else if (agentType === 'inbound' && agentId) {
+    await supabase
+      .from('agent_configs')
+      .update({ inbound_enabled: true })
+      .eq('organization_id', organizationId)
+    console.log('[Admin] ✅ Inbound calling automatically enabled')
+  }
+
   return { success: true }
 }
 
