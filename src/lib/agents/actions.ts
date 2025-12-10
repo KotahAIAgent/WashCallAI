@@ -157,8 +157,9 @@ export async function updateOutboundConfig(formData: FormData) {
 interface InitiateCallParams {
   organizationId: string
   leadId?: string
-  phoneNumberId: string
+  phoneNumberId?: string
   campaignContactId?: string
+  campaignSchedule?: Schedule | null // Optional campaign schedule to override agent config schedule
 }
 
 export async function initiateOutboundCall({ organizationId, leadId, phoneNumberId, campaignContactId, campaignSchedule }: InitiateCallParams) {
