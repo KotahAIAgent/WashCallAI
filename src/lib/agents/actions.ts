@@ -685,6 +685,12 @@ export async function adminAddPhoneNumber(
   // Use service role client for admin operations to bypass RLS
   const supabase = createServiceRoleClient()
   
+  // Validate UUID format for provider_phone_id
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(providerPhoneId.trim())) {
+    return { error: 'Vapi Phone Number ID must be a UUID format (e.g., 123e4567-e89b-12d3-a456-426614174000)' }
+  }
+  
   // Normalize phone number to E.164 format for consistent storage
   const normalizedPhone = normalizePhoneNumberForStorage(phoneNumber)
   console.log('[Admin] Adding phone number:', phoneNumber, '-> normalized:', normalizedPhone)
@@ -692,7 +698,7 @@ export async function adminAddPhoneNumber(
   const { error } = await supabase.from('phone_numbers').insert({
     organization_id: organizationId,
     phone_number: normalizedPhone,
-    provider_phone_id: providerPhoneId,
+    provider_phone_id: providerPhoneId.trim(),
     friendly_name: friendlyName || null,
     type,
     daily_limit: dailyLimit,
@@ -701,6 +707,44 @@ export async function adminAddPhoneNumber(
 
   if (error) {
     console.error('[Admin] Error adding phone number:', error)
+    return { error: error.message }
+  }
+  return { success: true }
+}
+
+export async function adminUpdatePhoneNumber(
+  phoneNumberId: string,
+  providerPhoneId: string,
+  friendlyName?: string,
+  type?: 'inbound' | 'outbound' | 'both',
+  dailyLimit?: number
+) {
+  // Use service role client for admin operations to bypass RLS
+  const supabase = createServiceRoleClient()
+  
+  // Validate UUID format for provider_phone_id if provided
+  if (providerPhoneId) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(providerPhoneId.trim())) {
+      return { error: 'Vapi Phone Number ID must be a UUID format (e.g., 123e4567-e89b-12d3-a456-426614174000)' }
+    }
+  }
+  
+  const updateData: any = {}
+  if (providerPhoneId) updateData.provider_phone_id = providerPhoneId.trim()
+  if (friendlyName !== undefined) updateData.friendly_name = friendlyName || null
+  if (type) updateData.type = type
+  if (dailyLimit !== undefined) updateData.daily_limit = dailyLimit
+  
+  console.log('[Admin] Updating phone number:', phoneNumberId, updateData)
+  
+  const { error } = await supabase
+    .from('phone_numbers')
+    .update(updateData)
+    .eq('id', phoneNumberId)
+
+  if (error) {
+    console.error('[Admin] Error updating phone number:', error)
     return { error: error.message }
   }
   return { success: true }

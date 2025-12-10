@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Shield, Users, Phone, Bot, Clock, RefreshCw } from 'lucide-react'
 import { AdminOrganizationList } from '@/components/admin/AdminOrganizationList'
 import { AdminAddPhoneNumber } from '@/components/admin/AdminAddPhoneNumber'
+import { AdminUpdatePhoneNumber } from '@/components/admin/AdminUpdatePhoneNumber'
 import { AdminSetAgent } from '@/components/admin/AdminSetAgent'
 import { AdminUpdateStatus } from '@/components/admin/AdminUpdateStatus'
 import { RefreshButton } from '@/components/admin/RefreshButton'
@@ -236,6 +237,7 @@ export default async function AdminPage() {
         <AdminUpdateStatus organizations={organizations} />
         <AdminSetAgent organizations={organizations} />
         <AdminAddPhoneNumber organizations={organizations} />
+        <AdminUpdatePhoneNumber organizations={organizations} />
       </div>
 
       {/* Error Message */}
