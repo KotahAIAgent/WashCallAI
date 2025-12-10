@@ -9,7 +9,8 @@ import { initiateOutboundCall } from '@/lib/agents/actions'
  * POST /api/cron/process-campaigns
  * 
  * Set up with Vercel Cron or external cron service:
- * vercel.json: { "crons": [{ "path": "/api/cron/process-campaigns", "schedule": "*/10 * * * *" }] }
+ * vercel.json: { "crons": [{ "path": "/api/cron/process-campaigns", "schedule": "0 9 * * *" }] }
+ * Note: Vercel Hobby plan only allows daily cron jobs. For more frequent processing, use an external cron service.
  */
 export async function POST(request: Request) {
   try {
