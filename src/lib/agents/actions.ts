@@ -372,35 +372,68 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       }
     }
 
+    const requestBody = {
+      assistantId: agentConfig.outbound_agent_id,
+      phoneNumberId: phoneNumber.provider_phone_id,
+      customer: {
+        number: contactPhone,
+        name: contactName || undefined,
+      },
+      // Pass custom variables to override Vapi agent settings
+      variables: customVariables,
+      // Pass metadata for webhook
+      metadata: {
+        organizationId,
+        leadId: actualLeadId,
+        phoneNumberId: actualPhoneNumberId,
+        campaignContactId: campaignContactId || undefined,
+      },
+    }
+
+    console.log('[initiateOutboundCall] Making Vapi API call:', {
+      url: `${VAPI_API_URL}/call/phone`,
+      assistantId: agentConfig.outbound_agent_id,
+      phoneNumberId: phoneNumber.provider_phone_id,
+      customerNumber: contactPhone,
+      hasApiKey: !!vapiApiKey,
+    })
+
     const response = await fetch(`${VAPI_API_URL}/call/phone`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${vapiApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        assistantId: agentConfig.outbound_agent_id,
-        phoneNumberId: phoneNumber.provider_phone_id,
-        customer: {
-          number: contactPhone,
-          name: contactName || undefined,
-        },
-        // Pass custom variables to override Vapi agent settings
-        variables: customVariables,
-        // Pass metadata for webhook
-        metadata: {
-          organizationId,
-          leadId: actualLeadId,
-          phoneNumberId: actualPhoneNumberId,
-          campaignContactId: campaignContactId || undefined,
-        },
-      }),
+      body: JSON.stringify(requestBody),
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error('Vapi API error:', errorData)
-      return { error: 'Failed to initiate call' }
+      let errorMessage = 'Failed to initiate call'
+      try {
+        const errorData = await response.json()
+        console.error('[initiateOutboundCall] Vapi API error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        })
+        // Extract meaningful error message from Vapi response
+        if (errorData.message) {
+          errorMessage = errorData.message
+        } else if (errorData.error) {
+          errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error)
+        } else if (errorData.details) {
+          errorMessage = errorData.details
+        }
+      } catch (parseError) {
+        const errorText = await response.text()
+        console.error('[initiateOutboundCall] Failed to parse error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        })
+        errorMessage = `Vapi API error: ${response.status} ${response.statusText}`
+      }
+      return { error: errorMessage }
     }
 
     const callData = await response.json()
