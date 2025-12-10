@@ -30,7 +30,7 @@ const navigation = [
   { name: 'Inbound AI', href: '/app/inbound-ai', icon: PhoneIncoming },
   { name: 'Outbound AI', href: '/app/outbound-ai', icon: PhoneOutgoing },
   { name: 'Campaigns', href: '/app/campaigns', icon: FolderOpen, tourId: 'campaigns' },
-  { name: 'Integrations', href: '/app/integrations', icon: Plug },
+  { name: 'Integrations (Coming Soon)', href: '/app/integrations', icon: Plug },
   { name: 'Referrals', href: '/app/referrals', icon: Gift },
   { name: 'Pricing', href: '/app/pricing', icon: CreditCard },
   { name: 'Settings', href: '/app/settings', icon: Settings, tourId: 'settings' },
