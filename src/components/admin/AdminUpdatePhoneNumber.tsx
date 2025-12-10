@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,15 +43,15 @@ export function AdminUpdatePhoneNumber({ organizations }: { organizations: Organ
   // When phone number is selected, populate form
   const selectedPhoneData = phoneNumbers.find(p => p.id === selectedPhone)
   
-  // Update form when phone number is selected
-  useState(() => {
+  // Update form when phone number selection changes
+  React.useEffect(() => {
     if (selectedPhoneData) {
       setProviderPhoneId(selectedPhoneData.provider_phone_id || '')
       setFriendlyName(selectedPhoneData.friendly_name || '')
       setPhoneType(selectedPhoneData.type)
       // Note: dailyLimit not stored in phone number data, would need to fetch separately
     }
-  })
+  }, [selectedPhoneData])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
