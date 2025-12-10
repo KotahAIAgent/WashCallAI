@@ -196,15 +196,40 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
   }
 
   // Get phone number
-  const { data: phoneNumber, error: phoneError } = await supabase
-    .from('phone_numbers')
-    .select('*')
-    .eq('id', phoneNumberId)
-    .eq('organization_id', organizationId)
-    .single()
+  let phoneNumber
+  
+  if (phoneNumberId) {
+    // Use specified phone number
+    const { data: phone, error: phoneError } = await supabase
+      .from('phone_numbers')
+      .select('*')
+      .eq('id', phoneNumberId)
+      .eq('organization_id', organizationId)
+      .single()
 
-  if (phoneError || !phoneNumber) {
-    return { error: 'Phone number not found' }
+    if (phoneError || !phone) {
+      return { error: 'Phone number not found' }
+    }
+    phoneNumber = phone
+  } else {
+    // Get first available outbound phone number for this organization
+    const { data: phoneNumbers, error: phoneError } = await supabase
+      .from('phone_numbers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('active', true)
+      .in('type', ['outbound', 'both'])
+      .limit(1)
+
+    if (phoneError || !phoneNumbers || phoneNumbers.length === 0) {
+      return { error: 'No outbound phone number available. Please add a phone number in the admin panel.' }
+    }
+    phoneNumber = phoneNumbers[0]
+  }
+
+  // Verify phone number has provider_phone_id (Vapi phone number ID)
+  if (!phoneNumber.provider_phone_id) {
+    return { error: 'Phone number is missing Vapi Phone Number ID. Please update the phone number in the admin panel with the correct provider_phone_id from Vapi dashboard.' }
   }
 
   // Check daily limit for phone number

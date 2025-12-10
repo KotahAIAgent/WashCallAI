@@ -10,7 +10,6 @@ CREATE INDEX IF NOT EXISTS idx_calls_organization_created ON calls(organization_
 CREATE INDEX IF NOT EXISTS idx_calls_direction ON calls(direction);
 CREATE INDEX IF NOT EXISTS idx_calls_status ON calls(status);
 CREATE INDEX IF NOT EXISTS idx_calls_lead_id ON calls(lead_id) WHERE lead_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_calls_campaign_contact_id ON calls(campaign_contact_id) WHERE campaign_contact_id IS NOT NULL;
 
 -- Leads table indexes
 CREATE INDEX IF NOT EXISTS idx_leads_organization_id ON leads(organization_id);
