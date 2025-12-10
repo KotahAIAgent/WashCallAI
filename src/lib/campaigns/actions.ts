@@ -411,3 +411,65 @@ export async function convertToLead(contactId: string, campaignId: string) {
   return { success: true, leadId: lead.id }
 }
 
+// Make a call for a campaign contact
+export async function makeCallForContact(contactId: string, campaignId: string) {
+  const supabase = createActionClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Get contact
+  const { data: contact, error: contactError } = await supabase
+    .from('campaign_contacts')
+    .select('*')
+    .eq('id', contactId)
+    .eq('campaign_id', campaignId)
+    .single()
+
+  if (contactError || !contact) {
+    console.error('[makeCallForContact] Contact error:', contactError)
+    return { error: 'Contact not found' }
+  }
+
+  // Get campaign separately
+  const { data: campaign, error: campaignError } = await supabase
+    .from('campaigns')
+    .select('organization_id, phone_number_id')
+    .eq('id', campaignId)
+    .single()
+
+  if (campaignError || !campaign) {
+    console.error('[makeCallForContact] Campaign error:', campaignError)
+    return { error: 'Campaign not found' }
+  }
+
+  const organizationId = campaign.organization_id
+  const phoneNumberId = campaign.phone_number_id
+
+  if (!organizationId) {
+    return { error: 'Organization not found' }
+  }
+
+  console.log('[makeCallForContact] Initiating call:', { contactId, organizationId, phoneNumberId })
+
+  // Use initiateOutboundCall from agents/actions
+  const { initiateOutboundCall } = await import('@/lib/agents/actions')
+  const result = await initiateOutboundCall({
+    organizationId,
+    phoneNumberId: phoneNumberId || undefined,
+    campaignContactId: contactId,
+  })
+
+  if (result.error) {
+    console.error('[makeCallForContact] Call initiation error:', result.error)
+    return { error: result.error }
+  }
+
+  console.log('[makeCallForContact] Call initiated successfully:', result.callId)
+
+  revalidatePath(`/app/campaigns/${campaignId}`)
+  return { success: true, callId: result.callId }
+}
+

@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Database } from '@/types/database'
-import { deleteContact, updateContactStatus, convertToLead } from '@/lib/campaigns/actions'
+import { deleteContact, updateContactStatus, convertToLead, makeCallForContact } from '@/lib/campaigns/actions'
 import { useToast } from '@/hooks/use-toast'
 import { 
   Phone, 
@@ -63,6 +63,7 @@ export function CampaignContacts({
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [contactToDelete, setContactToDelete] = useState<string | null>(null)
+  const [callingContactId, setCallingContactId] = useState<string | null>(null)
   const { toast } = useToast()
 
   const filteredContacts = contacts.filter(contact => {
@@ -105,6 +106,40 @@ export function CampaignContacts({
     const result = await updateContactStatus(contactId, newStatus, campaignId)
     if (result.error) {
       toast({ title: 'Error', description: result.error, variant: 'destructive' })
+    }
+  }
+
+  async function handleMakeCall(contactId: string) {
+    setCallingContactId(contactId)
+    try {
+      console.log('[CampaignContacts] Making call for contact:', contactId)
+      const result = await makeCallForContact(contactId, campaignId)
+      
+      if (result.error) {
+        console.error('[CampaignContacts] Call error:', result.error)
+        toast({ 
+          title: 'Call failed', 
+          description: result.error, 
+          variant: 'destructive' 
+        })
+      } else {
+        console.log('[CampaignContacts] Call initiated successfully')
+        toast({ 
+          title: 'Call initiated', 
+          description: 'The call is being placed now' 
+        })
+        // Refresh the page to show updated status
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('[CampaignContacts] Unexpected error:', error)
+      toast({ 
+        title: 'Call failed', 
+        description: 'An unexpected error occurred', 
+        variant: 'destructive' 
+      })
+    } finally {
+      setCallingContactId(null)
     }
   }
 
@@ -208,6 +243,15 @@ export function CampaignContacts({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {(contact.status === 'pending' || contact.status === 'no_answer' || contact.status === 'voicemail') && (
+                          <DropdownMenuItem 
+                            onClick={() => handleMakeCall(contact.id)}
+                            disabled={callingContactId === contact.id}
+                          >
+                            <Phone className="h-4 w-4 mr-2" />
+                            {callingContactId === contact.id ? 'Calling...' : 'Make Call'}
+                          </DropdownMenuItem>
+                        )}
                         {contact.status === 'interested' && !contact.converted_lead_id && (
                           <DropdownMenuItem onClick={() => handleConvertToLead(contact.id)}>
                             <UserPlus className="h-4 w-4 mr-2" />
