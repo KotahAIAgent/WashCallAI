@@ -3,6 +3,28 @@ import { NextResponse } from 'next/server'
 import { initiateOutboundCall } from '@/lib/agents/actions'
 
 /**
+ * Normalize phone number to E.164 format for Vapi API
+ */
+function normalizePhoneNumber(phone: string): string {
+  if (!phone) return phone
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '')
+  // If it starts with 1 and has 11 digits, it's already E.164
+  // If it has 10 digits, add +1
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`
+  }
+  if (digits.length === 10) {
+    return `+1${digits}`
+  }
+  // If it already starts with +, return as is
+  if (phone.startsWith('+')) {
+    return phone
+  }
+  return phone
+}
+
+/**
  * Cron job to process active campaigns and initiate calls
  * Should be called periodically (e.g., every 5-15 minutes)
  * 
@@ -218,6 +240,13 @@ export async function POST(request: Request) {
               continue
             }
 
+            // Normalize phone number to E.164 format
+            const normalizedPhone = normalizePhoneNumber(contact.phone)
+            if (!normalizedPhone || !normalizedPhone.startsWith('+')) {
+              console.error(`Invalid phone number format for contact ${contact.id}: ${contact.phone}`)
+              continue
+            }
+
             // Make the call via Vapi
             const response = await fetch('https://api.vapi.ai/call/phone', {
               method: 'POST',
@@ -229,7 +258,7 @@ export async function POST(request: Request) {
                 assistantId: agentConfig.outbound_agent_id,
                 phoneNumberId: phoneNumberData.provider_phone_id,
                 customer: {
-                  number: contact.phone,
+                  number: normalizedPhone,
                   name: contact.name || contact.business_name || undefined,
                 },
                 variables: customVariables,
@@ -242,8 +271,40 @@ export async function POST(request: Request) {
             })
 
             if (!response.ok) {
-              const errorData = await response.json()
-              console.error(`Vapi API error for contact ${contact.id}:`, errorData)
+              let errorMessage = 'Failed to initiate call'
+              try {
+                const errorData = await response.json()
+                console.error(`Vapi API error for contact ${contact.id}:`, {
+                  status: response.status,
+                  error: errorData,
+                  assistantId: agentConfig.outbound_agent_id,
+                  phoneNumberId: phoneNumberData.provider_phone_id,
+                  customerNumber: normalizedPhone,
+                })
+                
+                // Extract meaningful error message
+                if (errorData.message) {
+                  errorMessage = errorData.message
+                } else if (errorData.error) {
+                  errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error)
+                }
+                
+                // Provide more specific error messages for common issues
+                if (errorMessage.toLowerCase().includes('notfound') || errorMessage.toLowerCase().includes('not found')) {
+                  if (errorMessage.toLowerCase().includes('phone') || errorMessage.toLowerCase().includes('number')) {
+                    errorMessage = `Phone number not found in Vapi. Verify provider_phone_id (${phoneNumberData.provider_phone_id}) is correct.`
+                  } else if (errorMessage.toLowerCase().includes('assistant')) {
+                    errorMessage = `Assistant not found in Vapi. Verify outbound_agent_id (${agentConfig.outbound_agent_id}) is correct.`
+                  }
+                }
+              } catch (parseError) {
+                const errorText = await response.text()
+                console.error(`Failed to parse error response for contact ${contact.id}:`, errorText)
+                if (response.status === 404) {
+                  errorMessage = 'Resource not found (404). Verify phone number ID and assistant ID are correct in Vapi.'
+                }
+              }
+              console.error(`Error for contact ${contact.id}: ${errorMessage}`)
               totalErrors++
               continue
             }

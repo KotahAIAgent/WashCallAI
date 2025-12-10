@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,7 +65,9 @@ export function CampaignContacts({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [contactToDelete, setContactToDelete] = useState<string | null>(null)
   const [callingContactId, setCallingContactId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { toast } = useToast()
+  const router = useRouter()
 
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = 
@@ -84,13 +87,24 @@ export function CampaignContacts({
 
   async function confirmDelete() {
     if (!contactToDelete) return
-    const result = await deleteContact(contactToDelete, campaignId)
-    if (result.error) {
-      toast({ title: 'Error', description: result.error, variant: 'destructive' })
-    } else {
-      toast({ title: 'Contact deleted' })
+    setIsDeleting(true)
+    try {
+      const result = await deleteContact(contactToDelete, campaignId)
+      if (result.error) {
+        toast({ title: 'Error', description: result.error, variant: 'destructive' })
+      } else {
+        toast({ title: 'Contact deleted', description: 'The contact has been removed from the campaign' })
+        setDeleteDialogOpen(false)
+        setContactToDelete(null)
+        // Refresh the page to show updated contact list
+        router.refresh()
+      }
+    } catch (error) {
+      console.error('Error deleting contact:', error)
+      toast({ title: 'Error', description: 'Failed to delete contact', variant: 'destructive' })
+    } finally {
+      setIsDeleting(false)
     }
-    setContactToDelete(null)
   }
 
   async function handleConvertToLead(contactId: string) {
@@ -309,6 +323,17 @@ export function CampaignContacts({
       <p className="text-sm text-muted-foreground">
         Showing {filteredContacts.length} of {contacts.length} contacts
       </p>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Contact"
+        description="Are you sure you want to delete this contact? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

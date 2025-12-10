@@ -287,7 +287,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       }
     }
 
-    contactPhone = contact.phone
+    contactPhone = normalizePhoneNumberForStorage(contact.phone)
     contactName = contact.name || contact.business_name
 
     // Extract campaign data for dynamic prompts
@@ -335,7 +335,7 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       return { error: 'Lead has no phone number' }
     }
 
-    contactPhone = lead.phone
+    contactPhone = normalizePhoneNumberForStorage(lead.phone)
     contactName = lead.name
   } else {
     return { error: 'Either leadId or campaignContactId is required' }
@@ -378,6 +378,11 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     campaignPromptContext = generateCampaignPromptContext(campaignData.script_type, campaignData.description, campaignData.name)
   }
 
+  // Validate phone number format (must be E.164)
+  if (!contactPhone || !contactPhone.startsWith('+')) {
+    return { error: `Invalid phone number format. Phone number must be in E.164 format (e.g., +1234567890). Got: ${contactPhone}` }
+  }
+
   // Make the call via Vapi
   try {
     // Access environment variable - in Next.js server actions, we need to check if it exists
@@ -411,16 +416,6 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
         campaignContactId: campaignContactId || undefined,
       },
     }
-    
-    // Add variableValues for dynamic prompts if campaign context is available
-    // Vapi supports variableValues to dynamically customize the assistant's prompt
-    if (Object.keys(campaignPromptContext).length > 0) {
-      requestBody.variableValues = {
-        ...customVariables,
-        ...campaignPromptContext,
-      }
-      console.log('[initiateOutboundCall] Adding campaign-specific variables:', campaignPromptContext)
-    }
 
     console.log('[initiateOutboundCall] Making Vapi API call:', {
       url: `${VAPI_API_URL}/call/phone`,
@@ -447,6 +442,11 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
           status: response.status,
           statusText: response.statusText,
           error: errorData,
+          requestBody: {
+            assistantId: requestBody.assistantId,
+            phoneNumberId: requestBody.phoneNumberId,
+            customerNumber: requestBody.customer?.number,
+          },
         })
         // Extract meaningful error message from Vapi response
         if (errorData.message) {
@@ -456,6 +456,17 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
         } else if (errorData.details) {
           errorMessage = errorData.details
         }
+        
+        // Provide more specific error messages for common issues
+        if (errorMessage.toLowerCase().includes('notfound') || errorMessage.toLowerCase().includes('not found')) {
+          if (errorMessage.toLowerCase().includes('phone') || errorMessage.toLowerCase().includes('number')) {
+            errorMessage = `Phone number not found in Vapi. Please verify the provider_phone_id (${phoneNumber.provider_phone_id}) is correct in the admin panel.`
+          } else if (errorMessage.toLowerCase().includes('assistant')) {
+            errorMessage = `Assistant not found in Vapi. Please verify the outbound_agent_id (${agentConfig.outbound_agent_id}) is correct.`
+          } else {
+            errorMessage = `Resource not found in Vapi. Please verify your phone number ID (${phoneNumber.provider_phone_id}) and assistant ID (${agentConfig.outbound_agent_id}) are correct.`
+          }
+        }
       } catch (parseError) {
         const errorText = await response.text()
         console.error('[initiateOutboundCall] Failed to parse error response:', {
@@ -464,6 +475,9 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
           body: errorText,
         })
         errorMessage = `Vapi API error: ${response.status} ${response.statusText}`
+        if (response.status === 404) {
+          errorMessage = `Resource not found (404). Please verify your phone number ID and assistant ID are correct in Vapi.`
+        }
       }
       return { error: errorMessage }
     }
