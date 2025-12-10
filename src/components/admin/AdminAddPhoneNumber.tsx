@@ -37,11 +37,22 @@ export function AdminAddPhoneNumber({ organizations }: { organizations: Organiza
       return
     }
 
+    // Validate UUID format for provider_phone_id
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(providerPhoneId.trim())) {
+      toast({
+        title: 'Invalid Phone Number ID',
+        description: 'Vapi Phone Number ID must be a UUID (e.g., 123e4567-e89b-12d3-a456-426614174000). Get it from Vapi Dashboard → Phone Numbers → Click on your number → Copy the ID.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setLoading(true)
     const result = await adminAddPhoneNumber(
       selectedOrg,
       phoneNumber,
-      providerPhoneId,
+      providerPhoneId.trim(),
       friendlyName,
       phoneType,
       parseInt(dailyLimit)
@@ -108,15 +119,29 @@ export function AdminAddPhoneNumber({ organizations }: { organizations: Organiza
           </div>
 
           <div className="space-y-2">
-            <Label>Vapi Phone Number ID</Label>
+            <Label>Vapi Phone Number ID <span className="text-red-500">*</span></Label>
             <Input
               value={providerPhoneId}
               onChange={(e) => setProviderPhoneId(e.target.value)}
-              placeholder="phone_xxxxx"
+              placeholder="123e4567-e89b-12d3-a456-426614174000"
+              className={providerPhoneId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(providerPhoneId.trim()) ? 'border-red-500' : ''}
             />
-            <p className="text-xs text-muted-foreground">
-              Get this from Vapi dashboard → Phone Numbers → Copy ID
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                Must be a UUID format. Get it from:
+              </p>
+              <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-0.5 ml-2">
+                <li>Go to <a href="https://dashboard.vapi.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Vapi Dashboard</a></li>
+                <li>Navigate to <strong>Phone Numbers</strong> (left sidebar)</li>
+                <li>Click on your phone number</li>
+                <li>Copy the <strong>ID</strong> field (it's a UUID like: <code className="bg-muted px-1 rounded">123e4567-e89b-12d3-a456-426614174000</code>)</li>
+              </ol>
+              {providerPhoneId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(providerPhoneId.trim()) && (
+                <p className="text-xs text-red-500 mt-1">
+                  ⚠️ Invalid UUID format. Must be in format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
