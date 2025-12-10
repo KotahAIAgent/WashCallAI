@@ -228,9 +228,32 @@ export function CampaignContacts({
                   <TableCell>{contact.call_count}</TableCell>
                   <TableCell>
                     {contact.last_call_at ? (
-                      <span className="text-sm text-muted-foreground">
-                        {format(new Date(contact.last_call_at), 'MMM d, h:mm a')}
-                      </span>
+                      <div className="space-y-1">
+                        <div className="text-sm">
+                          {format(new Date(contact.last_call_at), 'MMM d, h:mm a')}
+                        </div>
+                        {contact.status && contact.status !== 'pending' && (
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${
+                              contact.status === 'answered' || contact.status === 'interested' 
+                                ? 'bg-green-50 text-green-700 border-green-200' 
+                                : contact.status === 'voicemail' || contact.status === 'no_answer'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : contact.status === 'not_interested' || contact.status === 'do_not_call'
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : ''
+                            }`}
+                          >
+                            {statusConfig[contact.status]?.label || contact.status}
+                          </Badge>
+                        )}
+                        {contact.last_call_duration && (
+                          <div className="text-xs text-muted-foreground">
+                            {contact.last_call_duration}s
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-sm text-muted-foreground">-</span>
                     )}

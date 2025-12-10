@@ -15,8 +15,18 @@ import {
   PlayCircle,
   Plus,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Phone
 } from 'lucide-react'
+import { format } from 'date-fns'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { OutboundCampaignSelector } from '@/components/agents/OutboundCampaignSelector'
 
 async function getAgentConfig(organizationId: string) {
@@ -53,6 +63,65 @@ async function getCampaigns(organizationId: string) {
   return data || []
 }
 
+async function getSuccessfulOutboundCalls(organizationId: string) {
+  const supabase = createServerClient()
+  
+  // Get successful outbound calls
+  const { data: calls } = await supabase
+    .from('calls')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('direction', 'outbound')
+    .in('status', ['completed', 'answered'])
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (!calls || calls.length === 0) {
+    return []
+  }
+
+  // Get all campaign contacts for this organization to match by phone
+  const { data: allContacts } = await supabase
+    .from('campaign_contacts')
+    .select(`
+      id,
+      name,
+      business_name,
+      phone,
+      campaign_id,
+      campaigns(name)
+    `)
+    .eq('organization_id', organizationId)
+
+  // Create a map of normalized phone -> contact
+  const phoneToContact = new Map()
+  allContacts?.forEach(contact => {
+    if (contact.phone) {
+      // Normalize phone: remove all non-digits
+      const normalizedPhone = contact.phone.replace(/\D/g, '')
+      // Store both with and without +1 prefix
+      phoneToContact.set(normalizedPhone, contact)
+      if (normalizedPhone.length === 10) {
+        phoneToContact.set('1' + normalizedPhone, contact)
+      }
+    }
+  })
+
+  // Attach contact info to calls by matching phone numbers
+  return calls.map(call => {
+    if (call.to_number) {
+      // Normalize call phone number
+      const normalizedCallPhone = call.to_number.replace(/\D/g, '')
+      const contact = phoneToContact.get(normalizedCallPhone) || null
+      return {
+        ...call,
+        campaign_contacts: contact,
+      }
+    }
+    return { ...call, campaign_contacts: null }
+  })
+}
+
 export default async function OutboundAIPage() {
   const supabase = createServerClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -71,10 +140,11 @@ export default async function OutboundAIPage() {
     return <div>No organization found</div>
   }
 
-  const [config, phoneNumbers, campaigns] = await Promise.all([
+  const [config, phoneNumbers, campaigns, successfulCalls] = await Promise.all([
     getAgentConfig(profile.organization_id),
     getPhoneNumbers(profile.organization_id),
     getCampaigns(profile.organization_id),
+    getSuccessfulOutboundCalls(profile.organization_id),
   ])
 
   // Campaign stats
@@ -254,6 +324,89 @@ export default async function OutboundAIPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Successful Outbound Calls */}
+      {successfulCalls.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  Successful Outbound Calls
+                </CardTitle>
+                <CardDescription>
+                  Recent successful outbound calls with their status
+                </CardDescription>
+              </div>
+              <Link href="/app/calls?direction=outbound&status=completed">
+                <Button variant="outline" size="sm">View All</Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Duration</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {successfulCalls.map((call) => {
+                  const contact = call.campaign_contacts as any
+                  const campaign = contact?.campaigns as any
+                  
+                  return (
+                    <TableRow key={call.id}>
+                      <TableCell>
+                        <div className="text-sm">
+                          {format(new Date(call.created_at), 'MMM d, yyyy')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(new Date(call.created_at), 'h:mm a')}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {contact?.name || contact?.business_name || 'Unknown'}
+                        </div>
+                        {contact?.business_name && contact?.name && (
+                          <div className="text-xs text-muted-foreground">
+                            {contact.business_name}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {call.to_number || contact?.phone || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {campaign?.name || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-700 border-green-200 capitalize">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          {call.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {call.duration_seconds 
+                          ? `${Math.floor(call.duration_seconds / 60)}:${(call.duration_seconds % 60).toString().padStart(2, '0')}`
+                          : '-'
+                        }
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Campaigns */}
       {campaigns.length > 0 && (
