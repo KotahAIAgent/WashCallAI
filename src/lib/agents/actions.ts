@@ -161,7 +161,7 @@ interface InitiateCallParams {
   campaignContactId?: string
 }
 
-export async function initiateOutboundCall({ organizationId, leadId, phoneNumberId, campaignContactId }: InitiateCallParams) {
+export async function initiateOutboundCall({ organizationId, leadId, phoneNumberId, campaignContactId, campaignSchedule }: InitiateCallParams) {
   const supabase = createActionClient()
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -294,8 +294,9 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     return { error: 'Either leadId or campaignContactId is required' }
   }
 
-  // Check schedule
-  const scheduleCheck = isWithinSchedule(agentConfig.schedule)
+  // Check schedule - use campaign schedule if provided, otherwise use agent config schedule
+  const scheduleToCheck = campaignSchedule || agentConfig.schedule
+  const scheduleCheck = isWithinSchedule(scheduleToCheck)
   if (!scheduleCheck.allowed) {
     return { error: scheduleCheck.reason }
   }

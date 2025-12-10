@@ -435,10 +435,10 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
     return { error: 'Contact not found' }
   }
 
-  // Get campaign separately
+  // Get campaign separately (including schedule)
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
-    .select('organization_id, phone_number_id')
+    .select('organization_id, phone_number_id, schedule')
     .eq('id', campaignId)
     .single()
 
@@ -449,12 +449,23 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
 
   const organizationId = campaign.organization_id
   const phoneNumberId = campaign.phone_number_id
+  const campaignSchedule = campaign.schedule as { enabledDays?: string[]; startTime?: string; endTime?: string; timezone?: string } | null
 
   if (!organizationId) {
     return { error: 'Organization not found' }
   }
 
-  console.log('[makeCallForContact] Initiating call:', { contactId, organizationId, phoneNumberId })
+  console.log('[makeCallForContact] Initiating call:', { 
+    contactId, 
+    organizationId, 
+    phoneNumberId,
+    campaignSchedule: campaignSchedule ? {
+      enabledDays: campaignSchedule.enabledDays,
+      startTime: campaignSchedule.startTime,
+      endTime: campaignSchedule.endTime,
+      timezone: campaignSchedule.timezone
+    } : null
+  })
 
   // Use initiateOutboundCall from agents/actions
   const { initiateOutboundCall } = await import('@/lib/agents/actions')
@@ -462,6 +473,12 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
     organizationId,
     phoneNumberId: phoneNumberId || undefined,
     campaignContactId: contactId,
+    campaignSchedule: campaignSchedule ? {
+      enabledDays: campaignSchedule.enabledDays || [],
+      startTime: campaignSchedule.startTime || '09:00',
+      endTime: campaignSchedule.endTime || '17:00',
+      timezone: campaignSchedule.timezone || 'America/New_York',
+    } : null,
   })
 
   if (result.error) {
