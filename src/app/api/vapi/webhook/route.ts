@@ -509,7 +509,6 @@ export async function POST(request: Request) {
 
     // Variables for SMS notification
     let leadStatus = 'new'
-    let hasAppointment = false
     let leadData: {
       name?: string | null
       phone: string
@@ -566,7 +565,6 @@ export async function POST(request: Request) {
                      extractedData.wantsCallback ? 'callback' : 'new'
       }
       
-      hasAppointment = !!extractedData.appointment || !!extractedData.scheduledTime
       
       // For inbound calls, use from_number (caller's number)
       // For outbound calls, use to_number (who we called)
@@ -589,7 +587,7 @@ export async function POST(request: Request) {
         zip_code: extractedData.zipCode || extractedData.zip_code || null,
         property_type: mapPropertyType(extractedData.propertyType || extractedData.property_type),
         service_type: extractedData.serviceType || extractedData.service_type || null,
-        status: hasAppointment ? 'booked' : leadStatus,
+        status: leadStatus,
         notes: extractedData.notes || callData.summary || (direction === 'inbound' ? 'Inbound call' : null),
         source: direction === 'inbound' ? 'inbound' : 'manual',
       }
@@ -637,29 +635,6 @@ export async function POST(request: Request) {
           .eq('id', call.id)
       }
 
-      // Create appointment if scheduled
-      if (hasAppointment && leadId) {
-        const appointmentTime = extractedData.appointmentTime || extractedData.scheduledTime
-        if (appointmentTime) {
-          const { data: appointment } = await supabase.from('appointments').insert({
-            organization_id: organizationId,
-            lead_id: leadId,
-            title: `Estimate for ${lead.name || 'Lead'}`,
-            start_time: new Date(appointmentTime).toISOString(),
-            end_time: new Date(new Date(appointmentTime).getTime() + 60 * 60 * 1000).toISOString(), // 1 hour
-            notes: lead.service_type ? `Service: ${lead.service_type}` : null,
-          }).select().single()
-
-          // Trigger appointment_booked workflow
-          if (appointment) {
-            triggerWorkflows('appointment_booked', {
-              organizationId,
-              appointmentId: appointment.id,
-              leadId,
-            }).catch(err => console.error('Workflow trigger error:', err))
-          }
-        }
-      }
 
       // Trigger new_lead workflow if this is a new lead
       if (!existingLead && leadId) {
@@ -775,7 +750,7 @@ export async function POST(request: Request) {
       const notificationType = determineNotificationType(
         direction as 'inbound' | 'outbound',
         leadStatus,
-        hasAppointment
+        false
       )
 
       if (notificationType) {

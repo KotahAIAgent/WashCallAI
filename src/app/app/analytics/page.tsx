@@ -9,11 +9,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   Users,
-  Calendar,
-  Clock,
   Target,
-  Percent,
-  ArrowUpRight
 } from 'lucide-react'
 import { format, subDays, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, differenceInDays } from 'date-fns'
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart'
@@ -46,34 +42,34 @@ async function getAnalyticsData(
   const lastMonthEnd = endOfMonth(subMonths(now, 1))
 
   // Get various stats
+  // IMPORTANT: Count unique calls by provider_call_id to avoid duplicates
   const [
-    callsThisMonth,
-    callsLastMonth,
+    allCallsThisPeriod,
+    allCallsLastPeriod,
     leadsThisMonth,
     leadsLastMonth,
-    appointmentsThisMonth,
     interestedLeads,
     totalLeads,
     callsByDay,
     leadsByStatus,
-    inboundCalls,
-    outboundCalls,
     avgCallDuration,
   ] = await Promise.all([
-    // Calls in selected period
+    // All calls in selected period (we'll count unique provider_call_ids)
     supabase
       .from('calls')
-      .select('id', { count: 'exact', head: true })
+      .select('provider_call_id, direction, status, created_at')
       .eq('organization_id', organizationId)
       .gte('created_at', fromDate.toISOString())
-      .lte('created_at', toDate.toISOString()),
+      .lte('created_at', toDate.toISOString())
+      .not('provider_call_id', 'is', null),
     // Calls in previous period (for comparison)
     supabase
       .from('calls')
-      .select('id', { count: 'exact', head: true })
+      .select('provider_call_id, direction, status, created_at')
       .eq('organization_id', organizationId)
       .gte('created_at', previousPeriodStart.toISOString())
-      .lte('created_at', previousPeriodEnd.toISOString()),
+      .lte('created_at', previousPeriodEnd.toISOString())
+      .not('provider_call_id', 'is', null),
     // Leads in selected period
     supabase
       .from('leads')
@@ -88,13 +84,6 @@ async function getAnalyticsData(
       .eq('organization_id', organizationId)
       .gte('created_at', previousPeriodStart.toISOString())
       .lte('created_at', previousPeriodEnd.toISOString()),
-    // Appointments in selected period
-    supabase
-      .from('appointments')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', organizationId)
-      .gte('created_at', fromDate.toISOString())
-      .lte('created_at', toDate.toISOString()),
     // Interested leads
     supabase
       .from('leads')
@@ -106,35 +95,20 @@ async function getAnalyticsData(
       .from('leads')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId),
-    // Calls by day (selected period)
+    // Calls by day (selected period) - for chart
     supabase
       .from('calls')
-      .select('created_at, direction')
+      .select('provider_call_id, created_at, direction, status')
       .eq('organization_id', organizationId)
       .gte('created_at', fromDate.toISOString())
       .lte('created_at', toDate.toISOString())
+      .not('provider_call_id', 'is', null)
       .order('created_at', { ascending: true }),
     // Leads by status
     supabase
       .from('leads')
       .select('status')
       .eq('organization_id', organizationId),
-    // Inbound calls count
-    supabase
-      .from('calls')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', organizationId)
-      .eq('direction', 'inbound')
-      .gte('created_at', fromDate.toISOString())
-      .lte('created_at', toDate.toISOString()),
-    // Outbound calls count
-    supabase
-      .from('calls')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', organizationId)
-      .eq('direction', 'outbound')
-      .gte('created_at', fromDate.toISOString())
-      .lte('created_at', toDate.toISOString()),
     // Avg call duration
     supabase
       .from('calls')
@@ -144,10 +118,58 @@ async function getAnalyticsData(
       .gte('created_at', fromDate.toISOString())
       .lte('created_at', toDate.toISOString()),
   ])
+  
+  // Count unique calls by provider_call_id
+  const uniqueCallsThisPeriod = new Set(
+    (allCallsThisPeriod.data || [])
+      .map(c => c.provider_call_id)
+      .filter(Boolean)
+  ).size
+  
+  const uniqueCallsLastPeriod = new Set(
+    (allCallsLastPeriod.data || [])
+      .map(c => c.provider_call_id)
+      .filter(Boolean)
+  ).size
+  
+  // Separate calls by direction and status
+  const callsData = (allCallsThisPeriod.data || [])
+  const uniqueCallIds = new Set(callsData.map(c => c.provider_call_id).filter(Boolean))
+  
+  // Get one record per unique call (take the first occurrence)
+  const uniqueCalls = Array.from(uniqueCallIds).map(id => {
+    return callsData.find(c => c.provider_call_id === id)!
+  })
+  
+  // Count by direction
+  const inboundCalls = uniqueCalls.filter(c => c.direction === 'inbound').length
+  const outboundCalls = uniqueCalls.filter(c => c.direction === 'outbound').length
+  
+  // Count by status (successful = completed/answered, failed = failed/voicemail)
+  const successfulCalls = uniqueCalls.filter(c => 
+    c.status === 'completed' || c.status === 'answered'
+  ).length
+  const failedCalls = uniqueCalls.filter(c => 
+    c.status === 'failed' || c.status === 'voicemail'
+  ).length
+  
+  // Separate successful/failed by direction
+  const inboundSuccessful = uniqueCalls.filter(c => 
+    c.direction === 'inbound' && (c.status === 'completed' || c.status === 'answered')
+  ).length
+  const inboundFailed = uniqueCalls.filter(c => 
+    c.direction === 'inbound' && (c.status === 'failed' || c.status === 'voicemail')
+  ).length
+  const outboundSuccessful = uniqueCalls.filter(c => 
+    c.direction === 'outbound' && (c.status === 'completed' || c.status === 'answered')
+  ).length
+  const outboundFailed = uniqueCalls.filter(c => 
+    c.direction === 'outbound' && (c.status === 'failed' || c.status === 'voicemail')
+  ).length
 
   // Calculate changes
-  const callsChange = callsLastMonth.count 
-    ? Math.round(((callsThisMonth.count || 0) - callsLastMonth.count) / callsLastMonth.count * 100)
+  const callsChange = uniqueCallsLastPeriod 
+    ? Math.round(((uniqueCallsThisPeriod || 0) - uniqueCallsLastPeriod) / uniqueCallsLastPeriod * 100)
     : 0
   const leadsChange = leadsLastMonth.count 
     ? Math.round(((leadsThisMonth.count || 0) - leadsLastMonth.count) / leadsLastMonth.count * 100)
@@ -166,8 +188,14 @@ async function getAnalyticsData(
       )
     : 0
 
-  // Process calls by day for chart
-  const chartData = processChartData(callsByDay.data || [], fromDate, toDate)
+  // Process calls by day for chart - deduplicate by provider_call_id
+  const uniqueCallsByDay = (callsByDay.data || []).reduce((acc: Map<string, any>, call: any) => {
+    if (call.provider_call_id && !acc.has(call.provider_call_id)) {
+      acc.set(call.provider_call_id, call)
+    }
+    return acc
+  }, new Map())
+  const chartData = processChartData(Array.from(uniqueCallsByDay.values()), fromDate, toDate)
 
   // Process leads by status
   const statusCounts = (leadsByStatus.data || []).reduce((acc: Record<string, number>, lead: any) => {
@@ -175,10 +203,16 @@ async function getAnalyticsData(
     return acc
   }, {})
 
-  // Prepare pie chart data
+  // Prepare pie chart data for inbound/outbound
   const pieChartData = [
-    { name: 'Inbound', value: inboundCalls.count || 0, color: '#10b981' },
-    { name: 'Outbound', value: outboundCalls.count || 0, color: '#3b82f6' },
+    { name: 'Inbound', value: inboundCalls, color: '#10b981' },
+    { name: 'Outbound', value: outboundCalls, color: '#3b82f6' },
+  ].filter(item => item.value > 0)
+  
+  // Prepare pie chart data for successful/failed
+  const successPieChartData = [
+    { name: 'Successful', value: successfulCalls, color: '#10b981' },
+    { name: 'Failed', value: failedCalls, color: '#ef4444' },
   ].filter(item => item.value > 0)
 
   // Prepare line chart data (daily calls trend)
@@ -188,7 +222,7 @@ async function getAnalyticsData(
   }))
 
   // Prepare conversion funnel data
-  const totalCalls = callsThisMonth.count || 0
+  const totalCalls = uniqueCallsThisPeriod || 0
   const totalLeadsCount = totalLeads.count || 0
   const interestedCount = interestedLeads.count || 0
   const bookedCount = statusCounts.booked || 0
@@ -229,20 +263,26 @@ async function getAnalyticsData(
 
   return {
     metrics: {
-      callsThisMonth: callsThisMonth.count || 0,
+      callsThisMonth: uniqueCallsThisPeriod || 0,
       callsChange,
       leadsThisMonth: leadsThisMonth.count || 0,
       leadsChange,
-      appointmentsThisMonth: appointmentsThisMonth.count || 0,
       conversionRate,
       avgCallDuration: avgDuration,
-      inboundCalls: inboundCalls.count || 0,
-      outboundCalls: outboundCalls.count || 0,
+      inboundCalls,
+      outboundCalls,
+      successfulCalls,
+      failedCalls,
+      inboundSuccessful,
+      inboundFailed,
+      outboundSuccessful,
+      outboundFailed,
       totalLeads: totalLeads.count || 0,
     },
     chartData,
     statusCounts,
     pieChartData,
+    successPieChartData,
     lineChartData,
     funnelStages,
   }

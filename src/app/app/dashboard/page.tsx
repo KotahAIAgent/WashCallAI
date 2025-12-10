@@ -6,18 +6,11 @@ import Link from 'next/link'
 import { 
   Phone, 
   Users, 
-  Calendar, 
   TrendingUp, 
   TrendingDown,
   PhoneIncoming,
   PhoneOutgoing,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  ArrowRight,
-  Sparkles,
   Target,
-  Zap
 } from 'lucide-react'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { DashboardChart } from '@/components/dashboard/DashboardChart'
@@ -33,32 +26,33 @@ async function getDashboardData(organizationId: string) {
   const thirtyDaysAgo = subDays(now, 30)
 
   // Get current period stats (last 7 days)
+  // IMPORTANT: Count unique calls by provider_call_id to avoid duplicates
   const [
-    callsThisWeek,
-    callsLastWeek,
+    allCallsThisWeek,
+    allCallsLastWeek,
     leadsThisWeek,
     leadsLastWeek,
-    appointmentsThisWeek,
     totalLeads,
     interestedLeads,
     recentCalls,
     recentLeads,
-    upcomingAppointments,
     dailyCallData,
   ] = await Promise.all([
-    // Calls this week
+    // All calls this week (we'll count unique provider_call_ids)
     supabase
       .from('calls')
-      .select('id', { count: 'exact', head: true })
+      .select('provider_call_id, direction, status, created_at')
       .eq('organization_id', organizationId)
-      .gte('created_at', sevenDaysAgo.toISOString()),
-    // Calls last week (for comparison)
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .not('provider_call_id', 'is', null),
+    // All calls last week (for comparison)
     supabase
       .from('calls')
-      .select('id', { count: 'exact', head: true })
+      .select('provider_call_id, direction, status, created_at')
       .eq('organization_id', organizationId)
       .gte('created_at', fourteenDaysAgo.toISOString())
-      .lt('created_at', sevenDaysAgo.toISOString()),
+      .lt('created_at', sevenDaysAgo.toISOString())
+      .not('provider_call_id', 'is', null),
     // Leads this week
     supabase
       .from('leads')
@@ -72,12 +66,6 @@ async function getDashboardData(organizationId: string) {
       .eq('organization_id', organizationId)
       .gte('created_at', fourteenDaysAgo.toISOString())
       .lt('created_at', sevenDaysAgo.toISOString()),
-    // Appointments this week
-    supabase
-      .from('appointments')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', organizationId)
-      .gte('created_at', sevenDaysAgo.toISOString()),
     // Total leads all time
     supabase
       .from('leads')
@@ -89,13 +77,13 @@ async function getDashboardData(organizationId: string) {
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('status', 'interested'),
-    // Recent calls
+    // Recent calls (deduplicated)
     supabase
       .from('calls')
       .select('*')
       .eq('organization_id', organizationId)
-      .order('created_at', { ascending: false })
-      .limit(5),
+      .not('provider_call_id', 'is', null)
+      .order('created_at', { ascending: false }),
     // Recent leads
     supabase
       .from('leads')
@@ -103,26 +91,41 @@ async function getDashboardData(organizationId: string) {
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(5),
-    // Upcoming appointments
-    supabase
-      .from('appointments')
-      .select('*, leads(name, phone)')
-      .eq('organization_id', organizationId)
-      .gte('start_time', now.toISOString())
-      .order('start_time', { ascending: true })
-      .limit(5),
-    // Daily call data for chart (last 7 days)
+    // Daily call data for chart (last 7 days) - deduplicated
     supabase
       .from('calls')
-      .select('created_at, direction, status')
+      .select('provider_call_id, created_at, direction, status')
       .eq('organization_id', organizationId)
       .gte('created_at', sevenDaysAgo.toISOString())
+      .not('provider_call_id', 'is', null)
       .order('created_at', { ascending: true }),
   ])
+  
+  // Count unique calls by provider_call_id
+  const uniqueCallsThisWeek = new Set(
+    (allCallsThisWeek.data || [])
+      .map(c => c.provider_call_id)
+      .filter(Boolean)
+  ).size
+  
+  const uniqueCallsLastWeek = new Set(
+    (allCallsLastWeek.data || [])
+      .map(c => c.provider_call_id)
+      .filter(Boolean)
+  ).size
+  
+  // Deduplicate recent calls
+  const recentCallsMap = new Map()
+  ;(recentCalls.data || []).forEach(call => {
+    if (call.provider_call_id && !recentCallsMap.has(call.provider_call_id)) {
+      recentCallsMap.set(call.provider_call_id, call)
+    }
+  })
+  const deduplicatedRecentCalls = Array.from(recentCallsMap.values()).slice(0, 5)
 
   // Calculate percentage changes
-  const callsChange = callsLastWeek.count 
-    ? ((callsThisWeek.count || 0) - callsLastWeek.count) / callsLastWeek.count * 100 
+  const callsChange = uniqueCallsLastWeek 
+    ? ((uniqueCallsThisWeek || 0) - uniqueCallsLastWeek) / uniqueCallsLastWeek * 100 
     : 0
   const leadsChange = leadsLastWeek.count 
     ? ((leadsThisWeek.count || 0) - leadsLastWeek.count) / leadsLastWeek.count * 100 
@@ -133,28 +136,32 @@ async function getDashboardData(organizationId: string) {
     ? Math.round((interestedLeads.count || 0) / totalLeads.count * 100) 
     : 0
 
-  // Process daily data for chart
-  const chartData = processChartData(dailyCallData.data || [], sevenDaysAgo)
+  // Process daily data for chart - deduplicate by provider_call_id
+  const uniqueCallsByDay = (dailyCallData.data || []).reduce((acc: Map<string, any>, call: any) => {
+    if (call.provider_call_id && !acc.has(call.provider_call_id)) {
+      acc.set(call.provider_call_id, call)
+    }
+    return acc
+  }, new Map())
+  const chartData = processChartData(Array.from(uniqueCallsByDay.values()), sevenDaysAgo)
 
-  // Check if inbound/outbound counts
-  const inboundCount = recentCalls.data?.filter(c => c.direction === 'inbound').length || 0
-  const outboundCount = recentCalls.data?.filter(c => c.direction === 'outbound').length || 0
+  // Count inbound/outbound from deduplicated calls
+  const inboundCount = deduplicatedRecentCalls.filter(c => c.direction === 'inbound').length
+  const outboundCount = deduplicatedRecentCalls.filter(c => c.direction === 'outbound').length
 
   return {
     stats: {
-      callsThisWeek: callsThisWeek.count || 0,
+      callsThisWeek: uniqueCallsThisWeek || 0,
       callsChange: Math.round(callsChange),
       leadsThisWeek: leadsThisWeek.count || 0,
       leadsChange: Math.round(leadsChange),
-      appointmentsThisWeek: appointmentsThisWeek.count || 0,
       totalLeads: totalLeads.count || 0,
       conversionRate,
       inboundCount,
       outboundCount,
     },
-    recentCalls: recentCalls.data || [],
+    recentCalls: deduplicatedRecentCalls,
     recentLeads: recentLeads.data || [],
-    upcomingAppointments: upcomingAppointments.data || [],
     chartData,
   }
 }
@@ -299,21 +306,33 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Appointments */}
+            {/* Inbound Calls */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Appointments</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Inbound Calls</CardTitle>
+                <PhoneIncoming className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.stats.appointmentsThisWeek}</div>
+                <div className="text-2xl font-bold">{data.stats.inboundCount}</div>
                 <p className="text-xs text-muted-foreground">
-                  Booked this week
+                  This week
                 </p>
               </CardContent>
             </Card>
 
-            {/* Conversion Rate */}
+            {/* Outbound Calls */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Outbound Calls</CardTitle>
+                <PhoneOutgoing className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data.stats.outboundCount}</div>
+                <p className="text-xs text-muted-foreground">
+                  This week
+                </p>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
@@ -396,60 +415,12 @@ export default async function DashboardPage() {
           </div>
 
           {/* Bottom Row */}
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6">
             {/* Recent Activity */}
             <RecentActivityFeed 
               calls={data.recentCalls} 
               leads={data.recentLeads} 
             />
-
-            {/* Upcoming Appointments */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Upcoming Appointments</CardTitle>
-                  <CardDescription>Your scheduled estimates</CardDescription>
-                </div>
-                <Link href="/app/calendar">
-                  <Button variant="ghost" size="sm">
-                    View all
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent>
-                {data.upcomingAppointments.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No upcoming appointments</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {data.upcomingAppointments.map((apt: any) => (
-                      <div key={apt.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                        <div className="p-2 rounded-full bg-primary/10">
-                          <Calendar className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{apt.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {apt.leads?.name || 'Unknown'} • {apt.leads?.phone || 'No phone'}
-                          </p>
-                        </div>
-                        <div className="text-right text-sm">
-                          <p className="font-medium">
-                            {format(new Date(apt.start_time), 'MMM d')}
-                          </p>
-                          <p className="text-muted-foreground">
-                            {format(new Date(apt.start_time), 'h:mm a')}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </>
       )}

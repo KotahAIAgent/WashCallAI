@@ -8,8 +8,9 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   Users,
-  Calendar,
   Target,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart'
 import { MetricCard } from '@/components/analytics/MetricCard'
@@ -25,6 +26,7 @@ interface AnalyticsPageClientProps {
     chartData: any[]
     statusCounts: Record<string, number>
     pieChartData: any[]
+    successPieChartData: any[]
     lineChartData: any[]
     funnelStages: any[]
   }
@@ -117,27 +119,80 @@ export function AnalyticsPageClient({ initialData, initialDateFrom, initialDateT
           value={data.metrics.callsThisMonth}
           change={data.metrics.callsChange}
           icon={Phone}
-          description="This month"
+          description="Unique calls this period"
         />
         <MetricCard
           title="New Leads"
           value={data.metrics.leadsThisMonth}
           change={data.metrics.leadsChange}
           icon={Users}
-          description="This month"
+          description="This period"
         />
         <MetricCard
-          title="Appointments"
-          value={data.metrics.appointmentsThisMonth}
-          icon={Calendar}
-          description="Booked this month"
+          title="Successful Calls"
+          value={data.metrics.successfulCalls || 0}
+          icon={CheckCircle2}
+          description="Completed/Answered"
         />
         <MetricCard
-          title="Conversion Rate"
-          value={`${data.metrics.conversionRate}%`}
-          icon={Target}
-          description="Leads → Interested"
+          title="Failed Calls"
+          value={data.metrics.failedCalls || 0}
+          icon={XCircle}
+          description="Failed/Voicemail"
         />
+      </div>
+      
+      {/* Inbound/Outbound Breakdown */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PhoneIncoming className="h-5 w-5 text-green-500" />
+              Inbound Calls
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Total Inbound</span>
+                <span className="text-2xl font-bold">{data.metrics.inboundCalls || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Successful</span>
+                <span className="text-lg font-semibold text-green-600">{data.metrics.inboundSuccessful || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Failed</span>
+                <span className="text-lg font-semibold text-red-600">{data.metrics.inboundFailed || 0}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PhoneOutgoing className="h-5 w-5 text-blue-500" />
+              Outbound Calls
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Total Outbound</span>
+                <span className="text-2xl font-bold">{data.metrics.outboundCalls || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Successful</span>
+                <span className="text-lg font-semibold text-green-600">{data.metrics.outboundSuccessful || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Failed</span>
+                <span className="text-lg font-semibold text-red-600">{data.metrics.outboundFailed || 0}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts Row */}
@@ -241,13 +296,63 @@ export function AnalyticsPageClient({ initialData, initialDateFrom, initialDateT
           <Card>
             <CardHeader>
               <CardTitle>Call Distribution</CardTitle>
-              <CardDescription>Inbound vs Outbound calls this month</CardDescription>
+              <CardDescription>Inbound vs Outbound calls</CardDescription>
             </CardHeader>
             <CardContent>
               <PieChart data={data.pieChartData} />
             </CardContent>
           </Card>
         )}
+      </div>
+      
+      {/* Success/Failed Chart */}
+      {data.successPieChartData && data.successPieChartData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Call Success Rate</CardTitle>
+            <CardDescription>Successful vs Failed calls</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PieChart data={data.successPieChartData} />
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Additional Metrics */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Conversion Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{data.metrics.conversionRate}%</div>
+            <p className="text-sm text-muted-foreground mt-1">Leads → Interested</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Avg Call Duration</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {Math.floor(data.metrics.avgCallDuration / 60)}:{(data.metrics.avgCallDuration % 60).toString().padStart(2, '0')}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">Minutes:Seconds</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Total Leads</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{data.metrics.totalLeads}</div>
+            <p className="text-sm text-muted-foreground mt-1">All time</p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Charts Row */}
+      <div className="grid gap-6 lg:grid-cols-2">
       </div>
 
       {/* Conversion Funnel */}
