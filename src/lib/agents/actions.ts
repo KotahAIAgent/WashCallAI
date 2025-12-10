@@ -235,10 +235,10 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     return { error: 'Phone number is missing Vapi Phone Number ID. Please update the phone number in the admin panel with the correct provider_phone_id from Vapi dashboard.' }
   }
 
-  // Verify provider_phone_id is not a UUID (Vapi IDs are strings like "phone_xxxxx", not UUIDs)
+  // Verify provider_phone_id is a valid UUID format (Vapi phone number IDs are UUIDs)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  if (uuidRegex.test(phoneNumber.provider_phone_id)) {
-    return { error: 'Phone number has incorrect Vapi Phone Number ID. The provider_phone_id should be Vapi\'s phone number ID (e.g., "phone_xxxxx"), not a UUID. Please update it in the admin panel with the correct ID from Vapi dashboard.' }
+  if (!uuidRegex.test(phoneNumber.provider_phone_id)) {
+    return { error: 'Phone number has invalid Vapi Phone Number ID format. The provider_phone_id must be a UUID. Please update it in the admin panel with the correct UUID from Vapi dashboard (Phone Numbers → Copy ID).' }
   }
 
   // Check daily limit for phone number
