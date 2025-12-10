@@ -7,16 +7,14 @@ import { useToast } from '@/hooks/use-toast'
 import { Trash2, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 export function DeleteCampaignButton({ campaignId }: { campaignId: string }) {
   const [loading, setLoading] = useState(false)
@@ -41,8 +39,8 @@ export function DeleteCampaignButton({ campaignId }: { campaignId: string }) {
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button variant="destructive" size="sm" disabled={loading}>
           {loading ? (
             <>
@@ -56,21 +54,23 @@ export function DeleteCampaignButton({ campaignId }: { campaignId: string }) {
             </>
           )}
         </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Are you sure?</DialogTitle>
+          <DialogDescription>
             This action cannot be undone. This will permanently delete the campaign
             and all associated contacts.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
             onClick={handleDelete}
             disabled={loading}
-            className="bg-red-600 hover:bg-red-700"
           >
             {loading ? (
               <>
@@ -80,10 +80,10 @@ export function DeleteCampaignButton({ campaignId }: { campaignId: string }) {
             ) : (
               'Delete'
             )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
