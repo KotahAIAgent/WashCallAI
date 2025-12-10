@@ -372,23 +372,24 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       }
     }
 
-    const requestBody = {
+    // Build request body - only include fields that Vapi API accepts
+    const requestBody: any = {
       assistantId: agentConfig.outbound_agent_id,
-      phoneNumberId: phoneNumber.provider_phone_id,
+      phoneNumberId: phoneNumber.provider_phone_id, // Must be Vapi's phone number ID (not our UUID)
       customer: {
         number: contactPhone,
         name: contactName || undefined,
       },
-      // Pass custom variables to override Vapi agent settings
-      variables: customVariables,
-      // Pass metadata for webhook
+      // Pass metadata for webhook (this is allowed)
       metadata: {
         organizationId,
         leadId: actualLeadId,
-        phoneNumberId: actualPhoneNumberId,
+        phoneNumberId: actualPhoneNumberId, // Our internal UUID for tracking
         campaignContactId: campaignContactId || undefined,
       },
     }
+    
+    // Note: Custom variables should be configured in the Vapi assistant settings, not passed here
 
     console.log('[initiateOutboundCall] Making Vapi API call:', {
       url: `${VAPI_API_URL}/call/phone`,
