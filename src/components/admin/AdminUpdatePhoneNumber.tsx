@@ -82,7 +82,7 @@ export function AdminUpdatePhoneNumber({ organizations }: { organizations: Organ
     const result = await adminUpdatePhoneNumber(
       selectedPhone,
       providerPhoneId.trim() || undefined,
-      friendlyName || undefined,
+      friendlyName.trim() || undefined,
       phoneType || undefined,
       dailyLimit ? parseInt(dailyLimit) : undefined
     )

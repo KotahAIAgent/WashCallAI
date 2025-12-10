@@ -714,7 +714,7 @@ export async function adminAddPhoneNumber(
 
 export async function adminUpdatePhoneNumber(
   phoneNumberId: string,
-  providerPhoneId: string,
+  providerPhoneId?: string,
   friendlyName?: string,
   type?: 'inbound' | 'outbound' | 'both',
   dailyLimit?: number
@@ -723,7 +723,7 @@ export async function adminUpdatePhoneNumber(
   const supabase = createServiceRoleClient()
   
   // Validate UUID format for provider_phone_id if provided
-  if (providerPhoneId) {
+  if (providerPhoneId && providerPhoneId.trim()) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!uuidRegex.test(providerPhoneId.trim())) {
       return { error: 'Vapi Phone Number ID must be a UUID format (e.g., 123e4567-e89b-12d3-a456-426614174000)' }
@@ -731,7 +731,9 @@ export async function adminUpdatePhoneNumber(
   }
   
   const updateData: any = {}
-  if (providerPhoneId) updateData.provider_phone_id = providerPhoneId.trim()
+  if (providerPhoneId && providerPhoneId.trim()) {
+    updateData.provider_phone_id = providerPhoneId.trim()
+  }
   if (friendlyName !== undefined) updateData.friendly_name = friendlyName || null
   if (type) updateData.type = type
   if (dailyLimit !== undefined) updateData.daily_limit = dailyLimit
