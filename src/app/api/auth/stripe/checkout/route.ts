@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { stripe, STRIPE_PLANS } from '@/lib/stripe/server'
 import { NextResponse } from 'next/server'
+import { isStarterPlanBlocked } from '@/lib/admin/utils'
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
       .from('organizations')
       .select('*')
       .eq('id', profile.organization_id)
-      .single() as { data: { id: string; billing_customer_id: string | null } | null }
+      .single() as { data: { id: string; billing_customer_id: string | null; admin_privileges: any } | null }
 
     if (!organization) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
@@ -36,6 +37,13 @@ export async function POST(request: Request) {
 
     if (!planId || !['starter', 'growth', 'pro'].includes(planId)) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+    }
+
+    // Check if starter plan is blocked
+    if (planId === 'starter' && isStarterPlanBlocked(organization)) {
+      return NextResponse.json({ 
+        error: 'Starter plan access has been restricted for this organization. Please contact support or choose a different plan.' 
+      }, { status: 403 })
     }
 
     const plan = STRIPE_PLANS[planId as keyof typeof STRIPE_PLANS]

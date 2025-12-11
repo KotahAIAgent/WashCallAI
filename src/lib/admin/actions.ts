@@ -510,5 +510,69 @@ export async function adminRevokePrivileges(
   return { success: true, message: 'All privileges revoked' }
 }
 
+/**
+ * Remove all plans from an organization (both regular plan and admin-granted plan)
+ * This effectively revokes all subscription access
+ */
+export async function adminRemoveAllPlans(
+  organizationId: string,
+  adminEmail: string
+) {
+  const supabase = createServiceRoleClient()
+
+  // Verify organization exists
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select('id, name, plan, admin_granted_plan, billing_customer_id')
+    .eq('id', organizationId)
+    .single()
+
+  if (orgError || !org) {
+    return { error: 'Organization not found' }
+  }
+
+  // Cancel Stripe subscription if it exists
+  if (org.billing_customer_id && stripe) {
+    try {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: org.billing_customer_id,
+        status: 'active',
+        limit: 1,
+      })
+
+      if (subscriptions.data.length > 0) {
+        const subscription = subscriptions.data[0]
+        await stripe.subscriptions.cancel(subscription.id)
+        console.log(`✓ Canceled Stripe subscription ${subscription.id} for org ${organizationId}`)
+      }
+    } catch (error: any) {
+      console.error('Error canceling Stripe subscription:', error)
+      // Continue anyway - we'll still remove the plan from database
+    }
+  }
+
+  // Remove all plans from database
+  const { error: updateError } = await supabase
+    .from('organizations')
+    .update({
+      plan: null,
+      admin_granted_plan: null,
+      admin_granted_plan_expires_at: null,
+      admin_granted_plan_notes: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', organizationId)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  revalidatePath('/app/admin')
+  return { 
+    success: true, 
+    message: `All plans removed from ${org.name}. Regular plan: ${org.plan || 'none'}, Admin plan: ${org.admin_granted_plan || 'none'}` 
+  }
+}
+
 // Utility functions moved to @/lib/admin/utils.ts to allow client component imports
 

@@ -34,33 +34,65 @@ export async function POST(request: Request) {
       const plan = subscription.metadata?.plan as string
 
       if (organizationId && plan) {
-        // Check if subscription_started_at is already set (to avoid overwriting)
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('subscription_started_at, plan')
-          .eq('id', organizationId)
-          .single()
+        // Only update if subscription is active
+        if (subscription.status === 'active' || subscription.status === 'trialing') {
+          // Check if subscription_started_at is already set (to avoid overwriting)
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('subscription_started_at, plan')
+            .eq('id', organizationId)
+            .single()
 
-        // Only set subscription_started_at if:
-        // 1. It's not already set, OR
-        // 2. The plan is changing (upgrade/downgrade)
-        const shouldSetStartDate = !org?.subscription_started_at || org.plan !== plan
+          // Only set subscription_started_at if:
+          // 1. It's not already set, OR
+          // 2. The plan is changing (upgrade/downgrade)
+          const shouldSetStartDate = !org?.subscription_started_at || org.plan !== plan
 
-        const updateData: any = {
-          plan: plan,
-          updated_at: new Date().toISOString(),
+          const updateData: any = {
+            plan: plan,
+            updated_at: new Date().toISOString(),
+          }
+
+          if (shouldSetStartDate) {
+            updateData.subscription_started_at = new Date().toISOString()
+          }
+
+          await supabase
+            .from('organizations')
+            .update(updateData)
+            .eq('id', organizationId)
+
+          console.log(`✓ Updated subscription for org ${organizationId}: plan=${plan}, status=${subscription.status}`)
+        } else {
+          // Subscription is not active, clear the plan
+          await supabase
+            .from('organizations')
+            .update({
+              plan: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', organizationId)
+
+          console.log(`✓ Cleared plan for org ${organizationId} (subscription status: ${subscription.status})`)
         }
+      }
+    }
 
-        if (shouldSetStartDate) {
-          updateData.subscription_started_at = new Date().toISOString()
-        }
+    // Handle subscription deleted/canceled
+    if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.canceled') {
+      const subscription = event.data.object as Stripe.Subscription
+      const organizationId = subscription.metadata?.organization_id
 
+      if (organizationId) {
         await supabase
           .from('organizations')
-          .update(updateData)
+          .update({
+            plan: null,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', organizationId)
 
-        console.log(`✓ Updated subscription for org ${organizationId}: plan=${plan}`)
+        console.log(`✓ Cleared plan for org ${organizationId} (subscription deleted/canceled)`)
       }
     }
 

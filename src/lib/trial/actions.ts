@@ -3,6 +3,7 @@
 import { createActionClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/server'
 import { revalidatePath } from 'next/cache'
+import { isStarterPlanBlocked } from '@/lib/admin/utils'
 
 const TRIAL_DURATION_DAYS = 7
 
@@ -76,7 +77,7 @@ export async function startFreeTrial(organizationId: string, trialPlan?: 'starte
   // Check if user can start trial
   const { data: org } = await supabase
     .from('organizations')
-    .select('trial_used, plan')
+    .select('trial_used, plan, admin_privileges')
     .eq('id', organizationId)
     .single()
 
@@ -100,6 +101,11 @@ export async function startFreeTrial(organizationId: string, trialPlan?: 'starte
   
   // Default to starter if no plan specified
   const finalTrialPlan = trialPlan || 'starter'
+
+  // Check if starter plan is blocked
+  if (finalTrialPlan === 'starter' && isStarterPlanBlocked(org)) {
+    return { error: 'Starter plan access has been restricted for this organization. Please contact support or choose a different plan.' }
+  }
 
   // Start the trial
   const now = new Date()

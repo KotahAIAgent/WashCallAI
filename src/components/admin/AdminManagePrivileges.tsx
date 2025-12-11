@@ -25,7 +25,8 @@ import {
   adminGrantPlanUpgrade, 
   adminRevokePlanUpgrade,
   adminGrantPrivileges,
-  adminRevokePrivileges
+  adminRevokePrivileges,
+  adminRemoveAllPlans
 } from '@/lib/admin/actions'
 import { getEffectivePlan } from '@/lib/admin/utils'
 
@@ -66,8 +67,10 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
   const [unlimitedCalls, setUnlimitedCalls] = useState(false)
   const [bypassLimits, setBypassLimits] = useState(false)
   const [unlimitedCampaigns, setUnlimitedCampaigns] = useState(false)
+  const [starterPlanBlocked, setStarterPlanBlocked] = useState(false)
   const [privilegesNotes, setPrivilegesNotes] = useState('')
   const [privilegesLoading, setPrivilegesLoading] = useState(false)
+  const [removeAllPlansLoading, setRemoveAllPlansLoading] = useState(false)
 
   const { toast } = useToast()
   const router = useRouter()
@@ -103,6 +106,7 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
       setUnlimitedCalls(privileges.unlimited_calls === true)
       setBypassLimits(privileges.bypass_limits === true)
       setUnlimitedCampaigns(privileges.unlimited_campaigns === true)
+      setStarterPlanBlocked(privileges.starter_plan_blocked === true)
       setPrivilegesNotes(org.admin_privileges_notes || '')
     }
   }
@@ -173,6 +177,7 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
     if (unlimitedCalls) privileges.unlimited_calls = true
     if (bypassLimits) privileges.bypass_limits = true
     if (unlimitedCampaigns) privileges.unlimited_campaigns = true
+    if (starterPlanBlocked) privileges.starter_plan_blocked = true
 
     const result = await adminGrantPrivileges(
       selectedOrg,
@@ -220,6 +225,35 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
     }
 
     setPrivilegesLoading(false)
+  }
+
+  async function handleRemoveAllPlans() {
+    if (!selectedOrg) return
+
+    if (!confirm('Are you sure you want to remove ALL plans from this organization? This will:\n\n- Remove their regular subscription plan\n- Remove any admin-granted plan\n- Cancel their Stripe subscription (if active)\n- Revoke all access immediately\n\nThis action cannot be undone easily.')) {
+      return
+    }
+
+    setRemoveAllPlansLoading(true)
+
+    const result = await adminRemoveAllPlans(selectedOrg, adminEmail)
+
+    if (result?.error) {
+      toast({
+        title: 'Error',
+        description: result.error,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'All Plans Removed',
+        description: result.message || 'All plans have been removed from this organization',
+        variant: 'destructive',
+      })
+      router.refresh()
+    }
+
+    setRemoveAllPlansLoading(false)
   }
 
   return (
@@ -464,6 +498,22 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
                         </p>
                       </div>
                     </div>
+
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg border-red-200 bg-red-50">
+                      <Checkbox
+                        id="starter_plan_blocked"
+                        checked={starterPlanBlocked}
+                        onCheckedChange={(checked) => setStarterPlanBlocked(checked === true)}
+                      />
+                      <div className="flex-1">
+                        <label htmlFor="starter_plan_blocked" className="text-sm font-medium cursor-pointer text-red-700">
+                          Block Starter Plan Access
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          Prevent this organization from subscribing to or using the starter plan
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -495,6 +545,31 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
                 </form>
               )}
             </>
+          )}
+
+          {/* Remove All Plans Section */}
+          {selectedOrg && selectedOrgData && (selectedOrgData.plan || selectedOrgData.admin_granted_plan) && (
+            <div className="pt-4 border-t">
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h4 className="font-semibold text-red-900 mb-1">Danger Zone</h4>
+                    <p className="text-sm text-red-700">
+                      Remove all plans from this organization. This will cancel their Stripe subscription and revoke all access immediately.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleRemoveAllPlans}
+                  disabled={removeAllPlansLoading}
+                  className="w-full"
+                >
+                  {removeAllPlansLoading ? 'Removing...' : 'Remove All Plans'}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </CardContent>

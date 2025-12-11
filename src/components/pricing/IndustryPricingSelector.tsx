@@ -57,6 +57,7 @@ interface IndustryPricingSelectorProps {
   isOnTrial: boolean
   trialPlan: string | null
   defaultIndustry?: IndustrySlug | null
+  starterPlanBlocked?: boolean
 }
 
 export function IndustryPricingSelector({
@@ -67,6 +68,7 @@ export function IndustryPricingSelector({
   isOnTrial,
   trialPlan,
   defaultIndustry,
+  starterPlanBlocked = false,
 }: IndustryPricingSelectorProps) {
   const [selectedIndustry, setSelectedIndustry] = useState<IndustrySlug | null>(defaultIndustry || null)
   const industries = getAllIndustries()
@@ -154,6 +156,10 @@ export function IndustryPricingSelector({
       {selectedIndustry && (
         <div className="grid gap-6 lg:grid-cols-3">
           {(Object.entries(STRIPE_PLANS) as [PlanType, typeof STRIPE_PLANS[PlanType]][]).map(([key, plan]) => {
+            // Skip starter plan if blocked
+            if (key === 'starter' && starterPlanBlocked) {
+              return null
+            }
             const Icon = PLAN_ICONS[key]
             const isCurrentPlan = currentPlan === key
             const isUpgrade = currentPlan && 

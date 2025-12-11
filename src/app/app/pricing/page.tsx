@@ -5,6 +5,7 @@ import { Clock, Sparkles } from 'lucide-react'
 import { StartTrialButton } from '@/components/trial/StartTrialButton'
 import { IndustryPricingSelector } from '@/components/pricing/IndustryPricingSelector'
 import type { IndustrySlug } from '@/lib/industries/config'
+import { isStarterPlanBlocked } from '@/lib/admin/utils'
 
 
 export default async function PricingPage() {
@@ -19,6 +20,7 @@ export default async function PricingPage() {
   let hasUsedTrial = false
   let trialPlan: string | null = null
   let organizationIndustry: IndustrySlug | null = null
+  let starterPlanBlocked = false
 
   if (session) {
     const { data: profile } = await supabase
@@ -32,7 +34,7 @@ export default async function PricingPage() {
       
       const { data: org } = await supabase
         .from('organizations')
-        .select('plan, trial_ends_at, trial_used, trial_plan, industry')
+        .select('plan, trial_ends_at, trial_used, trial_plan, industry, admin_privileges')
         .eq('id', profile.organization_id)
         .single()
 
@@ -40,6 +42,7 @@ export default async function PricingPage() {
       hasUsedTrial = org?.trial_used || false
       trialPlan = org?.trial_plan as string | null
       organizationIndustry = (org?.industry as IndustrySlug) || null
+      starterPlanBlocked = org ? isStarterPlanBlocked(org) : false
       
       // Calculate trial status
       if (org?.trial_ends_at) {
@@ -51,8 +54,8 @@ export default async function PricingPage() {
           : 0
       }
 
-      // Can start trial if never used and no paid plan
-      canStartTrial = !hasUsedTrial && !currentPlan
+      // Can start trial if never used and no paid plan, and starter plan is not blocked
+      canStartTrial = !hasUsedTrial && !currentPlan && !starterPlanBlocked
     }
   }
 
@@ -128,6 +131,7 @@ export default async function PricingPage() {
         isOnTrial={isOnTrial}
         trialPlan={trialPlan}
         defaultIndustry={organizationIndustry}
+        starterPlanBlocked={starterPlanBlocked}
       />
 
       {/* FAQ / Info */}

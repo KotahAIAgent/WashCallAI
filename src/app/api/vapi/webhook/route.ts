@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { sendLeadNotification, determineNotificationType } from '@/lib/notifications/sms'
 import { triggerWorkflows } from '@/lib/workflows/engine'
 import { chargeVapiCall, shouldChargeCall } from '@/lib/vapi/stripe-billing'
+import { stripe } from '@/lib/stripe/server'
 
 // Status outcomes that count toward monthly billing (actual conversations)
 const BILLABLE_STATUSES = ['answered', 'interested', 'not_interested', 'callback', 'completed']
@@ -16,7 +17,7 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
 }> {
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .select('plan, trial_ends_at, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges, id, name')
+    .select('plan, trial_ends_at, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges, id, name, billing_customer_id')
     .eq('id', organizationId)
     .maybeSingle() as { data: { 
       plan: string | null
@@ -26,6 +27,7 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
       admin_privileges: any
       id: string
       name: string
+      billing_customer_id: string | null
     } | null; error: any }
 
   if (orgError) {
@@ -134,8 +136,48 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
     }
   }
 
-  // Has paid plan - always allow
+  // Has paid plan - verify subscription is actually active in Stripe
   if (org.plan) {
+    // If we have a billing customer ID, verify the subscription is actually active
+    if (org.billing_customer_id && stripe) {
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: org.billing_customer_id,
+          status: 'active',
+          limit: 1,
+        })
+
+        // If no active subscription found, clear the plan and deny access
+        if (subscriptions.data.length === 0) {
+          console.warn(`[checkOrganizationAccess] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Clearing plan.`)
+          
+          // Clear the plan asynchronously (don't wait for it)
+          supabase
+            .from('organizations')
+            .update({ plan: null, updated_at: new Date().toISOString() })
+            .eq('id', organizationId)
+            .then(() => {
+              console.log(`✓ Cleared plan for org ${organizationId} (no active subscription)`)
+            })
+            .catch((err: any) => {
+              console.error(`Error clearing plan for org ${organizationId}:`, err)
+            })
+
+          return { hasAccess: false, reason: 'Subscription ended - plan cleared' }
+        }
+
+        // Subscription is active, allow access
+        return { hasAccess: true, reason: 'active_plan' }
+      } catch (error: any) {
+        console.error(`[checkOrganizationAccess] Error checking Stripe subscription for org ${organizationId}:`, error)
+        // If Stripe check fails, still allow access (fail open) but log the error
+        // This prevents service disruption if Stripe API is down
+        return { hasAccess: true, reason: 'active_plan (Stripe check failed)' }
+      }
+    }
+
+    // No billing customer ID, but plan exists - allow access
+    // This could be a legacy account or manually set plan
     return { hasAccess: true, reason: 'active_plan' }
   }
 

@@ -40,3 +40,12 @@ export function hasPrivilege(
   return privileges[privilege] === true
 }
 
+/**
+ * Check if organization is blocked from accessing starter plan
+ */
+export function isStarterPlanBlocked(org: {
+  admin_privileges: any
+}): boolean {
+  return hasPrivilege(org, 'starter_plan_blocked')
+}
+
