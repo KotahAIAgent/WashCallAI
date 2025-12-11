@@ -660,101 +660,76 @@ export async function adminRemoveAllPlans(
     }
   }
   
-  // Get agent configs to disable assistants in Vapi
-  const { data: agentConfigs } = await supabase
-    .from('agent_configs')
-    .select('inbound_agent_id, outbound_agent_id')
-    .eq('organization_id', organizationId)
-    .maybeSingle()
-
-  // Disable assistants in Vapi to prevent calls from connecting
-  // This is CRITICAL to prevent calls from connecting and wasting credits
+  // CRITICAL: Unassign phone numbers from assistants in Vapi
+  // This prevents calls from connecting at all - no credits wasted
   const vapiApiKey = process.env.VAPI_API_KEY
-  if (vapiApiKey && agentConfigs) {
+  if (vapiApiKey) {
     try {
-      // Disable inbound assistant - try multiple methods
-      if (agentConfigs.inbound_agent_id) {
-        try {
-          // Method 1: Try setting active: false
-          let inboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.inbound_agent_id}`, {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${vapiApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              active: false,
-            }),
-          })
+      // Get all phone numbers for this organization
+      const { data: phoneNumbers } = await supabase
+        .from('phone_numbers')
+        .select('provider_phone_id, phone_number')
+        .eq('organization_id', organizationId)
+        .not('provider_phone_id', 'is', null)
+      
+      if (phoneNumbers && phoneNumbers.length > 0) {
+        console.log(`[adminRemoveAllPlans] Found ${phoneNumbers.length} phone numbers to unassign`)
+        
+        for (const phone of phoneNumbers) {
+          if (!phone.provider_phone_id) continue
           
-          // Method 2: If that doesn't work, try deleting the assistant
-          if (!inboundResponse.ok) {
-            console.log(`[adminRemoveAllPlans] Trying DELETE method for inbound assistant...`)
-            inboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.inbound_agent_id}`, {
-              method: 'DELETE',
+          try {
+            // Unassign assistant from phone number by setting assistantId to null
+            // This prevents calls from connecting
+            const phoneResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
+              method: 'PATCH',
               headers: {
                 'Authorization': `Bearer ${vapiApiKey}`,
                 'Content-Type': 'application/json',
               },
+              body: JSON.stringify({
+                assistantId: null, // Remove assistant assignment
+              }),
             })
+            
+            if (phoneResponse.ok) {
+              console.log(`[adminRemoveAllPlans] ✅ Unassigned assistant from phone ${phone.phone_number} (${phone.provider_phone_id})`)
+            } else {
+              const errorText = await phoneResponse.text()
+              console.error(`[adminRemoveAllPlans] ⚠️ Could not unassign phone ${phone.phone_number}: ${phoneResponse.status} - ${errorText.substring(0, 200)}`)
+              
+              // Try alternative: set to empty string or delete phone number assignment
+              if (phoneResponse.status === 400 || phoneResponse.status === 404) {
+                console.log(`[adminRemoveAllPlans] Trying alternative method for phone ${phone.provider_phone_id}...`)
+                // Some Vapi versions might need different format
+                const altResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Authorization': `Bearer ${vapiApiKey}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    assistant: null,
+                  }),
+                })
+                if (altResponse.ok) {
+                  console.log(`[adminRemoveAllPlans] ✅ Unassigned assistant (alternative method) from phone ${phone.phone_number}`)
+                }
+              }
+            }
+          } catch (err: any) {
+            console.error(`[adminRemoveAllPlans] Error unassigning phone ${phone.phone_number}:`, err?.message || err)
           }
-          
-          if (inboundResponse.ok) {
-            console.log(`[adminRemoveAllPlans] ✅ Disabled/deleted inbound assistant ${agentConfigs.inbound_agent_id} in Vapi`)
-          } else {
-            const errorText = await inboundResponse.text()
-            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable inbound assistant: ${inboundResponse.status} - ${errorText.substring(0, 200)}`)
-          }
-        } catch (err: any) {
-          console.error(`[adminRemoveAllPlans] Error disabling inbound assistant:`, err?.message || err)
         }
-      }
-
-      // Disable outbound assistant - try multiple methods
-      if (agentConfigs.outbound_agent_id) {
-        try {
-          // Method 1: Try setting active: false
-          let outboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.outbound_agent_id}`, {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${vapiApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              active: false,
-            }),
-          })
-          
-          // Method 2: If that doesn't work, try deleting the assistant
-          if (!outboundResponse.ok) {
-            console.log(`[adminRemoveAllPlans] Trying DELETE method for outbound assistant...`)
-            outboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.outbound_agent_id}`, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${vapiApiKey}`,
-                'Content-Type': 'application/json',
-              },
-            })
-          }
-          
-          if (outboundResponse.ok) {
-            console.log(`[adminRemoveAllPlans] ✅ Disabled/deleted outbound assistant ${agentConfigs.outbound_agent_id} in Vapi`)
-          } else {
-            const errorText = await outboundResponse.text()
-            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable outbound assistant: ${outboundResponse.status} - ${errorText.substring(0, 200)}`)
-          }
-        } catch (err: any) {
-          console.error(`[adminRemoveAllPlans] Error disabling outbound assistant:`, err?.message || err)
-        }
+      } else {
+        console.log(`[adminRemoveAllPlans] No phone numbers found for org ${organizationId}`)
       }
     } catch (err: any) {
-      console.error(`[adminRemoveAllPlans] Error disabling assistants:`, err?.message || err)
+      console.error(`[adminRemoveAllPlans] Error unassigning phone numbers:`, err?.message || err)
       // Continue anyway - we'll still remove the plan
     }
   } else {
-    if (!vapiApiKey) {
-      console.warn(`[adminRemoveAllPlans] ⚠️ VAPI_API_KEY not configured - cannot disable assistants in Vapi`)
-    }
+    console.warn(`[adminRemoveAllPlans] ⚠️ VAPI_API_KEY not configured - cannot unassign phone numbers in Vapi`)
   }
 
   const { error: updateError, data: updatedOrg } = await supabase
