@@ -525,10 +525,16 @@ export async function adminRemoveAllPlans(
     .from('organizations')
     .select('id, name, plan, admin_granted_plan, billing_customer_id')
     .eq('id', organizationId)
-    .single()
+    .maybeSingle()
 
-  if (orgError || !org) {
-    return { error: 'Organization not found' }
+  if (orgError) {
+    console.error('[adminRemoveAllPlans] Error fetching organization:', orgError)
+    return { error: `Database error: ${orgError.message || 'Failed to fetch organization'}` }
+  }
+
+  if (!org) {
+    console.error('[adminRemoveAllPlans] Organization not found:', organizationId)
+    return { error: `Organization not found with ID: ${organizationId}` }
   }
 
   // Cancel Stripe subscription if it exists

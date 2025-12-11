@@ -228,7 +228,14 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
   }
 
   async function handleRemoveAllPlans() {
-    if (!selectedOrg) return
+    if (!selectedOrg) {
+      toast({
+        title: 'Error',
+        description: 'No organization selected',
+        variant: 'destructive',
+      })
+      return
+    }
 
     if (!confirm('Are you sure you want to remove ALL plans from this organization? This will:\n\n- Remove their regular subscription plan\n- Remove any admin-granted plan\n- Cancel their Stripe subscription (if active)\n- Revoke all access immediately\n\nThis action cannot be undone easily.')) {
       return
@@ -236,6 +243,7 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
 
     setRemoveAllPlansLoading(true)
 
+    console.log('[AdminManagePrivileges] Removing all plans for org:', selectedOrg)
     const result = await adminRemoveAllPlans(selectedOrg, adminEmail)
 
     if (result?.error) {
