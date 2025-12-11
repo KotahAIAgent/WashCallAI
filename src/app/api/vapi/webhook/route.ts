@@ -152,10 +152,12 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
           console.warn(`[checkOrganizationAccess] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Clearing plan.`)
           
           // Clear the plan asynchronously (don't wait for it)
-          supabase
-            .from('organizations')
-            .update({ plan: null, updated_at: new Date().toISOString() })
-            .eq('id', organizationId)
+          Promise.resolve(
+            supabase
+              .from('organizations')
+              .update({ plan: null, updated_at: new Date().toISOString() })
+              .eq('id', organizationId)
+          )
             .then(() => {
               console.log(`✓ Cleared plan for org ${organizationId} (no active subscription)`)
             })
