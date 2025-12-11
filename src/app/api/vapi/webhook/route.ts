@@ -560,10 +560,16 @@ export async function POST(request: Request) {
     console.log(`[Webhook] ✅ Organization verified: ${orgExists.name} (${orgExists.id})`)
 
     // 🔒 CHECK ACCESS - Verify organization has active trial or subscription
+    console.log(`[Webhook] 🔒 Checking access for org ${organizationId}...`)
     const accessCheck = await checkOrganizationAccess(supabase, organizationId)
+    console.log(`[Webhook] 🔒 Access check result:`, {
+      hasAccess: accessCheck.hasAccess,
+      reason: accessCheck.reason,
+      organizationId,
+    })
     
     if (!accessCheck.hasAccess) {
-      console.log(`⛔ Call blocked for org ${organizationId}: ${accessCheck.reason}`)
+      console.log(`[Webhook] ⛔⛔⛔ CALL BLOCKED for org ${organizationId}: ${accessCheck.reason} ⛔⛔⛔`)
       
       // Still log the call attempt for records, but mark it as blocked
       await supabase.from('calls').insert({
@@ -578,12 +584,18 @@ export async function POST(request: Request) {
       })
 
       // Return error - Vapi will handle the call rejection
+      // IMPORTANT: Return 403 to block the call
+      console.log(`[Webhook] ⛔ Returning 403 to block call. Reason: ${accessCheck.reason}`)
       return NextResponse.json({ 
         error: accessCheck.reason,
         action: 'reject',
-        message: 'Your trial has expired. Please subscribe to continue using FusionCaller.'
+        message: 'Your subscription has ended. Please renew to continue using FusionCaller.',
+        blocked: true,
+        organizationId,
       }, { status: 403 })
     }
+    
+    console.log(`[Webhook] ✅ Access granted. Proceeding with call processing...`)
 
     // Determine call direction
     // Priority: 1) Detected from assistant ID lookup, 2) Payload direction, 3) Payload type, 4) Default to outbound
