@@ -56,12 +56,35 @@ export function getPreCallCheckUrl(): string {
 }
 
 /**
+ * Get the access check function URL for Vapi assistants
+ * This is called by the assistant as a function at the start of calls
+ */
+export function getAccessCheckUrl(): string {
+  const customUrl = process.env.VAPI_ACCESS_CHECK_URL
+  if (customUrl) {
+    return customUrl
+  }
+
+  const vercelUrl = process.env.VERCEL_URL
+  if (vercelUrl) {
+    return `https://${vercelUrl}/api/vapi/check-access`
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (appUrl) {
+    return `${appUrl}/api/vapi/check-access`
+  }
+
+  return 'https://your-domain.com/api/vapi/check-access'
+}
+
+/**
  * Automatically set webhook URL for a Vapi assistant
  * Call this whenever you create or update an assistant
  * 
  * Note: Vapi's API structure may vary. This sets:
  * - serverUrl: For call event webhooks (status updates, transcripts, etc.)
- * - endFunction: For pre-call access checks (if supported by Vapi)
+ * - functions: Adds access check function that assistant can call at start of calls
  */
 export async function autoConfigureWebhook(assistantId: string): Promise<{
   success: boolean
@@ -73,26 +96,53 @@ export async function autoConfigureWebhook(assistantId: string): Promise<{
   }
 
   const webhookUrl = getWebhookUrl()
-  const preCallCheckUrl = getPreCallCheckUrl()
+  const accessCheckUrl = getAccessCheckUrl()
 
   try {
-    // First, try to set both serverUrl and endFunction
-    // Note: Vapi's API may use different field names - adjust based on their documentation
+    // First, get current assistant config to preserve existing functions
+    const getResponse = await fetch(`${VAPI_API_URL}/assistant/${assistantId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${vapiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    let existingFunctions: any[] = []
+    let assistantData: any = null
+    if (getResponse.ok) {
+      assistantData = await getResponse.json()
+      existingFunctions = assistantData?.functions || assistantData?.tools || []
+    }
+
+    // Check if access check function already exists
+    const hasAccessCheck = existingFunctions.some((f: any) => 
+      f.name === 'check_access' || 
+      f.name === 'verify_subscription' ||
+      (f.url && f.url.includes('/check-access'))
+    )
+
+    // Build update payload
     const updatePayload: any = {
       serverUrl: webhookUrl, // For call event webhooks
     }
 
-    // Try to add pre-call check as endFunction (Vapi may support this)
-    // If Vapi doesn't support endFunction, we'll fall back to just serverUrl
-    // You may need to configure this at the phone number level instead
-    try {
-      updatePayload.endFunction = {
+    // Add access check function if it doesn't exist
+    if (!hasAccessCheck) {
+      const accessCheckFunction = {
         type: 'webhook',
-        url: preCallCheckUrl,
+        name: 'check_access',
+        description: 'Check if the organization has an active subscription before proceeding with the call. Call this function at the very start of every call.',
+        url: accessCheckUrl,
+        method: 'POST',
       }
-    } catch (e) {
-      // If endFunction format is wrong, continue without it
-      console.log('[Auto-Webhook] Note: endFunction not configured, using serverUrl only')
+
+      // Vapi may use 'functions' or 'tools' field
+      updatePayload.functions = [...existingFunctions, accessCheckFunction]
+      // Also try 'tools' in case that's what Vapi uses
+      if (existingFunctions.length === 0 && !assistantData?.functions) {
+        updatePayload.tools = [accessCheckFunction]
+      }
     }
 
     const response = await fetch(`${VAPI_API_URL}/assistant/${assistantId}`, {
@@ -108,9 +158,9 @@ export async function autoConfigureWebhook(assistantId: string): Promise<{
       const error = await response.text()
       console.error(`[Auto-Webhook] Failed to set webhook for assistant ${assistantId}:`, error)
       
-      // If endFunction failed, try without it
-      if (updatePayload.endFunction) {
-        console.log('[Auto-Webhook] Retrying without endFunction...')
+      // Try without functions if that failed
+      if (updatePayload.functions || updatePayload.tools) {
+        console.log('[Auto-Webhook] Retrying without functions...')
         const retryResponse = await fetch(`${VAPI_API_URL}/assistant/${assistantId}`, {
           method: 'PATCH',
           headers: {
@@ -123,8 +173,8 @@ export async function autoConfigureWebhook(assistantId: string): Promise<{
         })
         
         if (retryResponse.ok) {
-          console.log(`[Auto-Webhook] ✅ Webhook configured (without pre-call check) for assistant ${assistantId}`)
-          console.log(`[Auto-Webhook] ⚠️ Note: Pre-call check may need to be configured manually in Vapi dashboard`)
+          console.log(`[Auto-Webhook] ✅ Webhook configured (without access check function) for assistant ${assistantId}`)
+          console.log(`[Auto-Webhook] ⚠️ Note: Access check function needs to be configured manually in Vapi dashboard`)
           return { success: true }
         }
       }
@@ -132,7 +182,7 @@ export async function autoConfigureWebhook(assistantId: string): Promise<{
       return { success: false, error: `Failed to update assistant: ${error}` }
     }
 
-    console.log(`[Auto-Webhook] ✅ Webhook and pre-call check configured for assistant ${assistantId}`)
+    console.log(`[Auto-Webhook] ✅ Webhook and access check function configured for assistant ${assistantId}`)
     return { success: true }
   } catch (error: any) {
     console.error(`[Auto-Webhook] Error setting webhook for assistant ${assistantId}:`, error)
