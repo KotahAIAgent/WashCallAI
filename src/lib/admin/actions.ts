@@ -566,14 +566,28 @@ export async function adminSuspendPlan(
     console.log(`ℹ No billing customer ID or Stripe not configured for org ${organizationId}, skipping Stripe cancellation`)
   }
 
-  // Note: We intentionally keep the plan field in the database
-  // The access check will verify Stripe subscription status and block access
-  // This preserves all data while effectively suspending service
+  // Since Stripe checks are disabled, we need to clear the plan field to actually block access
+  // This ensures the plan shows as inactive in the UI
+  console.log(`[adminSuspendPlan] Clearing plan field for org ${organizationId} (Stripe checks disabled)`)
+  const { error: updateError } = await supabase
+    .from('organizations')
+    .update({
+      plan: null, // Clear the plan to block access
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', organizationId)
+
+  if (updateError) {
+    console.error('[adminSuspendPlan] Error clearing plan field:', updateError)
+    return { error: `Failed to clear plan field: ${updateError.message}` }
+  }
+
+  console.log(`[adminSuspendPlan] ✅ Plan field cleared for org ${organizationId}`)
 
   revalidatePath('/app/admin')
   return { 
     success: true, 
-    message: `Plan suspended for ${org.name}. Stripe subscription canceled. Plan field preserved. Access will be blocked on next call.` 
+    message: `Plan suspended for ${org.name}. Plan cleared and access blocked.` 
   }
 }
 

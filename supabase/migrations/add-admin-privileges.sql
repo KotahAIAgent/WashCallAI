@@ -66,9 +66,10 @@ COMMENT ON COLUMN organizations.admin_granted_plan_notes IS 'Admin notes about w
 COMMENT ON COLUMN organizations.admin_privileges IS 'JSON object with special privileges granted by admin (e.g., {"unlimited_calls": true, "bypass_limits": true}).';
 COMMENT ON COLUMN organizations.admin_privileges_notes IS 'Admin notes about special privileges granted.';
 
--- Create index for querying active admin grants
+-- Create index for querying admin grants (without time-based predicate since NOW() is not immutable)
+-- Note: We can't use NOW() in index predicates, so we index all non-null admin_granted_plan values
+-- The expiration check will be done in the query itself, not in the index
 CREATE INDEX IF NOT EXISTS idx_organizations_admin_granted_plan_active 
   ON organizations(admin_granted_plan) 
-  WHERE admin_granted_plan IS NOT NULL 
-    AND (admin_granted_plan_expires_at IS NULL OR admin_granted_plan_expires_at > NOW());
+  WHERE admin_granted_plan IS NOT NULL;
 
