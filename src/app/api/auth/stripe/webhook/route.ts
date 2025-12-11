@@ -78,8 +78,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Handle subscription deleted/canceled
-    if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.canceled') {
+    // Handle subscription deleted
+    if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription
       const organizationId = subscription.metadata?.organization_id
 
@@ -92,7 +92,26 @@ export async function POST(request: Request) {
           })
           .eq('id', organizationId)
 
-        console.log(`✓ Cleared plan for org ${organizationId} (subscription deleted/canceled)`)
+        console.log(`✓ Cleared plan for org ${organizationId} (subscription deleted)`)
+      }
+    }
+
+    // Handle subscription updated (check if status changed to canceled)
+    if (event.type === 'customer.subscription.updated') {
+      const subscription = event.data.object as Stripe.Subscription
+      const organizationId = subscription.metadata?.organization_id
+
+      // If subscription is canceled or past_due, clear the plan
+      if (organizationId && (subscription.status === 'canceled' || subscription.status === 'past_due' || subscription.status === 'unpaid')) {
+        await supabase
+          .from('organizations')
+          .update({
+            plan: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', organizationId)
+
+        console.log(`✓ Cleared plan for org ${organizationId} (subscription status: ${subscription.status})`)
       }
     }
 
