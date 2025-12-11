@@ -513,41 +513,55 @@ export async function POST(request: Request) {
     
     if (!accessCheck.hasAccess) {
       console.log(`[Webhook] ⛔⛔⛔ CALL BLOCKED for org ${organizationId}: ${accessCheck.reason} ⛔⛔⛔`)
+      console.log(`[Webhook] ⛔⛔⛔ ENTERING HANG-UP LOGIC ⛔⛔⛔`)
       
       // Check call status - if it's early enough, we might be able to reject it
       const callStatus = payload.status || payload.state || 'unknown'
       const isEarlyStage = ['ringing', 'queued', 'pending', 'calling', 'initiated'].includes(callStatus.toLowerCase())
       
       console.log(`[Webhook] Call status: ${callStatus}, Early stage: ${isEarlyStage}`)
+      console.log(`[Webhook] Full payload for debugging:`, JSON.stringify(payload, null, 2))
       
       // Still log the call attempt for records, but mark it as blocked
-      await supabase.from('calls').insert({
-        organization_id: organizationId,
-        direction: payload.direction || 'inbound',
-        provider_call_id: payload.callId || payload.id,
-        from_number: payload.from || payload.caller?.number,
-        to_number: payload.to || payload.callee?.number,
-        status: 'failed',
-        summary: `Call blocked: ${accessCheck.reason}`,
-        raw_payload: payload,
-      })
+      try {
+        await supabase.from('calls').insert({
+          organization_id: organizationId,
+          direction: payload.direction || 'inbound',
+          provider_call_id: payload.callId || payload.id,
+          from_number: payload.from || payload.caller?.number,
+          to_number: payload.to || payload.callee?.number,
+          status: 'failed',
+          summary: `Call blocked: ${accessCheck.reason}`,
+          raw_payload: payload,
+        })
+        console.log(`[Webhook] ✅ Call logged as blocked in database`)
+      } catch (dbError: any) {
+        console.error(`[Webhook] ❌ Error logging call to database:`, dbError?.message || dbError)
+        // Continue anyway - we still need to try to hang up
+      }
 
       // Try to hang up the call using Vapi API if we have the call ID
       // Vapi webhooks are informational - returning 403 doesn't stop the call
       // We MUST use Vapi API to actually hang up the call
+      console.log(`[Webhook] 🔍 STEP 1: Looking for call ID in payload...`)
       const callId = payload.callId || payload.id || payload.call?.id || payload.message?.callId || payload.message?.id
       
-      console.log(`[Webhook] 🔍 Looking for call ID to hang up:`, {
-        foundCallId: callId,
-        payloadCallId: payload.callId,
-        payloadId: payload.id,
-        callObjectId: payload.call?.id,
-        messageCallId: payload.message?.callId,
-        messageId: payload.message?.id,
+      console.log(`[Webhook] 🔍 STEP 2: Call ID search results:`, {
+        foundCallId: callId || 'NOT FOUND',
+        payloadCallId: payload.callId || 'not present',
+        payloadId: payload.id || 'not present',
+        callObjectId: payload.call?.id || 'not present',
+        messageCallId: payload.message?.callId || 'not present',
+        messageId: payload.message?.id || 'not present',
         allPayloadKeys: Object.keys(payload),
       })
       
+      console.log(`[Webhook] 🔍 STEP 3: Checking VAPI_API_KEY...`)
+      const hasApiKey = !!process.env.VAPI_API_KEY
+      console.log(`[Webhook] VAPI_API_KEY configured: ${hasApiKey}`)
+      
       if (callId && process.env.VAPI_API_KEY) {
+        console.log(`[Webhook] ✅ STEP 4: Both callId (${callId}) and API key found - proceeding with hang-up`)
         try {
           console.log(`[Webhook] 🚫 Attempting to hang up call ${callId} via Vapi API...`)
           const hangupResponse = await fetch(`https://api.vapi.ai/call/${callId}`, {
@@ -576,13 +590,16 @@ export async function POST(request: Request) {
           // Continue anyway - we'll still reject processing
         }
       } else {
+        console.error(`[Webhook] ❌❌❌ CANNOT HANG UP CALL - MISSING REQUIREMENTS ❌❌❌`)
         if (!callId) {
-          console.error(`[Webhook] ❌ No call ID found in payload - cannot hang up call`)
+          console.error(`[Webhook] ❌ REASON: No call ID found in payload`)
           console.log(`[Webhook] Full payload structure:`, JSON.stringify(payload, null, 2))
         }
         if (!process.env.VAPI_API_KEY) {
-          console.error(`[Webhook] ❌ VAPI_API_KEY not configured - cannot hang up call`)
+          console.error(`[Webhook] ❌ REASON: VAPI_API_KEY not configured in environment variables`)
+          console.error(`[Webhook] ❌ ACTION REQUIRED: Add VAPI_API_KEY to Vercel environment variables`)
         }
+        console.error(`[Webhook] ❌ Call will continue because we cannot hang it up programmatically`)
       }
 
       // Return error - Even if call already connected, we reject processing
