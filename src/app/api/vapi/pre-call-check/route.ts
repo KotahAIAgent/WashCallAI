@@ -59,7 +59,9 @@ export async function POST(request: Request) {
       
       if (agentConfig) {
         organizationId = agentConfig.organization_id
-        console.log('[Pre-Call Check] Found org by assistant ID:', organizationId)
+        console.log('[Pre-Call Check] ✅ Found org by assistant ID:', organizationId)
+      } else {
+        console.log('[Pre-Call Check] No agent config found for assistant ID:', assistantId)
       }
     }
     
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
     
     // If still not found, try by actual phone number (for inbound)
     if (!organizationId && toNumber) {
-      // Try exact match first
+      // Try exact match first in phone_numbers table
       const { data: phoneNumber } = await supabase
         .from('phone_numbers')
         .select('organization_id')
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
       
       if (phoneNumber) {
         organizationId = phoneNumber.organization_id
-        console.log('[Pre-Call Check] Found org by exact phone number:', organizationId)
+        console.log('[Pre-Call Check] ✅ Found org by exact phone number in phone_numbers table:', organizationId)
       } else {
         // Try normalized version
         const normalized = normalizePhoneNumber(toNumber)
@@ -101,7 +103,33 @@ export async function POST(request: Request) {
           
           if (phoneNumberNormalized) {
             organizationId = phoneNumberNormalized.organization_id
-            console.log('[Pre-Call Check] Found org by normalized phone number:', organizationId)
+            console.log('[Pre-Call Check] ✅ Found org by normalized phone number:', organizationId)
+          }
+        }
+        
+        // Also try agent_configs table (for legacy phone numbers)
+        if (!organizationId) {
+          const { data: agentConfig } = await supabase
+            .from('agent_configs')
+            .select('organization_id')
+            .eq('inbound_phone_number', toNumber)
+            .maybeSingle()
+          
+          if (agentConfig) {
+            organizationId = agentConfig.organization_id
+            console.log('[Pre-Call Check] ✅ Found org by phone number in agent_configs table:', organizationId)
+          } else if (normalized) {
+            // Try normalized in agent_configs too
+            const { data: agentConfigNormalized } = await supabase
+              .from('agent_configs')
+              .select('organization_id')
+              .eq('inbound_phone_number', normalized)
+              .maybeSingle()
+            
+            if (agentConfigNormalized) {
+              organizationId = agentConfigNormalized.organization_id
+              console.log('[Pre-Call Check] ✅ Found org by normalized phone number in agent_configs:', organizationId)
+            }
           }
         }
       }

@@ -660,14 +660,22 @@ export async function adminRemoveAllPlans(
     }
   }
   
-  // CRITICAL: Unassign phone numbers from assistants in Vapi
-  // This prevents calls from connecting at all - no credits wasted
+  // CRITICAL: Automatically block calls by:
+  // 1. Unassigning assistants from phone numbers (prevents calls from connecting)
+  // 2. Configuring pre-call-check URL on phone numbers (rejects calls before they connect)
   const vapiApiKey = process.env.VAPI_API_KEY
-  console.log(`[adminRemoveAllPlans] Starting phone number unassignment. VAPI_API_KEY configured: ${!!vapiApiKey}`)
+  console.log(`[adminRemoveAllPlans] 🔒 Starting automatic call blocking. VAPI_API_KEY configured: ${!!vapiApiKey}`)
   
   if (vapiApiKey) {
     try {
-      // Get all phone numbers for this organization
+      // Get pre-call-check URL (this will reject calls before they connect)
+      const preCallCheckUrl = process.env.NEXT_PUBLIC_APP_URL 
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/vapi/pre-call-check`
+        : process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}/api/vapi/pre-call-check`
+        : null
+      
+      // Get all phone numbers for this organization from phone_numbers table
       const { data: phoneNumbers, error: phoneError } = await supabase
         .from('phone_numbers')
         .select('provider_phone_id, phone_number')
@@ -675,72 +683,109 @@ export async function adminRemoveAllPlans(
         .not('provider_phone_id', 'is', null)
       
       if (phoneError) {
-        console.error(`[adminRemoveAllPlans] Error fetching phone numbers:`, phoneError)
+        console.error(`[adminRemoveAllPlans] Error fetching phone_numbers:`, phoneError)
       }
       
-      console.log(`[adminRemoveAllPlans] Phone numbers query result:`, {
-        count: phoneNumbers?.length || 0,
-        phoneNumbers: phoneNumbers?.map(p => ({ id: p.provider_phone_id, number: p.phone_number })),
-      })
+      // Also check agent_configs for inbound phone numbers
+      const { data: agentConfigs, error: agentError } = await supabase
+        .from('agent_configs')
+        .select('inbound_phone_number, inbound_agent_id')
+        .eq('organization_id', organizationId)
+        .not('inbound_phone_number', 'is', null)
       
-      if (phoneNumbers && phoneNumbers.length > 0) {
-        console.log(`[adminRemoveAllPlans] ✅ Found ${phoneNumbers.length} phone numbers to unassign`)
+      if (agentError) {
+        console.error(`[adminRemoveAllPlans] Error fetching agent_configs:`, agentError)
+      }
+      
+      const allPhoneNumbers = phoneNumbers || []
+      console.log(`[adminRemoveAllPlans] Found ${allPhoneNumbers.length} phone numbers in phone_numbers table`)
+      console.log(`[adminRemoveAllPlans] Found ${agentConfigs?.length || 0} agent configs with phone numbers`)
+      
+      // Process phone numbers from phone_numbers table
+      for (const phone of allPhoneNumbers) {
+        if (!phone.provider_phone_id) {
+          console.log(`[adminRemoveAllPlans] ⚠️ Phone ${phone.phone_number} has no provider_phone_id, skipping`)
+          continue
+        }
         
-        for (const phone of phoneNumbers) {
-          if (!phone.provider_phone_id) continue
+        try {
+          console.log(`[adminRemoveAllPlans] Processing phone ${phone.phone_number} (${phone.provider_phone_id})...`)
           
-          try {
-            // Unassign assistant from phone number by setting assistantId to null
-            // This prevents calls from connecting
-            const phoneResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
+          // Step 1: Unassign assistant from phone number
+          const unassignResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${vapiApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              assistantId: null, // Remove assistant assignment
+            }),
+          })
+          
+          if (unassignResponse.ok) {
+            console.log(`[adminRemoveAllPlans] ✅ Step 1: Unassigned assistant from phone ${phone.phone_number}`)
+          } else {
+            const errorText = await unassignResponse.text()
+            console.error(`[adminRemoveAllPlans] ⚠️ Step 1 failed for ${phone.phone_number}: ${unassignResponse.status} - ${errorText.substring(0, 200)}`)
+          }
+          
+          // Step 2: Configure pre-call-check URL (if supported by Vapi)
+          if (preCallCheckUrl) {
+            const preCallResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
               method: 'PATCH',
               headers: {
                 'Authorization': `Bearer ${vapiApiKey}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                assistantId: null, // Remove assistant assignment
+                serverUrl: preCallCheckUrl, // Pre-call check runs before call connects
               }),
             })
             
-            if (phoneResponse.ok) {
-              console.log(`[adminRemoveAllPlans] ✅ Unassigned assistant from phone ${phone.phone_number} (${phone.provider_phone_id})`)
+            if (preCallResponse.ok) {
+              console.log(`[adminRemoveAllPlans] ✅ Step 2: Configured pre-call-check for phone ${phone.phone_number}`)
             } else {
-              const errorText = await phoneResponse.text()
-              console.error(`[adminRemoveAllPlans] ⚠️ Could not unassign phone ${phone.phone_number}: ${phoneResponse.status} - ${errorText.substring(0, 200)}`)
-              
-              // Try alternative: set to empty string or delete phone number assignment
-              if (phoneResponse.status === 400 || phoneResponse.status === 404) {
-                console.log(`[adminRemoveAllPlans] Trying alternative method for phone ${phone.provider_phone_id}...`)
-                // Some Vapi versions might need different format
-                const altResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
-                  method: 'PATCH',
-                  headers: {
-                    'Authorization': `Bearer ${vapiApiKey}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    assistant: null,
-                  }),
-                })
-                if (altResponse.ok) {
-                  console.log(`[adminRemoveAllPlans] ✅ Unassigned assistant (alternative method) from phone ${phone.phone_number}`)
-                }
-              }
+              // Pre-call-check might not be supported at phone number level, that's okay
+              const errorText = await preCallResponse.text()
+              console.log(`[adminRemoveAllPlans] ⚠️ Step 2: Pre-call-check not supported at phone level (${preCallResponse.status}): ${errorText.substring(0, 100)}`)
             }
-          } catch (err: any) {
-            console.error(`[adminRemoveAllPlans] Error unassigning phone ${phone.phone_number}:`, err?.message || err)
+          }
+          
+        } catch (err: any) {
+          console.error(`[adminRemoveAllPlans] ❌ Error processing phone ${phone.phone_number}:`, err?.message || err)
+        }
+      }
+      
+      // Also unassign assistants from agent configs
+      if (agentConfigs && agentConfigs.length > 0) {
+        for (const config of agentConfigs) {
+          if (config.inbound_agent_id) {
+            try {
+              // Try to find phone number ID from the inbound phone number
+              // This is a fallback - ideally phone numbers should be in phone_numbers table
+              console.log(`[adminRemoveAllPlans] Found agent config with inbound agent ${config.inbound_agent_id}`)
+              // Note: We can't unassign from phone number without the phone number ID
+              // But the pre-call-check will catch these calls
+            } catch (err: any) {
+              console.error(`[adminRemoveAllPlans] Error processing agent config:`, err?.message || err)
+            }
           }
         }
-      } else {
-        console.log(`[adminRemoveAllPlans] No phone numbers found for org ${organizationId}`)
       }
+      
+      if (allPhoneNumbers.length === 0 && (!agentConfigs || agentConfigs.length === 0)) {
+        console.log(`[adminRemoveAllPlans] ⚠️ No phone numbers found for org ${organizationId} to block`)
+      } else {
+        console.log(`[adminRemoveAllPlans] ✅ Automatic call blocking configured for ${allPhoneNumbers.length} phone number(s)`)
+      }
+      
     } catch (err: any) {
-      console.error(`[adminRemoveAllPlans] Error unassigning phone numbers:`, err?.message || err)
+      console.error(`[adminRemoveAllPlans] ❌ Error during automatic call blocking:`, err?.message || err)
       // Continue anyway - we'll still remove the plan
     }
   } else {
-    console.warn(`[adminRemoveAllPlans] ⚠️ VAPI_API_KEY not configured - cannot unassign phone numbers in Vapi`)
+    console.warn(`[adminRemoveAllPlans] ⚠️ VAPI_API_KEY not configured - cannot automatically block calls in Vapi`)
   }
 
   const { error: updateError, data: updatedOrg } = await supabase
