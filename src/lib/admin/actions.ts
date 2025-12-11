@@ -668,49 +668,80 @@ export async function adminRemoveAllPlans(
     .maybeSingle()
 
   // Disable assistants in Vapi to prevent calls from connecting
+  // This is CRITICAL to prevent calls from connecting and wasting credits
   const vapiApiKey = process.env.VAPI_API_KEY
   if (vapiApiKey && agentConfigs) {
     try {
-      // Disable inbound assistant
+      // Disable inbound assistant - try multiple methods
       if (agentConfigs.inbound_agent_id) {
         try {
-          const inboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.inbound_agent_id}`, {
+          // Method 1: Try setting active: false
+          let inboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.inbound_agent_id}`, {
             method: 'PATCH',
             headers: {
               'Authorization': `Bearer ${vapiApiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              status: 'inactive', // or 'disabled' - check Vapi docs for correct field
+              active: false,
             }),
           })
+          
+          // Method 2: If that doesn't work, try deleting the assistant
+          if (!inboundResponse.ok) {
+            console.log(`[adminRemoveAllPlans] Trying DELETE method for inbound assistant...`)
+            inboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.inbound_agent_id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${vapiApiKey}`,
+                'Content-Type': 'application/json',
+              },
+            })
+          }
+          
           if (inboundResponse.ok) {
-            console.log(`[adminRemoveAllPlans] ✅ Disabled inbound assistant ${agentConfigs.inbound_agent_id} in Vapi`)
+            console.log(`[adminRemoveAllPlans] ✅ Disabled/deleted inbound assistant ${agentConfigs.inbound_agent_id} in Vapi`)
           } else {
-            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable inbound assistant: ${inboundResponse.status}`)
+            const errorText = await inboundResponse.text()
+            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable inbound assistant: ${inboundResponse.status} - ${errorText.substring(0, 200)}`)
           }
         } catch (err: any) {
           console.error(`[adminRemoveAllPlans] Error disabling inbound assistant:`, err?.message || err)
         }
       }
 
-      // Disable outbound assistant
+      // Disable outbound assistant - try multiple methods
       if (agentConfigs.outbound_agent_id) {
         try {
-          const outboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.outbound_agent_id}`, {
+          // Method 1: Try setting active: false
+          let outboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.outbound_agent_id}`, {
             method: 'PATCH',
             headers: {
               'Authorization': `Bearer ${vapiApiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              status: 'inactive', // or 'disabled' - check Vapi docs for correct field
+              active: false,
             }),
           })
+          
+          // Method 2: If that doesn't work, try deleting the assistant
+          if (!outboundResponse.ok) {
+            console.log(`[adminRemoveAllPlans] Trying DELETE method for outbound assistant...`)
+            outboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.outbound_agent_id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${vapiApiKey}`,
+                'Content-Type': 'application/json',
+              },
+            })
+          }
+          
           if (outboundResponse.ok) {
-            console.log(`[adminRemoveAllPlans] ✅ Disabled outbound assistant ${agentConfigs.outbound_agent_id} in Vapi`)
+            console.log(`[adminRemoveAllPlans] ✅ Disabled/deleted outbound assistant ${agentConfigs.outbound_agent_id} in Vapi`)
           } else {
-            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable outbound assistant: ${outboundResponse.status}`)
+            const errorText = await outboundResponse.text()
+            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable outbound assistant: ${outboundResponse.status} - ${errorText.substring(0, 200)}`)
           }
         } catch (err: any) {
           console.error(`[adminRemoveAllPlans] Error disabling outbound assistant:`, err?.message || err)
@@ -719,6 +750,10 @@ export async function adminRemoveAllPlans(
     } catch (err: any) {
       console.error(`[adminRemoveAllPlans] Error disabling assistants:`, err?.message || err)
       // Continue anyway - we'll still remove the plan
+    }
+  } else {
+    if (!vapiApiKey) {
+      console.warn(`[adminRemoveAllPlans] ⚠️ VAPI_API_KEY not configured - cannot disable assistants in Vapi`)
     }
   }
 
