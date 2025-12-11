@@ -538,10 +538,10 @@ export async function POST(request: Request) {
       const callId = payload.callId || payload.id || payload.call?.id || payload.message?.callId || payload.message?.id
       
       console.log(`[Webhook] 🔍 Looking for call ID to hang up:`, {
-        callId,
+        foundCallId: callId,
         payloadCallId: payload.callId,
         payloadId: payload.id,
-        callId: payload.call?.id,
+        callObjectId: payload.call?.id,
         messageCallId: payload.message?.callId,
         messageId: payload.message?.id,
         allPayloadKeys: Object.keys(payload),
