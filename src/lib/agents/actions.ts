@@ -817,6 +817,21 @@ export async function adminAddPhoneNumber(
     console.error('[Admin] Error adding phone number:', error)
     return { error: error.message }
   }
+
+  // Auto-configure webhook for this phone number (scalable - no manual config needed)
+  try {
+    const { setPhoneNumberWebhook } = await import('@/lib/vapi/auto-webhook')
+    const webhookResult = await setPhoneNumberWebhook(providerPhoneId.trim())
+    if (webhookResult.success) {
+      console.log(`[Admin] ✅ Auto-configured webhook for phone number ${providerPhoneId}`)
+    } else {
+      console.log(`[Admin] ⚠️ Could not auto-configure phone number webhook (may need assistant-level config): ${webhookResult.error}`)
+    }
+  } catch (err) {
+    console.error('[Admin] Error auto-configuring webhook:', err)
+    // Don't fail the operation if webhook config fails
+  }
+
   return { success: true }
 }
 

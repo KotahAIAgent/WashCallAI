@@ -532,6 +532,30 @@ export async function POST(request: Request) {
         raw_payload: payload,
       })
 
+      // Try to hang up the call using Vapi API if we have the call ID
+      const callId = payload.callId || payload.id || payload.call?.id
+      if (callId && process.env.VAPI_API_KEY) {
+        try {
+          console.log(`[Webhook] Attempting to hang up call ${callId} via Vapi API...`)
+          const hangupResponse = await fetch(`https://api.vapi.ai/call/${callId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${process.env.VAPI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          })
+          
+          if (hangupResponse.ok) {
+            console.log(`[Webhook] ✅ Successfully hung up call ${callId}`)
+          } else {
+            console.log(`[Webhook] ⚠️ Could not hang up call (may already be ended): ${hangupResponse.status}`)
+          }
+        } catch (err) {
+          console.error(`[Webhook] Error hanging up call:`, err)
+          // Continue anyway - we'll still reject processing
+        }
+      }
+
       // Return error - Even if call already connected, we reject processing
       // IMPORTANT: Return 403 to signal access denied
       console.log(`[Webhook] ⛔ Returning 403 - Access denied. Reason: ${accessCheck.reason}`)
@@ -542,6 +566,7 @@ export async function POST(request: Request) {
         blocked: true,
         organizationId,
         callStatus,
+        callId,
       }, { status: 403 })
     }
     
