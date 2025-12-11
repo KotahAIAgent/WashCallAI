@@ -628,7 +628,10 @@ export async function adminRemoveAllPlans(
   }
 
   // Remove all plans from database
-  const { error: updateError } = await supabase
+  console.log(`[adminRemoveAllPlans] Clearing plan fields for org ${organizationId}`)
+  console.log(`[adminRemoveAllPlans] Current plan: ${org.plan}, Admin plan: ${org.admin_granted_plan}`)
+  
+  const { error: updateError, data: updatedOrg } = await supabase
     .from('organizations')
     .update({
       plan: null,
@@ -638,15 +641,20 @@ export async function adminRemoveAllPlans(
       updated_at: new Date().toISOString(),
     })
     .eq('id', organizationId)
+    .select('plan, admin_granted_plan')
+    .single()
 
   if (updateError) {
+    console.error('[adminRemoveAllPlans] Error updating organization:', updateError)
     return { error: updateError.message }
   }
+
+  console.log(`[adminRemoveAllPlans] ✅ Plan cleared. Updated org plan: ${updatedOrg?.plan || 'null'}, Admin plan: ${updatedOrg?.admin_granted_plan || 'null'}`)
 
   revalidatePath('/app/admin')
   return { 
     success: true, 
-    message: `All plans removed from ${org.name}. Regular plan: ${org.plan || 'none'}, Admin plan: ${org.admin_granted_plan || 'none'}` 
+    message: `All plans removed from ${org.name}. Regular plan: ${org.plan || 'none'} → cleared, Admin plan: ${org.admin_granted_plan || 'none'} → cleared` 
   }
 }
 
