@@ -139,6 +139,12 @@ export async function POST(request: Request) {
     }
     
     console.log(`[Pre-Call Check] Checking access for org: ${org.name} (${org.id})`)
+    console.log(`[Pre-Call Check] Org data from DB:`, {
+      plan: org.plan || 'null',
+      trial_ends_at: org.trial_ends_at || 'null',
+      admin_granted_plan: org.admin_granted_plan || 'null',
+      admin_privileges: org.admin_privileges || 'null',
+    })
     
     // Check for admin-granted privileges
     const privileges = org.admin_privileges || {}

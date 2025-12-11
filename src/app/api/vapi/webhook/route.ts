@@ -486,6 +486,22 @@ export async function POST(request: Request) {
 
     // 🔒 CHECK ACCESS - Verify organization has active trial or subscription
     console.log(`[Webhook] 🔒 Checking access for org ${organizationId}...`)
+    
+    // First, let's check what the org actually has in the database
+    const { data: orgCheck } = await supabase
+      .from('organizations')
+      .select('plan, trial_ends_at, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges, name')
+      .eq('id', organizationId)
+      .maybeSingle()
+    
+    console.log(`[Webhook] 🔒 Org data from DB:`, {
+      plan: orgCheck?.plan || 'null',
+      trial_ends_at: orgCheck?.trial_ends_at || 'null',
+      admin_granted_plan: orgCheck?.admin_granted_plan || 'null',
+      admin_privileges: orgCheck?.admin_privileges || 'null',
+      orgName: orgCheck?.name,
+    })
+    
     const accessCheck = await checkOrganizationAccess(supabase, organizationId)
     console.log(`[Webhook] 🔒 Access check result:`, {
       hasAccess: accessCheck.hasAccess,
