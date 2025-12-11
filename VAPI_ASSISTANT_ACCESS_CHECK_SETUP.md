@@ -2,68 +2,61 @@
 
 ## The Problem
 
-Vapi webhooks are informational - they're called AFTER the call connects. We cannot prevent calls from connecting via webhook.
+Vapi webhooks are informational - they're called AFTER the call connects. We cannot prevent calls from connecting via webhook. The website is just a frontend; Vapi controls the actual call flow.
 
 ## The Solution
 
-Configure each Vapi assistant to call an access check function/endpoint at the START of the call (before answering).
+Configure each Vapi assistant to call an access check function at the START of the call (before answering). The assistant itself must call this function and handle the response.
 
-## How to Configure in Vapi Dashboard
+## Automatic Configuration
 
-### Option 1: Function Call (Recommended)
+✅ **The function is automatically added to assistants** when you call `adminSetAgent` or `autoConfigureWebhook`. The function is named `check_access` and points to `/api/vapi/check-access`.
 
-1. Go to Vapi Dashboard → Assistants
-2. Select the assistant (inbound or outbound)
-3. Go to "Functions" or "Tools" section
-4. Add a new function:
-   - **Name**: `check_access` or `verify_subscription`
-   - **Type**: `webhook` or `server`
-   - **URL**: `https://your-domain.com/api/vapi/check-access`
-   - **Method**: `POST`
-   - **Trigger**: Set to trigger at the START of the call (before first message)
+## Manual Configuration Required
 
-5. Configure the assistant's system prompt or first message to:
-   - Call this function immediately when call starts
-   - If function returns `allowed: false`, play the message and end call
+Even though the function is added automatically, **you must configure the assistant's system prompt or first message** to actually CALL this function at the start of every call.
 
-### Option 2: Server URL (If Supported)
+### Step 1: Configure Assistant System Prompt
 
-1. Go to Vapi Dashboard → Assistants
-2. Select the assistant
-3. Find "Server URL" or "Function URL" setting
-4. Set to: `https://your-domain.com/api/vapi/check-access`
-5. Configure to call at call start
+In Vapi Dashboard → Assistants → [Your Assistant] → System Prompt, add:
 
-### Option 3: First Message Function
-
-Configure the assistant's first message to:
-1. Call the access check function
-2. If access denied, say: "Your subscription has ended. Please renew to continue."
-3. End the call
-
-## Programmatic Configuration (For Scaling)
-
-When creating/updating assistants, configure them with:
-
-```json
-{
-  "functions": [
-    {
-      "name": "check_access",
-      "type": "webhook",
-      "url": "https://your-domain.com/api/vapi/check-access",
-      "method": "POST"
-    }
-  ],
-  "firstMessage": "Let me check your account status... [call check_access function]"
-}
 ```
+IMPORTANT: At the very start of EVERY call, before saying anything else, you MUST call the check_access function to verify the organization has an active subscription. 
+
+If check_access returns {"allowed": false}, you must:
+1. Say the message provided in the response (e.g., "Your subscription has ended. Please renew to continue using FusionCaller.")
+2. Immediately end the call
+3. Do NOT proceed with any other conversation
+
+If check_access returns {"allowed": true}, you may proceed normally with the call.
+```
+
+### Step 2: Configure First Message (Alternative)
+
+Alternatively, set the assistant's First Message to:
+
+```
+Let me verify your account status... [call check_access function]
+
+If the function returns allowed: false, say: "Your subscription has ended. Please renew to continue using FusionCaller." and end the call.
+
+If allowed: true, proceed with: [your normal greeting]
+```
+
+## How It Works
+
+1. **Call comes in** → Vapi routes to your assistant
+2. **Assistant starts** → System prompt instructs it to call `check_access` function first
+3. **Function called** → `/api/vapi/check-access` checks database for active plan/trial
+4. **Response returned**:
+   - `{"allowed": true}` → Assistant proceeds normally
+   - `{"allowed": false, "message": "..."}` → Assistant says message and ends call
 
 ## Endpoint Details
 
 **URL**: `/api/vapi/check-access`  
 **Method**: `POST`  
-**Expected Payload**:
+**Expected Payload** (from Vapi):
 ```json
 {
   "assistantId": "uuid",
@@ -87,16 +80,23 @@ When creating/updating assistants, configure them with:
 }
 ```
 
-## Current Status
-
-- ✅ Endpoint created: `/api/vapi/check-access`
-- ⚠️ Needs to be configured in each Vapi assistant
-- ⚠️ Manual configuration required per assistant (or programmatic if Vapi API supports it)
-
 ## For Hundreds of Clients
 
-You'll need to:
-1. Configure this endpoint in each assistant's function list
-2. Or use Vapi API to programmatically add this function to all assistants
-3. Or create a template assistant with this function, then clone it for each client
+1. ✅ **Function is automatically added** when you set agent IDs via `adminSetAgent`
+2. ⚠️ **System prompt must be configured** in each assistant (or use a template)
+3. **Template Approach**: Create one assistant with the system prompt configured, then clone it for each client
+
+## Testing
+
+1. Cancel a plan for a test organization
+2. Call the phone number
+3. The assistant should call `check_access` function
+4. Function should return `{"allowed": false}`
+5. Assistant should say the message and end the call
+
+## Troubleshooting
+
+- **Function not being called**: Check that the system prompt instructs the assistant to call `check_access` at the start
+- **Function not found**: Verify the function was added via `autoConfigureWebhook` (check Vapi dashboard)
+- **Access denied but call continues**: The assistant's system prompt may not be properly configured to end the call on `allowed: false`
 
