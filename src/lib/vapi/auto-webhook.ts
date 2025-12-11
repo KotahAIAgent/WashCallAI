@@ -129,20 +129,28 @@ export async function autoConfigureWebhook(assistantId: string): Promise<{
 
     // Add access check function if it doesn't exist
     if (!hasAccessCheck) {
-      const accessCheckFunction = {
+      // Try Tools API format first (newer Vapi format)
+      const accessCheckTool = {
+        type: 'webhook',
+        name: 'check_access',
+        description: 'Check if the organization has an active subscription before proceeding with the call. Call this function at the very start of every call.',
+        serverUrl: accessCheckUrl,
+        method: 'POST',
+      }
+
+      // Try both 'tools' and 'functions' - Vapi may use either
+      // First try 'tools' (newer format)
+      if (assistantData?.tools || existingFunctions.length === 0) {
+        updatePayload.tools = [...(assistantData?.tools || []), accessCheckTool]
+      }
+      // Also try 'functions' (older format)
+      updatePayload.functions = [...existingFunctions, {
         type: 'webhook',
         name: 'check_access',
         description: 'Check if the organization has an active subscription before proceeding with the call. Call this function at the very start of every call.',
         url: accessCheckUrl,
         method: 'POST',
-      }
-
-      // Vapi may use 'functions' or 'tools' field
-      updatePayload.functions = [...existingFunctions, accessCheckFunction]
-      // Also try 'tools' in case that's what Vapi uses
-      if (existingFunctions.length === 0 && !assistantData?.functions) {
-        updatePayload.tools = [accessCheckFunction]
-      }
+      }]
     }
 
     const response = await fetch(`${VAPI_API_URL}/assistant/${assistantId}`, {
