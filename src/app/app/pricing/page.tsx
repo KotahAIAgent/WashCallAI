@@ -1,6 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { STRIPE_PLANS, PlanType } from '@/lib/stripe/server'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Clock, Sparkles } from 'lucide-react'
 import { StartTrialButton } from '@/components/trial/StartTrialButton'
 import { IndustryPricingSelector } from '@/components/pricing/IndustryPricingSelector'
