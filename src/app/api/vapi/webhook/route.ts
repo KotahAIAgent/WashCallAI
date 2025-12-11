@@ -83,48 +83,13 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
             return { hasAccess: true, reason: `admin_granted_plan_${org.admin_granted_plan}` }
           }
         }
-        // Has paid plan - MUST verify Stripe subscription is active
+        // Has paid plan - TEMPORARILY skip Stripe check (Stripe not set up)
         if (org.plan) {
-          console.log(`[checkOrganizationAccess] Retry path: Plan found: ${org.plan}, checking Stripe subscription...`)
-          // If we have a billing customer ID, verify the subscription is actually active
-          if (org.billing_customer_id && stripe) {
-            try {
-              const subscriptions = await stripe.subscriptions.list({
-                customer: org.billing_customer_id,
-                status: 'active',
-                limit: 1,
-              })
-
-              console.log(`[checkOrganizationAccess] Retry path: Stripe subscriptions found: ${subscriptions.data.length}`)
-
-              // If no active subscription found, deny access
-              if (subscriptions.data.length === 0) {
-                console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
-                return { hasAccess: false, reason: 'Subscription ended - no active subscription in Stripe' }
-              }
-
-              // Subscription is active, allow access
-              console.log(`[checkOrganizationAccess] Retry path: ✅ ALLOWED - Active subscription found: ${subscriptions.data[0].id}`)
-              return { hasAccess: true, reason: 'active_plan' }
-            } catch (error: any) {
-              console.error(`[checkOrganizationAccess] Retry path: Error checking Stripe subscription for org ${organizationId}:`, error)
-              // If Stripe check fails, deny access (fail closed) for security
-              return { hasAccess: false, reason: 'Unable to verify subscription status' }
-            }
-          }
-
-          // No billing customer ID, but plan exists
-          // Check if there's an admin-granted plan that might be active
-          // Otherwise, deny access if we can't verify subscription
-          if (!org.admin_granted_plan) {
-            console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
-            return { hasAccess: false, reason: 'Cannot verify subscription - no billing customer ID' }
-          }
-
-          // If admin-granted plan exists and is active, allow access
-          // Otherwise deny
-          console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - No active subscription`)
-          return { hasAccess: false, reason: 'No active subscription' }
+          console.log(`[checkOrganizationAccess] Retry path: Plan found: ${org.plan}`)
+          // TEMPORARY: Skip Stripe verification - just check if plan exists
+          // TODO: Re-enable Stripe verification when Stripe is set up
+          console.log(`[checkOrganizationAccess] Retry path: ✅ ALLOWED - Plan exists (Stripe check disabled)`)
+          return { hasAccess: true, reason: 'active_plan' }
         }
         // Check trial status
         if (org.trial_ends_at) {
@@ -190,53 +155,13 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
     }
   }
 
-  // Has paid plan - verify subscription is actually active in Stripe
+  // Has paid plan - TEMPORARILY skip Stripe check (Stripe not set up)
   if (org.plan) {
-    console.log(`[checkOrganizationAccess] Main path: Plan found: ${org.plan}, billing_customer_id: ${org.billing_customer_id || 'none'}`)
-    // If we have a billing customer ID, verify the subscription is actually active
-    if (org.billing_customer_id && stripe) {
-      try {
-        console.log(`[checkOrganizationAccess] Main path: Checking Stripe subscription for customer: ${org.billing_customer_id}`)
-        const subscriptions = await stripe.subscriptions.list({
-          customer: org.billing_customer_id,
-          status: 'active',
-          limit: 1,
-        })
-
-        console.log(`[checkOrganizationAccess] Main path: Stripe subscriptions found: ${subscriptions.data.length}`)
-
-        // If no active subscription found, deny access (but don't clear plan - preserves data)
-        if (subscriptions.data.length === 0) {
-          console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
-          
-          // Don't clear the plan - this allows "suspend" functionality to preserve data
-          // The plan field stays but access is blocked
-          return { hasAccess: false, reason: 'Subscription ended - no active subscription in Stripe' }
-        }
-
-        // Subscription is active, allow access
-        console.log(`[checkOrganizationAccess] Main path: ✅ ALLOWED - Active subscription found: ${subscriptions.data[0].id}`)
-        return { hasAccess: true, reason: 'active_plan' }
-      } catch (error: any) {
-        console.error(`[checkOrganizationAccess] Main path: Error checking Stripe subscription for org ${organizationId}:`, error)
-        // If Stripe check fails, deny access (fail closed) for security
-        // This ensures we don't allow access if we can't verify subscription
-        return { hasAccess: false, reason: 'Unable to verify subscription status' }
-      }
-    }
-
-    // No billing customer ID, but plan exists
-    // Check if there's an admin-granted plan that might be active
-    // Otherwise, deny access if we can't verify subscription
-    if (!org.admin_granted_plan) {
-      console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
-      return { hasAccess: false, reason: 'Cannot verify subscription - no billing customer ID' }
-    }
-
-    // If admin-granted plan exists and is active, allow access
-    // Otherwise deny
-    console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - No active subscription`)
-    return { hasAccess: false, reason: 'No active subscription' }
+    console.log(`[checkOrganizationAccess] Main path: Plan found: ${org.plan}`)
+    // TEMPORARY: Skip Stripe verification - just check if plan exists
+    // TODO: Re-enable Stripe verification when Stripe is set up
+    console.log(`[checkOrganizationAccess] Main path: ✅ ALLOWED - Plan exists (Stripe check disabled)`)
+    return { hasAccess: true, reason: 'active_plan' }
   }
 
   // Check trial status

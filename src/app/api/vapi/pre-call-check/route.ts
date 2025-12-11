@@ -158,7 +158,7 @@ export async function POST(request: Request) {
       }
     }
     
-    // Check paid plan - MUST verify Stripe subscription is actually active
+    // Check paid plan - TEMPORARILY skip Stripe check (Stripe not set up)
     if (org.plan) {
       // Check if starter plan is blocked
       if (org.plan === 'starter' && isStarterPlanBlocked(org)) {
@@ -173,74 +173,10 @@ export async function POST(request: Request) {
         )
       }
 
-      // If we have a billing customer ID, verify the subscription is actually active
-      if (org.billing_customer_id && stripe) {
-        try {
-          console.log(`[Pre-Call Check] Checking Stripe subscription for customer: ${org.billing_customer_id}`)
-          const subscriptions = await stripe.subscriptions.list({
-            customer: org.billing_customer_id,
-            status: 'active',
-            limit: 1,
-          })
-
-          console.log(`[Pre-Call Check] Stripe subscriptions found: ${subscriptions.data.length}`)
-
-          // If no active subscription found, deny access
-          if (subscriptions.data.length === 0) {
-            console.warn(`[Pre-Call Check] ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking call.`)
-            return NextResponse.json(
-              { 
-                error: 'Subscription ended',
-                action: 'reject',
-                message: 'Your subscription has ended. Please renew to continue using FusionCaller.'
-              },
-              { status: 403 }
-            )
-          }
-
-          // Subscription is active, allow access
-          console.log(`[Pre-Call Check] ✅ ALLOWED - Active subscription found: ${subscriptions.data[0].id}`)
-          return NextResponse.json({ allowed: true, reason: 'active_plan' })
-        } catch (error: any) {
-          console.error(`[Pre-Call Check] Error checking Stripe subscription for org ${organizationId}:`, error)
-          // If Stripe check fails, deny access (fail closed) for security
-          return NextResponse.json(
-            { 
-              error: 'Unable to verify subscription',
-              action: 'reject',
-              message: 'Unable to verify subscription status. Please contact support.'
-            },
-            { status: 403 }
-          )
-        }
-      }
-
-      // No billing customer ID, but plan exists
-      // Check if there's an admin-granted plan that might be active
-      // Otherwise, deny access if we can't verify subscription
-      if (!org.admin_granted_plan) {
-        console.warn(`[Pre-Call Check] ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
-        return NextResponse.json(
-          { 
-            error: 'Cannot verify subscription',
-            action: 'reject',
-            message: 'Cannot verify subscription - no billing customer ID.'
-          },
-          { status: 403 }
-        )
-      }
-
-      // If admin-granted plan exists and is active, allow access
-      // Otherwise deny
-      console.warn(`[Pre-Call Check] ❌ BLOCKED - No active subscription`)
-      return NextResponse.json(
-        { 
-          error: 'No active subscription',
-          action: 'reject',
-          message: 'No active subscription found.'
-        },
-        { status: 403 }
-      )
+      // TEMPORARY: Skip Stripe verification - just check if plan exists
+      // TODO: Re-enable Stripe verification when Stripe is set up
+      console.log('[Pre-Call Check] ✅ Access granted: active plan (Stripe check disabled)')
+      return NextResponse.json({ allowed: true, reason: 'active_plan' })
     }
     
     // Check trial

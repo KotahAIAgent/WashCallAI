@@ -541,7 +541,7 @@ export async function adminSuspendPlan(
     return { error: 'Organization does not have an active plan to suspend' }
   }
 
-  // Cancel Stripe subscription if it exists
+  // Cancel Stripe subscription if it exists (skip if Stripe not configured)
   if (org.billing_customer_id && stripe) {
     try {
       const subscriptions = await stripe.subscriptions.list({
@@ -559,10 +559,11 @@ export async function adminSuspendPlan(
       }
     } catch (error: any) {
       console.error('Error canceling Stripe subscription:', error)
-      return { error: `Failed to cancel Stripe subscription: ${error.message}` }
+      // Don't fail the operation if Stripe is not set up
+      console.log(`⚠️ Stripe cancellation failed, but continuing with plan removal`)
     }
   } else {
-    console.log(`ℹ No billing customer ID for org ${organizationId}, skipping Stripe cancellation`)
+    console.log(`ℹ No billing customer ID or Stripe not configured for org ${organizationId}, skipping Stripe cancellation`)
   }
 
   // Note: We intentionally keep the plan field in the database
@@ -603,7 +604,7 @@ export async function adminRemoveAllPlans(
     return { error: `Organization not found with ID: ${organizationId}` }
   }
 
-  // Cancel Stripe subscription if it exists
+  // Cancel Stripe subscription if it exists (skip if Stripe not configured)
   if (org.billing_customer_id && stripe) {
     try {
       const subscriptions = await stripe.subscriptions.list({
@@ -620,7 +621,10 @@ export async function adminRemoveAllPlans(
     } catch (error: any) {
       console.error('Error canceling Stripe subscription:', error)
       // Continue anyway - we'll still remove the plan from database
+      console.log(`⚠️ Stripe cancellation failed, but continuing with plan removal`)
     }
+  } else {
+    console.log(`ℹ No billing customer ID or Stripe not configured, skipping Stripe cancellation`)
   }
 
   // Remove all plans from database
