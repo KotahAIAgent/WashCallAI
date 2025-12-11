@@ -641,9 +641,24 @@ export async function adminRemoveAllPlans(
     console.log(`ℹ No billing customer ID or Stripe not configured, skipping Stripe cancellation`)
   }
 
-  // Remove all plans from database
-  console.log(`[adminRemoveAllPlans] Clearing plan fields for org ${organizationId}`)
+  // Remove all plans from database AND expire any active trial
+  console.log(`[adminRemoveAllPlans] Clearing plan fields and expiring trial for org ${organizationId}`)
   console.log(`[adminRemoveAllPlans] Current plan: ${org.plan}, Admin plan: ${org.admin_granted_plan}`)
+  
+  // Get current trial status
+  const { data: orgWithTrial } = await supabase
+    .from('organizations')
+    .select('trial_ends_at')
+    .eq('id', organizationId)
+    .maybeSingle()
+  
+  if (orgWithTrial?.trial_ends_at) {
+    const trialEndsAt = new Date(orgWithTrial.trial_ends_at)
+    const now = new Date()
+    if (now < trialEndsAt) {
+      console.log(`[adminRemoveAllPlans] Active trial found, expiring it (was ending: ${trialEndsAt.toISOString()})`)
+    }
+  }
   
   const { error: updateError, data: updatedOrg } = await supabase
     .from('organizations')
@@ -652,10 +667,12 @@ export async function adminRemoveAllPlans(
       admin_granted_plan: null,
       admin_granted_plan_expires_at: null,
       admin_granted_plan_notes: null,
+      // Expire trial by setting trial_ends_at to past date
+      trial_ends_at: new Date().toISOString(), // Set to now to expire immediately
       updated_at: new Date().toISOString(),
     })
     .eq('id', organizationId)
-    .select('plan, admin_granted_plan')
+    .select('plan, admin_granted_plan, trial_ends_at')
     .single()
 
   if (updateError) {
