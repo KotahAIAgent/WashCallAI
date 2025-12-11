@@ -73,9 +73,43 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
             return { hasAccess: true, reason: `admin_granted_plan_${org.admin_granted_plan}` }
           }
         }
-        // Has paid plan
+        // Has paid plan - MUST verify Stripe subscription is active
         if (org.plan) {
-          return { hasAccess: true, reason: 'active_plan' }
+          // If we have a billing customer ID, verify the subscription is actually active
+          if (org.billing_customer_id && stripe) {
+            try {
+              const subscriptions = await stripe.subscriptions.list({
+                customer: org.billing_customer_id,
+                status: 'active',
+                limit: 1,
+              })
+
+              // If no active subscription found, deny access
+              if (subscriptions.data.length === 0) {
+                console.warn(`[checkOrganizationAccess] Retry path: Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
+                return { hasAccess: false, reason: 'Subscription ended - no active subscription in Stripe' }
+              }
+
+              // Subscription is active, allow access
+              return { hasAccess: true, reason: 'active_plan' }
+            } catch (error: any) {
+              console.error(`[checkOrganizationAccess] Retry path: Error checking Stripe subscription for org ${organizationId}:`, error)
+              // If Stripe check fails, deny access (fail closed) for security
+              return { hasAccess: false, reason: 'Unable to verify subscription status' }
+            }
+          }
+
+          // No billing customer ID, but plan exists
+          // Check if there's an admin-granted plan that might be active
+          // Otherwise, deny access if we can't verify subscription
+          if (!org.admin_granted_plan) {
+            console.warn(`[checkOrganizationAccess] Retry path: Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
+            return { hasAccess: false, reason: 'Cannot verify subscription - no billing customer ID' }
+          }
+
+          // If admin-granted plan exists and is active, allow access
+          // Otherwise deny
+          return { hasAccess: false, reason: 'No active subscription' }
         }
         // Check trial status
         if (org.trial_ends_at) {
