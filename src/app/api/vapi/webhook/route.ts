@@ -14,19 +14,105 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
   hasAccess: boolean
   reason: string
 }> {
-  const { data: org } = await supabase
+  const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .select('plan, trial_ends_at, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges')
+    .select('plan, trial_ends_at, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges, id, name')
     .eq('id', organizationId)
-    .single() as { data: { 
+    .maybeSingle() as { data: { 
       plan: string | null
       trial_ends_at: string | null
       admin_granted_plan: string | null
       admin_granted_plan_expires_at: string | null
       admin_privileges: any
-    } | null }
+      id: string
+      name: string
+    } | null; error: any }
 
+  if (orgError) {
+    console.error(`[checkOrganizationAccess] Database error for org ${organizationId}:`, {
+      error: orgError,
+      message: orgError?.message,
+      code: orgError?.code,
+      details: orgError?.details,
+      hint: orgError?.hint,
+    })
+    
+    // Try a simpler query to see if the org exists at all
+    const { data: orgExists, error: simpleError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', organizationId)
+      .maybeSingle()
+    
+    if (orgExists) {
+      console.error(`[checkOrganizationAccess] Organization exists but query failed. Retrying with simpler query...`)
+      // Retry with a simpler query
+      const { data: retryOrg, error: retryError } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', organizationId)
+        .maybeSingle()
+      
+      if (retryOrg) {
+        console.log(`[checkOrganizationAccess] Retry successful, org found:`, retryOrg.id)
+        // Use the retry result
+        const org = retryOrg as any
+        // Check for admin-granted privileges that bypass access checks
+        const privileges = org.admin_privileges || {}
+        if (privileges.bypass_limits === true) {
+          return { hasAccess: true, reason: 'admin_privilege_bypass' }
+        }
+        // Check admin-granted plan
+        if (org.admin_granted_plan) {
+          const expiresAt = org.admin_granted_plan_expires_at
+            ? new Date(org.admin_granted_plan_expires_at)
+            : null
+          if (!expiresAt || expiresAt > new Date()) {
+            return { hasAccess: true, reason: `admin_granted_plan_${org.admin_granted_plan}` }
+          }
+        }
+        // Has paid plan
+        if (org.plan) {
+          return { hasAccess: true, reason: 'active_plan' }
+        }
+        // Check trial status
+        if (org.trial_ends_at) {
+          const trialEndsAt = new Date(org.trial_ends_at)
+          if (new Date() < trialEndsAt) {
+            return { hasAccess: true, reason: 'active_trial' }
+          } else {
+            return { hasAccess: false, reason: 'Trial expired' }
+          }
+        }
+        return { hasAccess: false, reason: 'No active subscription or trial' }
+      } else {
+        console.error(`[checkOrganizationAccess] Retry also failed:`, retryError)
+      }
+    }
+    
+    return { hasAccess: false, reason: `Organization not found: ${orgError?.message || 'Database error'}` }
+  }
+  
   if (!org) {
+    console.error(`[checkOrganizationAccess] Organization ${organizationId} not found - no data returned`)
+    // Check if there are any agent configs or phone numbers referencing this org
+    const { data: orphanedConfigs } = await supabase
+      .from('agent_configs')
+      .select('id, organization_id, inbound_agent_id, outbound_agent_id')
+      .eq('organization_id', organizationId)
+      .limit(1)
+    const { data: orphanedPhones } = await supabase
+      .from('phone_numbers')
+      .select('id, organization_id, phone_number')
+      .eq('organization_id', organizationId)
+      .limit(1)
+    
+    if (orphanedConfigs && orphanedConfigs.length > 0) {
+      console.error(`[checkOrganizationAccess] Found orphaned agent_configs referencing org ${organizationId}`)
+    }
+    if (orphanedPhones && orphanedPhones.length > 0) {
+      console.error(`[checkOrganizationAccess] Found phone_numbers referencing org ${organizationId}`)
+    }
     return { hasAccess: false, reason: 'Organization not found' }
   }
 
@@ -294,69 +380,81 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fallback: get the first organization (for testing) - REMOVE IN PRODUCTION
+    // If we couldn't find an organization, return error (don't use fallback in production)
     if (!organizationId) {
-      console.log('[Webhook] ⚠️ Using fallback - could not find organization')
-      console.log('[Webhook] Full payload for debugging:', JSON.stringify(payload, null, 2))
+      console.error('[Webhook] ❌ Could not identify organization from webhook payload')
+      console.log('[Webhook] Payload identifiers:', {
+        metadata: payload.metadata,
+        assistantId: payload.assistantId || payload.assistant_id || payload.assistant?.id,
+        phoneNumberId: payload.phoneNumberId || payload.phoneNumber_id || payload.phone?.id,
+        to: payload.to,
+        from: payload.from,
+      })
       
-      // List all organizations with their phone numbers and assistant IDs for debugging
-      const { data: allOrgs } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .limit(10)
-      console.log('[Webhook] Available organizations:', JSON.stringify(allOrgs, null, 2))
-      
-      // List all phone numbers
-      const { data: allPhones } = await supabase
-        .from('phone_numbers')
-        .select('organization_id, phone_number, provider_phone_id, type')
-      console.log('[Webhook] All phone numbers in database:', JSON.stringify(allPhones, null, 2))
-      
-      // List all agent configs
+      // Log available data for debugging
       const { data: allAgentConfigs } = await supabase
         .from('agent_configs')
         .select('organization_id, inbound_agent_id, outbound_agent_id')
-      console.log('[Webhook] All agent configs:', JSON.stringify(allAgentConfigs, null, 2))
+        .limit(5)
+      const { data: allPhones } = await supabase
+        .from('phone_numbers')
+        .select('organization_id, phone_number, provider_phone_id')
+        .limit(5)
       
-      // Store debug info for response
-      const debugInfo = {
-        payloadTopLevelKeys: Object.keys(payload),
-        payloadIdentifiers: {
+      console.log('[Webhook] Sample agent configs:', JSON.stringify(allAgentConfigs, null, 2))
+      console.log('[Webhook] Sample phone numbers:', JSON.stringify(allPhones, null, 2))
+      
+      return NextResponse.json({ 
+        error: 'Could not identify organization from webhook. Please verify your Vapi assistant IDs and phone number IDs are correctly configured.',
+        receivedIdentifiers: {
           metadata: payload.metadata,
-          assistantId: payload.assistantId,
-          assistant_id: payload.assistant_id,
-          assistant: payload.assistant,
-          phoneNumberId: payload.phoneNumberId,
-          phoneNumber: payload.phoneNumber,
-          phone: payload.phone,
-          to: payload.to,
-          from: payload.from,
-          call: payload.call ? Object.keys(payload.call) : null,
-        },
-        availableOrganizations: allOrgs || [],
-        availablePhoneNumbers: allPhones || [],
-        availableAgentConfigs: allAgentConfigs || [],
-      }
-      
-      const { data: organizations } = await supabase
-        .from('organizations')
-        .select('id')
-        .limit(1)
-        .single() as { data: { id: string } | null }
-
-      if (!organizations) {
-        console.error('[Webhook] No organizations found in database')
-        return NextResponse.json({ 
-          error: 'No organization found',
-          debug: debugInfo
-        }, { status: 400 })
-      }
-      organizationId = organizations.id
-      console.log('[Webhook] Using fallback organization:', organizationId)
-      
-      // Log debug info in response for easier debugging
-      console.log('[Webhook] DEBUG INFO:', JSON.stringify(debugInfo, null, 2))
+          assistantId: payload.assistantId || payload.assistant_id,
+          phoneNumberId: payload.phoneNumberId || payload.phoneNumber_id,
+        }
+      }, { status: 400 })
     }
+    
+    // Verify the organization actually exists before checking access
+    const { data: orgExists, error: orgExistsError } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('id', organizationId)
+      .maybeSingle()
+    
+    if (orgExistsError) {
+      console.error(`[Webhook] Error checking if organization exists:`, {
+        organizationId,
+        error: orgExistsError,
+        message: orgExistsError?.message,
+        code: orgExistsError?.code,
+      })
+    }
+    
+    if (!orgExists) {
+      console.error(`[Webhook] ❌ Organization ${organizationId} not found in database`)
+      console.log('[Webhook] This may indicate:', {
+        issue: 'Organization was deleted or ID is incorrect',
+        organizationId,
+        suggestion: 'Check if agent_configs or phone_numbers reference a deleted organization',
+      })
+      
+      // Try to find what's referencing this organization
+      const { data: refs } = await supabase
+        .from('agent_configs')
+        .select('id, organization_id, inbound_agent_id, outbound_agent_id')
+        .eq('organization_id', organizationId)
+        .limit(1)
+      
+      if (refs && refs.length > 0) {
+        console.error(`[Webhook] Found agent_configs referencing missing org:`, refs)
+      }
+      
+      return NextResponse.json({ 
+        error: `Organization ${organizationId} not found in database. The organization may have been deleted or the configuration is incorrect.`,
+      }, { status: 404 })
+    }
+    
+    console.log(`[Webhook] ✅ Organization verified: ${orgExists.name} (${orgExists.id})`)
 
     // 🔒 CHECK ACCESS - Verify organization has active trial or subscription
     const accessCheck = await checkOrganizationAccess(supabase, organizationId)
