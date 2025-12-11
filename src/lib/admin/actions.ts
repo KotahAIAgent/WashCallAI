@@ -511,8 +511,74 @@ export async function adminRevokePrivileges(
 }
 
 /**
+ * Suspend a plan (cancel Stripe subscription but keep plan field in database)
+ * This preserves all data while blocking access
+ */
+export async function adminSuspendPlan(
+  organizationId: string,
+  adminEmail: string
+) {
+  const supabase = createServiceRoleClient()
+
+  // Verify organization exists
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select('id, name, plan, billing_customer_id')
+    .eq('id', organizationId)
+    .maybeSingle()
+
+  if (orgError) {
+    console.error('[adminSuspendPlan] Error fetching organization:', orgError)
+    return { error: `Database error: ${orgError.message || 'Failed to fetch organization'}` }
+  }
+
+  if (!org) {
+    console.error('[adminSuspendPlan] Organization not found:', organizationId)
+    return { error: `Organization not found with ID: ${organizationId}` }
+  }
+
+  if (!org.plan) {
+    return { error: 'Organization does not have an active plan to suspend' }
+  }
+
+  // Cancel Stripe subscription if it exists
+  if (org.billing_customer_id && stripe) {
+    try {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: org.billing_customer_id,
+        status: 'active',
+        limit: 1,
+      })
+
+      if (subscriptions.data.length > 0) {
+        const subscription = subscriptions.data[0]
+        await stripe.subscriptions.cancel(subscription.id)
+        console.log(`✓ Canceled Stripe subscription ${subscription.id} for org ${organizationId}`)
+      } else {
+        console.log(`ℹ No active Stripe subscription found for org ${organizationId}`)
+      }
+    } catch (error: any) {
+      console.error('Error canceling Stripe subscription:', error)
+      return { error: `Failed to cancel Stripe subscription: ${error.message}` }
+    }
+  } else {
+    console.log(`ℹ No billing customer ID for org ${organizationId}, skipping Stripe cancellation`)
+  }
+
+  // Note: We intentionally keep the plan field in the database
+  // The access check will verify Stripe subscription status and block access
+  // This preserves all data while effectively suspending service
+
+  revalidatePath('/app/admin')
+  return { 
+    success: true, 
+    message: `Plan suspended for ${org.name}. Stripe subscription canceled. Plan field preserved. Access will be blocked on next call.` 
+  }
+}
+
+/**
  * Remove all plans from an organization (both regular plan and admin-granted plan)
- * This effectively revokes all subscription access
+ * This effectively revokes all subscription access and clears plan data
  */
 export async function adminRemoveAllPlans(
   organizationId: string,

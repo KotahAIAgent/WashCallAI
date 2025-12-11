@@ -119,24 +119,12 @@ export async function GET(request: Request) {
             limit: 1,
           })
 
-          // If no active subscription found, clear the plan and deny access
+          // If no active subscription found, deny access (but don't clear plan - preserves data for suspend functionality)
           if (subscriptions.data.length === 0) {
-            console.warn(`[access/check] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Clearing plan.`)
+            console.warn(`[access/check] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
             
-            // Clear the plan asynchronously (don't wait for it)
-            Promise.resolve(
-              supabase
-                .from('organizations')
-                .update({ plan: null, updated_at: new Date().toISOString() })
-                .eq('id', organizationId)
-            )
-              .then(() => {
-                console.log(`✓ Cleared plan for org ${organizationId} (no active subscription)`)
-              })
-              .catch((err: any) => {
-                console.error(`Error clearing plan for org ${organizationId}:`, err)
-              })
-
+            // Don't clear the plan - this allows "suspend" functionality to preserve data
+            // The plan field stays but access is blocked
             return NextResponse.json({
               allowed: false,
               reason: 'subscription_ended',
@@ -146,11 +134,31 @@ export async function GET(request: Request) {
           }
         } catch (error: any) {
           console.error(`[access/check] Error checking Stripe subscription for org ${organizationId}:`, error)
-          // If Stripe check fails, still allow access (fail open) but log the error
-          // This prevents service disruption if Stripe API is down
+          // If Stripe check fails, deny access (fail closed) for security
+          // This ensures we don't allow access if we can't verify subscription
+          return NextResponse.json({
+            allowed: false,
+            reason: 'subscription_verification_failed',
+            organization: org.name,
+            message: 'Unable to verify subscription status. Please contact support.',
+          })
         }
       }
+
+      // No billing customer ID, but plan exists
+      // Check if there's an admin-granted plan that might be active
+      // Otherwise, deny access if we can't verify subscription
+      if (!org.admin_granted_plan) {
+        console.warn(`[access/check] Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
+        return NextResponse.json({
+          allowed: false,
+          reason: 'cannot_verify_subscription',
+          organization: org.name,
+          message: 'Cannot verify subscription - no billing customer ID.',
+        })
+      }
       
+      // If we get here, subscription is verified and active
       return NextResponse.json({
         allowed: true,
         reason: 'active_plan',

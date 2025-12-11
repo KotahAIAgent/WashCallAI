@@ -26,7 +26,8 @@ import {
   adminRevokePlanUpgrade,
   adminGrantPrivileges,
   adminRevokePrivileges,
-  adminRemoveAllPlans
+  adminRemoveAllPlans,
+  adminSuspendPlan
 } from '@/lib/admin/actions'
 import { getEffectivePlan } from '@/lib/admin/utils'
 
@@ -70,6 +71,7 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
   const [starterPlanBlocked, setStarterPlanBlocked] = useState(false)
   const [privilegesNotes, setPrivilegesNotes] = useState('')
   const [privilegesLoading, setPrivilegesLoading] = useState(false)
+  const [suspendPlanLoading, setSuspendPlanLoading] = useState(false)
   const [removeAllPlansLoading, setRemoveAllPlansLoading] = useState(false)
 
   const { toast } = useToast()
@@ -227,6 +229,51 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
     setPrivilegesLoading(false)
   }
 
+  async function handleSuspendPlan() {
+    if (!selectedOrg) {
+      toast({
+        title: 'Error',
+        description: 'No organization selected',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!selectedOrgData?.plan) {
+      toast({
+        title: 'Error',
+        description: 'Organization does not have an active plan to suspend',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!confirm('Suspend this organization\'s plan? This will:\n\n- Cancel their Stripe subscription\n- Block all inbound calls immediately\n- Preserve all data (plan field stays in database)\n- They can resubscribe later to restore access\n\nThis is reversible - they can resubscribe to restore service.')) {
+      return
+    }
+
+    setSuspendPlanLoading(true)
+
+    console.log('[AdminManagePrivileges] Suspending plan for org:', selectedOrg)
+    const result = await adminSuspendPlan(selectedOrg, adminEmail)
+
+    if (result?.error) {
+      toast({
+        title: 'Error',
+        description: result.error,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Plan Suspended',
+        description: result.message || 'Plan has been suspended. All data preserved.',
+      })
+      router.refresh()
+    }
+
+    setSuspendPlanLoading(false)
+  }
+
   async function handleRemoveAllPlans() {
     if (!selectedOrg) {
       toast({
@@ -237,7 +284,7 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
       return
     }
 
-    if (!confirm('Are you sure you want to remove ALL plans from this organization? This will:\n\n- Remove their regular subscription plan\n- Remove any admin-granted plan\n- Cancel their Stripe subscription (if active)\n- Revoke all access immediately\n\nThis action cannot be undone easily.')) {
+    if (!confirm('Are you sure you want to remove ALL plans from this organization? This will:\n\n- Remove their regular subscription plan\n- Remove any admin-granted plan\n- Cancel their Stripe subscription (if active)\n- Revoke all access immediately\n- Clear plan data from database\n\nThis action cannot be undone easily.')) {
       return
     }
 
@@ -555,15 +602,39 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
             </>
           )}
 
-          {/* Remove All Plans Section */}
+          {/* Suspend/Remove Plans Section */}
           {selectedOrg && selectedOrgData && (selectedOrgData.plan || selectedOrgData.admin_granted_plan) && (
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t space-y-3">
+              {/* Suspend Plan - Preserves Data */}
+              {selectedOrgData.plan && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-amber-900 mb-1">Suspend Plan</h4>
+                      <p className="text-sm text-amber-700">
+                        Cancel Stripe subscription and block access, but preserve all data. Plan field stays in database. Reversible.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSuspendPlan}
+                    disabled={suspendPlanLoading}
+                    className="w-full border-amber-300 text-amber-700 hover:bg-amber-100"
+                  >
+                    {suspendPlanLoading ? 'Suspending...' : 'Suspend Plan (Keep Data)'}
+                  </Button>
+                </div>
+              )}
+
+              {/* Remove All Plans - Clears Data */}
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h4 className="font-semibold text-red-900 mb-1">Danger Zone</h4>
+                    <h4 className="font-semibold text-red-900 mb-1">Danger Zone - Remove All Plans</h4>
                     <p className="text-sm text-red-700">
-                      Remove all plans from this organization. This will cancel their Stripe subscription and revoke all access immediately.
+                      Remove all plans and clear plan data from database. This will cancel their Stripe subscription and revoke all access immediately. Not easily reversible.
                     </p>
                   </div>
                 </div>
@@ -574,7 +645,7 @@ export function AdminManagePrivileges({ organizations, adminEmail }: AdminManage
                   disabled={removeAllPlansLoading}
                   className="w-full"
                 >
-                  {removeAllPlansLoading ? 'Removing...' : 'Remove All Plans'}
+                  {removeAllPlansLoading ? 'Removing...' : 'Remove All Plans (Clear Data)'}
                 </Button>
               </div>
             </div>

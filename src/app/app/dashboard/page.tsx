@@ -17,6 +17,7 @@ import { DashboardChart } from '@/components/dashboard/DashboardChart'
 import { RecentActivityFeed } from '@/components/dashboard/RecentActivityFeed'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { EmptyDashboard } from '@/components/dashboard/EmptyDashboard'
+import { InboundCallNotification } from '@/components/dashboard/InboundCallNotification'
 
 async function getDashboardData(organizationId: string) {
   const supabase = createServerClient()
@@ -231,6 +232,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Inbound Call Notification - Shows popup when new inbound call arrives */}
+      <InboundCallNotification organizationId={profile.organization_id} />
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

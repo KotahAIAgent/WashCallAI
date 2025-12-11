@@ -147,40 +147,36 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
           limit: 1,
         })
 
-        // If no active subscription found, clear the plan and deny access
+        // If no active subscription found, deny access (but don't clear plan - preserves data)
         if (subscriptions.data.length === 0) {
-          console.warn(`[checkOrganizationAccess] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Clearing plan.`)
+          console.warn(`[checkOrganizationAccess] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
           
-          // Clear the plan asynchronously (don't wait for it)
-          Promise.resolve(
-            supabase
-              .from('organizations')
-              .update({ plan: null, updated_at: new Date().toISOString() })
-              .eq('id', organizationId)
-          )
-            .then(() => {
-              console.log(`✓ Cleared plan for org ${organizationId} (no active subscription)`)
-            })
-            .catch((err: any) => {
-              console.error(`Error clearing plan for org ${organizationId}:`, err)
-            })
-
-          return { hasAccess: false, reason: 'Subscription ended - plan cleared' }
+          // Don't clear the plan - this allows "suspend" functionality to preserve data
+          // The plan field stays but access is blocked
+          return { hasAccess: false, reason: 'Subscription ended - no active subscription in Stripe' }
         }
 
         // Subscription is active, allow access
         return { hasAccess: true, reason: 'active_plan' }
       } catch (error: any) {
         console.error(`[checkOrganizationAccess] Error checking Stripe subscription for org ${organizationId}:`, error)
-        // If Stripe check fails, still allow access (fail open) but log the error
-        // This prevents service disruption if Stripe API is down
-        return { hasAccess: true, reason: 'active_plan (Stripe check failed)' }
+        // If Stripe check fails, deny access (fail closed) for security
+        // This ensures we don't allow access if we can't verify subscription
+        return { hasAccess: false, reason: 'Unable to verify subscription status' }
       }
     }
 
-    // No billing customer ID, but plan exists - allow access
-    // This could be a legacy account or manually set plan
-    return { hasAccess: true, reason: 'active_plan' }
+    // No billing customer ID, but plan exists
+    // Check if there's an admin-granted plan that might be active
+    // Otherwise, deny access if we can't verify subscription
+    if (!org.admin_granted_plan) {
+      console.warn(`[checkOrganizationAccess] Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
+      return { hasAccess: false, reason: 'Cannot verify subscription - no billing customer ID' }
+    }
+
+    // If admin-granted plan exists and is active, allow access
+    // Otherwise deny
+    return { hasAccess: false, reason: 'No active subscription' }
   }
 
   // Check trial status
@@ -988,3 +984,4 @@ function extractNameFromTranscript(transcript: string | null): string | null {
   const nameMatch = transcript.match(/(?:name is|I'm|I am|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
   return nameMatch ? nameMatch[1] : null
 }
+
