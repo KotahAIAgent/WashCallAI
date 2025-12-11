@@ -90,8 +90,8 @@ export function IndustryPricingSelector({
     if (plan === 'growth') {
       return [
         'Everything in Starter',
-        industryPricing ? `${industryPricing.minutes.toLocaleString()} outbound minutes/month` : 'Outbound AI calling',
-        industryPricing ? `~${Math.round(industryPricing.minutes / (industryPricing.avgCallDuration || 5))} calls/month (avg ${industryPricing.avgCallDuration} min/call)` : '3 active campaigns',
+        industryPricing ? `${industryPricing.minutes.toLocaleString()} outbound minutes/month included` : 'Outbound AI calling',
+        industryPricing ? `Overage: $${industryPricing.overageRate}/minute after included minutes` : '3 active campaigns',
         'Campaign contact management',
         'Advanced analytics',
         'Priority support',
@@ -102,8 +102,8 @@ export function IndustryPricingSelector({
     // Pro plan
     return [
       'Everything in Growth',
-      industryPricing ? `${industryPricing.minutes.toLocaleString()} outbound minutes/month` : 'High-volume outbound calling',
-      industryPricing ? `~${Math.round(industryPricing.minutes / (industryPricing.avgCallDuration || 5))} calls/month (avg ${industryPricing.avgCallDuration} min/call)` : 'Unlimited campaigns',
+      industryPricing ? `${industryPricing.minutes.toLocaleString()} outbound minutes/month included` : 'High-volume outbound calling',
+      industryPricing ? `Overage: $${industryPricing.overageRate}/minute after included minutes` : 'Unlimited campaigns',
       'Multi-location support',
       'Custom AI voice & scripts',
       'API access',

@@ -42,7 +42,7 @@ export const STRIPE_PLANS = {
     description: 'Scale your business with outbound AI calling',
     features: [
       'Everything in Starter',
-      '500 outbound AI calls/month',
+      'Outbound minutes included (varies by industry)',
       '3 active campaigns',
       'Campaign contact management',
       'Advanced analytics',
@@ -65,7 +65,7 @@ export const STRIPE_PLANS = {
     description: 'Unlimited power for high-volume operations',
     features: [
       'Everything in Growth',
-      '2,500 outbound AI calls/month',
+      'Outbound minutes included (varies by industry)',
       'Unlimited campaigns',
       'Multi-location support',
       'Custom AI voice & scripts',

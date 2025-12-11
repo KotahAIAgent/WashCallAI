@@ -366,7 +366,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
                   <ul className="space-y-3">
                     {[
                       'Everything in Starter',
-                      '500 outbound AI calls/month',
+                      'Outbound minutes included (varies by industry)',
                       '3 active campaigns',
                       'Campaign contact management',
                       'Advanced analytics',
@@ -412,7 +412,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
                   <ul className="space-y-3">
                     {[
                       'Everything in Growth',
-                      '2,500 outbound calls/month',
+                      'Outbound minutes included (varies by industry)',
                       'Unlimited campaigns',
                       'Custom AI voice & scripts',
                       'API access',
