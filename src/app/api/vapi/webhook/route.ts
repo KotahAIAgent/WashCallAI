@@ -408,9 +408,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // If we couldn't find an organization, return error (don't use fallback in production)
+    // If we couldn't find an organization, FAIL OPEN (allow the call through)
+    // Only deny if we're CERTAIN the organization doesn't have access
     if (!organizationId) {
-      console.error('[Webhook] ❌ Could not identify organization from webhook payload')
+      console.warn('[Webhook] ⚠️ Could not identify organization from webhook payload - ALLOWING call through (fail open)')
       console.log('[Webhook] Payload identifiers:', {
         metadata: payload.metadata,
         assistantId: payload.assistantId || payload.assistant_id || payload.assistant?.id,
@@ -419,7 +420,7 @@ export async function POST(request: Request) {
         from: payload.from,
       })
       
-      // Log available data for debugging
+      // Log available data for debugging (but don't block the call)
       const { data: allAgentConfigs } = await supabase
         .from('agent_configs')
         .select('organization_id, inbound_agent_id, outbound_agent_id')
@@ -432,14 +433,16 @@ export async function POST(request: Request) {
       console.log('[Webhook] Sample agent configs:', JSON.stringify(allAgentConfigs, null, 2))
       console.log('[Webhook] Sample phone numbers:', JSON.stringify(allPhones, null, 2))
       
+      // Return 200 OK to allow the call through
       return NextResponse.json({ 
-        error: 'Could not identify organization from webhook. Please verify your Vapi assistant IDs and phone number IDs are correctly configured.',
+        message: 'Organization could not be identified, allowing call through.',
+        reason: 'unidentified_org_fail_open',
         receivedIdentifiers: {
           metadata: payload.metadata,
           assistantId: payload.assistantId || payload.assistant_id,
           phoneNumberId: payload.phoneNumberId || payload.phoneNumber_id,
         }
-      }, { status: 400 })
+      }, { status: 200 })
     }
     
     // Verify the organization actually exists before checking access

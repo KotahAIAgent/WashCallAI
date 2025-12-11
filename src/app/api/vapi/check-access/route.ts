@@ -94,9 +94,11 @@ export async function POST(request: Request) {
       }
     }
     
-    // If still not found, try by actual phone number
+    // If still not found, try by actual phone number (multiple formats)
     if (!organizationId && toNumber) {
       const normalized = normalizePhoneNumber(toNumber)
+      
+      // Try phone_numbers table first
       if (normalized) {
         const { data: phoneNumber } = await supabase
           .from('phone_numbers')
@@ -106,16 +108,48 @@ export async function POST(request: Request) {
         
         if (phoneNumber) {
           organizationId = phoneNumber.organization_id
-          console.log('[Vapi Check Access] Found org by phone number:', organizationId)
+          console.log('[Vapi Check Access] ✅ Found org by phone number in phone_numbers table:', organizationId)
+        }
+      }
+      
+      // Also try exact match (without normalization)
+      if (!organizationId) {
+        const { data: phoneNumberExact } = await supabase
+          .from('phone_numbers')
+          .select('organization_id')
+          .eq('phone_number', toNumber)
+          .maybeSingle()
+        
+        if (phoneNumberExact) {
+          organizationId = phoneNumberExact.organization_id
+          console.log('[Vapi Check Access] ✅ Found org by exact phone number:', organizationId)
+        }
+      }
+      
+      // Also try agent_configs table (for legacy phone numbers)
+      if (!organizationId) {
+        const { data: agentConfig } = await supabase
+          .from('agent_configs')
+          .select('organization_id')
+          .or(`inbound_phone_number.eq.${toNumber},inbound_phone_number.eq.${normalized || ''}`)
+          .maybeSingle()
+        
+        if (agentConfig) {
+          organizationId = agentConfig.organization_id
+          console.log('[Vapi Check Access] ✅ Found org by phone number in agent_configs:', organizationId)
         }
       }
     }
     
+    // If we still can't identify, FAIL OPEN (allow the call) to avoid blocking legitimate calls
+    // Only deny access if we're CERTAIN the organization doesn't have access
     if (!organizationId) {
-      console.error('[Vapi Check Access] ❌ Could not identify organization')
+      console.warn('[Vapi Check Access] ⚠️ Could not identify organization - ALLOWING call through (fail open)')
+      console.warn('[Vapi Check Access] Payload received:', JSON.stringify(payload, null, 2))
       return NextResponse.json({
-        allowed: false,
-        message: 'Unable to identify organization. Access denied.',
+        allowed: true,
+        message: 'Organization could not be identified, allowing call through.',
+        reason: 'unidentified_org_fail_open',
       })
     }
     
@@ -127,10 +161,11 @@ export async function POST(request: Request) {
       .maybeSingle()
     
     if (!org) {
-      console.error('[Vapi Check Access] ❌ Organization not found')
+      console.warn('[Vapi Check Access] ⚠️ Organization not found in database - ALLOWING call through (fail open)')
       return NextResponse.json({
-        allowed: false,
-        message: 'Organization not found. Access denied.',
+        allowed: true,
+        message: 'Organization not found in database, allowing call through.',
+        reason: 'org_not_found_fail_open',
       })
     }
     
@@ -188,11 +223,14 @@ export async function POST(request: Request) {
     })
     
   } catch (error: any) {
-    console.error('[Vapi Check Access] Error:', error)
-    // Fail closed - deny access on error
+    console.error('[Vapi Check Access] ❌ Error checking access:', error)
+    // FAIL OPEN - allow call through on error to avoid blocking legitimate calls
+    // Only deny if we're CERTAIN the organization doesn't have access
+    console.warn('[Vapi Check Access] ⚠️ Error occurred - ALLOWING call through (fail open)')
     return NextResponse.json({
-      allowed: false,
-      message: 'Unable to verify access. Please contact support.',
+      allowed: true,
+      message: 'Error verifying access, allowing call through.',
+      reason: 'error_fail_open',
     })
   }
 }
