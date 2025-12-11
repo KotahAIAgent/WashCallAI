@@ -110,55 +110,8 @@ export async function GET(request: Request) {
         })
       }
 
-      // If we have a billing customer ID, verify the subscription is actually active
-      if (org.billing_customer_id && stripe) {
-        try {
-          const subscriptions = await stripe.subscriptions.list({
-            customer: org.billing_customer_id,
-            status: 'active',
-            limit: 1,
-          })
-
-          // If no active subscription found, deny access (but don't clear plan - preserves data for suspend functionality)
-          if (subscriptions.data.length === 0) {
-            console.warn(`[access/check] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
-            
-            // Don't clear the plan - this allows "suspend" functionality to preserve data
-            // The plan field stays but access is blocked
-            return NextResponse.json({
-              allowed: false,
-              reason: 'subscription_ended',
-              organization: org.name,
-              message: 'Your subscription has ended. Please renew to continue using the service.',
-            })
-          }
-        } catch (error: any) {
-          console.error(`[access/check] Error checking Stripe subscription for org ${organizationId}:`, error)
-          // If Stripe check fails, deny access (fail closed) for security
-          // This ensures we don't allow access if we can't verify subscription
-          return NextResponse.json({
-            allowed: false,
-            reason: 'subscription_verification_failed',
-            organization: org.name,
-            message: 'Unable to verify subscription status. Please contact support.',
-          })
-        }
-      }
-
-      // No billing customer ID, but plan exists
-      // Check if there's an admin-granted plan that might be active
-      // Otherwise, deny access if we can't verify subscription
-      if (!org.admin_granted_plan) {
-        console.warn(`[access/check] Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
-        return NextResponse.json({
-          allowed: false,
-          reason: 'cannot_verify_subscription',
-          organization: org.name,
-          message: 'Cannot verify subscription - no billing customer ID.',
-        })
-      }
-      
-      // If we get here, subscription is verified and active
+      // TEMPORARY: Skip Stripe verification - just check if plan exists
+      // TODO: Re-enable Stripe verification when Stripe is set up
       return NextResponse.json({
         allowed: true,
         reason: 'active_plan',
