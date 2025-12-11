@@ -3,6 +3,10 @@
 import { createActionClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { stripe, STRIPE_PLANS } from '@/lib/stripe/server'
+import { getEffectivePlan, hasPrivilege } from '@/lib/admin/utils'
+
+// Re-export utilities for server-side use
+export { getEffectivePlan, hasPrivilege }
 
 type SetupStatus = 'pending' | 'in_review' | 'setting_up' | 'testing' | 'ready' | 'active'
 
@@ -506,40 +510,5 @@ export async function adminRevokePrivileges(
   return { success: true, message: 'All privileges revoked' }
 }
 
-/**
- * Get effective plan for an organization (considers admin-granted plans)
- */
-export function getEffectivePlan(org: {
-  plan: string | null
-  admin_granted_plan: string | null
-  admin_granted_plan_expires_at: string | null
-}): 'starter' | 'growth' | 'pro' | null {
-  // Check if admin-granted plan is active
-  if (org.admin_granted_plan) {
-    const expiresAt = org.admin_granted_plan_expires_at
-      ? new Date(org.admin_granted_plan_expires_at)
-      : null
-
-    // If no expiration or not expired, use admin-granted plan
-    if (!expiresAt || expiresAt > new Date()) {
-      return org.admin_granted_plan as 'starter' | 'growth' | 'pro'
-    }
-  }
-
-  // Otherwise use regular plan
-  return org.plan as 'starter' | 'growth' | 'pro' | null
-}
-
-/**
- * Check if organization has a specific privilege
- */
-export function hasPrivilege(
-  org: {
-    admin_privileges: any
-  },
-  privilege: string
-): boolean {
-  const privileges = org.admin_privileges || {}
-  return privileges[privilege] === true
-}
+// Utility functions moved to @/lib/admin/utils.ts to allow client component imports
 

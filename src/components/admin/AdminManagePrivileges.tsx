@@ -25,9 +25,9 @@ import {
   adminGrantPlanUpgrade, 
   adminRevokePlanUpgrade,
   adminGrantPrivileges,
-  adminRevokePrivileges,
-  getEffectivePlan
+  adminRevokePrivileges
 } from '@/lib/admin/actions'
+import { getEffectivePlan } from '@/lib/admin/utils'
 
 interface Organization {
   id: string
