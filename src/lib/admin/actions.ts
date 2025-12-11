@@ -363,3 +363,183 @@ FusionCaller - Never Miss Another Call
   console.log('Status update email not sent (no email provider) to:', customerEmail)
 }
 
+// ============================================
+// ADMIN PRIVILEGE MANAGEMENT
+// ============================================
+
+/**
+ * Grant a temporary plan upgrade to an organization
+ */
+export async function adminGrantPlanUpgrade(
+  organizationId: string,
+  plan: 'starter' | 'growth' | 'pro',
+  expiresAt: Date | null,
+  notes: string,
+  adminEmail: string
+) {
+  const supabase = createServiceRoleClient()
+
+  // Verify organization exists
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select('id, name')
+    .eq('id', organizationId)
+    .single()
+
+  if (orgError || !org) {
+    return { error: 'Organization not found' }
+  }
+
+  // Update organization with admin-granted plan
+  const { error: updateError } = await supabase
+    .from('organizations')
+    .update({
+      admin_granted_plan: plan,
+      admin_granted_plan_expires_at: expiresAt ? expiresAt.toISOString() : null,
+      admin_granted_plan_notes: notes || null,
+    })
+    .eq('id', organizationId)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  revalidatePath('/app/admin')
+  return { success: true, message: `Plan upgrade granted: ${plan} for ${org.name}` }
+}
+
+/**
+ * Revoke admin-granted plan upgrade
+ */
+export async function adminRevokePlanUpgrade(
+  organizationId: string,
+  adminEmail: string
+) {
+  const supabase = createServiceRoleClient()
+
+  const { error: updateError } = await supabase
+    .from('organizations')
+    .update({
+      admin_granted_plan: null,
+      admin_granted_plan_expires_at: null,
+      admin_granted_plan_notes: null,
+    })
+    .eq('id', organizationId)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  revalidatePath('/app/admin')
+  return { success: true, message: 'Plan upgrade revoked' }
+}
+
+/**
+ * Grant special privileges to an organization
+ */
+export async function adminGrantPrivileges(
+  organizationId: string,
+  privileges: {
+    unlimited_calls?: boolean
+    bypass_limits?: boolean
+    unlimited_campaigns?: boolean
+    [key: string]: any
+  },
+  notes: string,
+  adminEmail: string
+) {
+  const supabase = createServiceRoleClient()
+
+  // Get current privileges
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('admin_privileges')
+    .eq('id', organizationId)
+    .single()
+
+  const currentPrivileges = (org?.admin_privileges as any) || {}
+
+  // Merge new privileges with existing ones
+  const updatedPrivileges = {
+    ...currentPrivileges,
+    ...privileges,
+  }
+
+  const { error: updateError } = await supabase
+    .from('organizations')
+    .update({
+      admin_privileges: updatedPrivileges,
+      admin_privileges_notes: notes || null,
+    })
+    .eq('id', organizationId)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  revalidatePath('/app/admin')
+  return { success: true, message: 'Privileges granted' }
+}
+
+/**
+ * Revoke all admin privileges
+ */
+export async function adminRevokePrivileges(
+  organizationId: string,
+  adminEmail: string
+) {
+  const supabase = createServiceRoleClient()
+
+  const { error: updateError } = await supabase
+    .from('organizations')
+    .update({
+      admin_privileges: {},
+      admin_privileges_notes: null,
+    })
+    .eq('id', organizationId)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  revalidatePath('/app/admin')
+  return { success: true, message: 'All privileges revoked' }
+}
+
+/**
+ * Get effective plan for an organization (considers admin-granted plans)
+ */
+export function getEffectivePlan(org: {
+  plan: string | null
+  admin_granted_plan: string | null
+  admin_granted_plan_expires_at: string | null
+}): 'starter' | 'growth' | 'pro' | null {
+  // Check if admin-granted plan is active
+  if (org.admin_granted_plan) {
+    const expiresAt = org.admin_granted_plan_expires_at
+      ? new Date(org.admin_granted_plan_expires_at)
+      : null
+
+    // If no expiration or not expired, use admin-granted plan
+    if (!expiresAt || expiresAt > new Date()) {
+      return org.admin_granted_plan as 'starter' | 'growth' | 'pro'
+    }
+  }
+
+  // Otherwise use regular plan
+  return org.plan as 'starter' | 'growth' | 'pro' | null
+}
+
+/**
+ * Check if organization has a specific privilege
+ */
+export function hasPrivilege(
+  org: {
+    admin_privileges: any
+  },
+  privilege: string
+): boolean {
+  const privileges = org.admin_privileges || {}
+  return privileges[privilege] === true
+}
+

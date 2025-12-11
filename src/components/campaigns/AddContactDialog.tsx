@@ -67,7 +67,15 @@ export function AddContactDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone *</Label>
-              <Input id="phone" name="phone" placeholder="+1234567890" required />
+              <Input 
+                id="phone" 
+                name="phone" 
+                placeholder="1234567890 or +1234567890" 
+                required 
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter 10 digits (e.g., 1234567890) or with country code (e.g., +1234567890)
+              </p>
             </div>
           </div>
           <div className="space-y-2">

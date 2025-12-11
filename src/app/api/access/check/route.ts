@@ -48,15 +48,51 @@ export async function GET(request: Request) {
     // Check organization access
     const { data: org } = await supabase
       .from('organizations')
-      .select('plan, trial_ends_at, name')
+      .select('plan, trial_ends_at, name, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges')
       .eq('id', organizationId)
-      .single() as { data: { plan: string | null; trial_ends_at: string | null; name: string } | null }
+      .single() as { data: { 
+        plan: string | null
+        trial_ends_at: string | null
+        name: string
+        admin_granted_plan: string | null
+        admin_granted_plan_expires_at: string | null
+        admin_privileges: any
+      } | null }
 
     if (!org) {
       return NextResponse.json({
         allowed: false,
         reason: 'Organization not found',
       })
+    }
+
+    // Check for admin-granted privileges that bypass access checks
+    const privileges = org.admin_privileges || {}
+    if (privileges.bypass_limits === true) {
+      return NextResponse.json({
+        allowed: true,
+        reason: 'admin_privilege_bypass',
+        organization: org.name,
+        plan: 'admin_privilege',
+      })
+    }
+
+    // Check admin-granted plan (overrides regular plan)
+    if (org.admin_granted_plan) {
+      const expiresAt = org.admin_granted_plan_expires_at
+        ? new Date(org.admin_granted_plan_expires_at)
+        : null
+
+      // If no expiration or not expired, admin-granted plan is active
+      if (!expiresAt || expiresAt > new Date()) {
+        return NextResponse.json({
+          allowed: true,
+          reason: 'admin_granted_plan',
+          plan: org.admin_granted_plan,
+          organization: org.name,
+          expiresAt: org.admin_granted_plan_expires_at,
+        })
+      }
     }
 
     // Has paid plan

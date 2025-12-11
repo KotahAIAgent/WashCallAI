@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { getIndustryBySlug, type IndustrySlug } from '@/lib/industries/config'
 
 // Make Stripe optional for builds without the secret key
 export const stripe = process.env.STRIPE_SECRET_KEY 
@@ -26,8 +27,8 @@ export const STRIPE_PLANS = {
       'Setup fee credited after 6 months',
     ],
     limits: {
-      inboundCalls: -1, // -1 = unlimited
-      outboundCalls: 0,
+      inboundMinutes: -1, // -1 = unlimited
+      outboundMinutes: 0,
       campaigns: 0,
     },
     popular: false,
@@ -49,8 +50,8 @@ export const STRIPE_PLANS = {
       'Setup fee credited after 6 months',
     ],
     limits: {
-      inboundCalls: -1,
-      outboundCalls: 500,
+      inboundMinutes: -1,
+      outboundMinutes: 0, // Will be set by industry-specific pricing
       campaigns: 3,
     },
     popular: true,
@@ -73,8 +74,8 @@ export const STRIPE_PLANS = {
       'Setup fee credited after 6 months',
     ],
     limits: {
-      inboundCalls: -1,
-      outboundCalls: 2500,
+      inboundMinutes: -1,
+      outboundMinutes: 0, // Will be set by industry-specific pricing
       campaigns: -1,
     },
     popular: false,
@@ -92,7 +93,7 @@ export function planHasAccess(plan: PlanType | null, feature: 'outbound' | 'camp
   
   switch (feature) {
     case 'outbound':
-      return planConfig.limits.outboundCalls !== 0
+      return planConfig.limits.outboundMinutes !== 0
     case 'campaigns':
       return planConfig.limits.campaigns !== 0
     default:
@@ -100,9 +101,47 @@ export function planHasAccess(plan: PlanType | null, feature: 'outbound' | 'camp
   }
 }
 
-// Get remaining outbound calls for a plan
+// Get industry-specific pricing for a plan
+export function getIndustryPricing(plan: PlanType, industrySlug?: IndustrySlug | null) {
+  if (!industrySlug) {
+    // Return default/base pricing if no industry specified
+    return {
+      price: STRIPE_PLANS[plan].price,
+      minutes: 0,
+      overageRate: 0.20,
+    }
+  }
+
+  const industry = getIndustryBySlug(industrySlug)
+  if (!industry) {
+    return {
+      price: STRIPE_PLANS[plan].price,
+      minutes: 0,
+      overageRate: 0.20,
+    }
+  }
+
+  const pricing = industry.pricing
+  return {
+    price: pricing[plan],
+    minutes: plan === 'starter' ? pricing.starterMinutes : 
+             plan === 'growth' ? pricing.growthMinutes : 
+             pricing.proMinutes,
+    overageRate: pricing.overageRate,
+    avgCallDuration: pricing.avgCallDuration,
+  }
+}
+
+// Get remaining outbound minutes for a plan (industry-specific)
+export function getOutboundMinutes(plan: PlanType, industrySlug?: IndustrySlug | null): number {
+  if (!industrySlug) return 0
+  const industryPricing = getIndustryPricing(plan, industrySlug)
+  return industryPricing.minutes
+}
+
+// Legacy function for backward compatibility (returns 0 for minutes-based plans)
 export function getOutboundLimit(plan: PlanType): number {
-  return STRIPE_PLANS[plan]?.limits.outboundCalls || 0
+  return STRIPE_PLANS[plan]?.limits.outboundMinutes || 0
 }
 
 // Get setup fee amount for a plan

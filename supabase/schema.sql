@@ -39,7 +39,7 @@ CREATE TABLE organizations (
   primary_color TEXT DEFAULT '#3B82F6',
   -- Billing
   billing_customer_id TEXT,
-  plan TEXT DEFAULT 'starter' CHECK (plan IN ('starter', 'growth', 'pro')),
+  plan TEXT CHECK (plan IN ('starter', 'growth', 'pro')), -- NULL by default, set only when subscribed
   -- SMS Notification Settings
   notification_phone TEXT,
   notification_settings JSONB DEFAULT '{
@@ -77,7 +77,13 @@ CREATE TABLE organizations (
   trial_plan TEXT, -- Plan level for the trial (starter, growth, pro)
   -- Setup Fee Refund Tracking
   setup_fee_refunded BOOLEAN DEFAULT false,
-  setup_fee_refunded_at TIMESTAMPTZ
+  setup_fee_refunded_at TIMESTAMPTZ,
+  -- Admin Privileges
+  admin_granted_plan TEXT CHECK (admin_granted_plan IN ('starter', 'growth', 'pro')),
+  admin_granted_plan_expires_at TIMESTAMPTZ,
+  admin_granted_plan_notes TEXT,
+  admin_privileges JSONB DEFAULT '{}'::jsonb,
+  admin_privileges_notes TEXT
 );
 
 -- Create profiles table (depends on organizations and auth.users)

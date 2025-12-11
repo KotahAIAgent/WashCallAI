@@ -163,6 +163,25 @@ export async function updateCampaignStatus(campaignId: string, status: 'draft' |
 // CONTACT MANAGEMENT ACTIONS
 // ============================================
 
+// Normalize phone number to E.164 format
+function normalizePhoneNumber(phone: string): string {
+  if (!phone) return phone
+  // Remove all non-numeric characters except +
+  const cleaned = phone.replace(/[^\d+]/g, '')
+  if (!cleaned || cleaned.length < 10) return phone // Return original if invalid
+  
+  // If 10 digits, add +1
+  if (!cleaned.startsWith('+') && cleaned.length === 10) {
+    return '+1' + cleaned
+  }
+  // If 11 digits starting with 1, add +
+  if (!cleaned.startsWith('+') && cleaned.length === 11 && cleaned.startsWith('1')) {
+    return '+' + cleaned
+  }
+  // If already has +, return as is
+  return cleaned.startsWith('+') ? cleaned : '+' + cleaned
+}
+
 export async function addContact(formData: FormData) {
   const supabase = createActionClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -186,13 +205,16 @@ export async function addContact(formData: FormData) {
     return { error: 'Phone number is required' }
   }
 
+  // Normalize phone number to E.164 format
+  const normalizedPhone = normalizePhoneNumber(phone.trim())
+
   const { error } = await supabase
     .from('campaign_contacts')
     .insert({
       campaign_id: campaignId,
       organization_id: organizationId,
       name: name || null,
-      phone,
+      phone: normalizedPhone,
       email: email || null,
       business_name: businessName || null,
       address: address || null,
@@ -241,11 +263,12 @@ export async function importContacts(
     return { error: 'No valid contacts to import' }
   }
 
+  // Normalize phone numbers for all contacts
   const contactsToInsert = validContacts.map(c => ({
     campaign_id: campaignId,
     organization_id: organizationId,
     name: c.name || null,
-    phone: c.phone.trim(),
+    phone: normalizePhoneNumber(c.phone.trim()),
     email: c.email || null,
     business_name: c.businessName || null,
     address: c.address || null,

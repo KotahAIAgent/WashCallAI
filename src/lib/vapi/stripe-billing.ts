@@ -1,6 +1,7 @@
 import { stripe } from '@/lib/stripe/server'
-import { STRIPE_PLANS } from '@/lib/stripe/server'
+import { STRIPE_PLANS, getIndustryPricing } from '@/lib/stripe/server'
 import { createActionClient } from '@/lib/supabase/server'
+import type { IndustrySlug } from '@/lib/industries/config'
 
 /**
  * Simple Vapi to Stripe billing integration
@@ -13,6 +14,7 @@ interface ChargeCallOptions {
   callDuration: number // in seconds
   callDirection: 'inbound' | 'outbound'
   isOverage: boolean // true if this call exceeds plan limits
+  industrySlug?: IndustrySlug | null // Industry for pricing
 }
 
 /**
@@ -32,7 +34,7 @@ export async function chargeVapiCall({
     // Get organization billing info
     const { data: org } = await supabase
       .from('organizations')
-      .select('billing_customer_id, plan')
+      .select('billing_customer_id, plan, industry')
       .eq('id', organizationId)
       .single()
 
@@ -46,14 +48,13 @@ export async function chargeVapiCall({
       return { success: false, error: 'Stripe not configured' }
     }
 
-    // Calculate call cost
-    // You can customize these rates
-    const callCostPerMinute = isOverage 
-      ? 0.15 // $0.15/min for overage calls
-      : 0.10 // $0.10/min for included calls (optional - only if you want to charge for all calls)
+    // Get industry-specific overage rate
+    const industrySlug = (org?.industry as IndustrySlug) || options.industrySlug || null
+    const industryPricing = industrySlug ? getIndustryPricing(org?.plan as any, industrySlug) : null
+    const overageRate = industryPricing?.overageRate || 0.20
 
     const callMinutes = Math.ceil(callDuration / 60) // Round up to nearest minute
-    const callCostCents = Math.round(callMinutes * callCostPerMinute * 100)
+    const callCostCents = Math.round(callMinutes * overageRate * 100)
 
     // Only charge for overage calls (or customize this logic)
     if (!isOverage) {
@@ -65,7 +66,7 @@ export async function chargeVapiCall({
       customer: org.billing_customer_id,
       amount: callCostCents,
       currency: 'usd',
-      description: `Vapi ${callDirection} call (${callMinutes} min) - Overage charge`,
+      description: `Vapi ${callDirection} call (${callMinutes} min) - Overage @ $${overageRate}/min`,
       metadata: {
         organization_id: organizationId,
         call_id: callId,
@@ -95,18 +96,20 @@ export async function chargeVapiCall({
 
 /**
  * Check if a call should be charged (exceeds plan limits)
+ * Now tracks minutes instead of calls
  */
-export async function shouldChargeCall(organizationId: string): Promise<{
+export async function shouldChargeCall(organizationId: string, callDurationSeconds: number = 0): Promise<{
   shouldCharge: boolean
   reason: string
-  currentUsage: number
-  planLimit: number
+  currentUsage: number // in minutes
+  planLimit: number // in minutes
+  callMinutes: number
 }> {
   const supabase = createActionClient()
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('plan, billable_calls_this_month, billing_period_month, billing_period_year')
+    .select('plan, billable_calls_this_month, billing_period_month, billing_period_year, industry')
     .eq('id', organizationId)
     .single()
 
@@ -116,31 +119,51 @@ export async function shouldChargeCall(organizationId: string): Promise<{
       reason: 'Organization not found',
       currentUsage: 0,
       planLimit: 0,
+      callMinutes: 0,
     }
   }
 
   const plan = org.plan as 'starter' | 'growth' | 'pro' | null
-  const planConfig = plan ? STRIPE_PLANS[plan] : null
-  const planLimit: number = planConfig?.limits.outboundCalls ?? 0
+  if (!plan) {
+    return {
+      shouldCharge: false,
+      reason: 'No plan',
+      currentUsage: 0,
+      planLimit: 0,
+      callMinutes: Math.ceil(callDurationSeconds / 60),
+    }
+  }
+
+  // Get industry-specific pricing
+  const industrySlug = (org.industry as IndustrySlug) || null
+  const industryPricing = getIndustryPricing(plan, industrySlug)
+  const planLimit = industryPricing.minutes
 
   // Unlimited plans don't charge (-1 means unlimited)
   if (planLimit === -1 || planLimit < 0) {
     return {
       shouldCharge: false,
       reason: 'Unlimited plan',
-      currentUsage: org.billable_calls_this_month || 0,
+      currentUsage: 0,
       planLimit: -1,
+      callMinutes: Math.ceil(callDurationSeconds / 60),
     }
   }
 
-  const currentUsage = org.billable_calls_this_month || 0
-  const isOverage = currentUsage >= planLimit
+  // TODO: Update database schema to track billable_minutes_this_month instead of billable_calls_this_month
+  // For now, we'll use a conversion estimate (assuming average call duration)
+  const avgCallDuration = industryPricing.avgCallDuration || 5
+  const currentUsageMinutes = (org.billable_calls_this_month || 0) * avgCallDuration
+  const callMinutes = Math.ceil(callDurationSeconds / 60)
+  const projectedUsage = currentUsageMinutes + callMinutes
+  const isOverage = projectedUsage > planLimit
 
   return {
     shouldCharge: isOverage,
-    reason: isOverage ? 'Exceeds plan limit' : 'Within plan limits',
-    currentUsage,
+    reason: isOverage ? 'Exceeds plan minutes limit' : 'Within plan limits',
+    currentUsage: currentUsageMinutes,
     planLimit,
+    callMinutes,
   }
 }
 

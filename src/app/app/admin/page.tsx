@@ -9,6 +9,7 @@ import { AdminAddPhoneNumber } from '@/components/admin/AdminAddPhoneNumber'
 import { AdminUpdatePhoneNumber } from '@/components/admin/AdminUpdatePhoneNumber'
 import { AdminSetAgent } from '@/components/admin/AdminSetAgent'
 import { AdminUpdateStatus } from '@/components/admin/AdminUpdateStatus'
+import { AdminManagePrivileges } from '@/components/admin/AdminManagePrivileges'
 import { RefreshButton } from '@/components/admin/RefreshButton'
 
 // Add your admin email(s) here
@@ -239,6 +240,12 @@ export default async function AdminPage() {
         <AdminAddPhoneNumber organizations={organizations} />
         <AdminUpdatePhoneNumber organizations={organizations} />
       </div>
+
+      {/* Privilege Management */}
+      <AdminManagePrivileges 
+        organizations={organizations} 
+        adminEmail={session.user.email || ''} 
+      />
 
       {/* Error Message */}
       {errorMessage && (

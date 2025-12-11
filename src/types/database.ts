@@ -77,6 +77,11 @@ export interface Database {
           setup_fee_credited: boolean
           setup_fee_credited_at: string | null
           subscription_started_at: string | null
+          admin_granted_plan: 'starter' | 'growth' | 'pro' | null
+          admin_granted_plan_expires_at: string | null
+          admin_granted_plan_notes: string | null
+          admin_privileges: Json | null
+          admin_privileges_notes: string | null
         }
         Insert: {
           id?: string
@@ -167,6 +172,11 @@ export interface Database {
           setup_fee_credited?: boolean
           setup_fee_credited_at?: string | null
           subscription_started_at?: string | null
+          admin_granted_plan?: 'starter' | 'growth' | 'pro' | null
+          admin_granted_plan_expires_at?: string | null
+          admin_granted_plan_notes?: string | null
+          admin_privileges?: Json | null
+          admin_privileges_notes?: string | null
         }
       }
       organization_members: {
