@@ -507,12 +507,28 @@ export async function POST(request: Request) {
       callStatus: payload.status || payload.state || 'unknown',
     })
     
-    const accessCheck = await checkOrganizationAccess(supabase, organizationId)
-    console.log(`[Webhook] 🔒 Access check result:`, {
-      hasAccess: accessCheck.hasAccess,
-      reason: accessCheck.reason,
-      organizationId,
-    })
+    // Only check access on initial call events, not on status updates
+    // Vapi sends multiple webhook events (status updates, etc.) during a call
+    // We only need to check access once when the call starts
+    const callStatus = payload.status || payload.state || 'unknown'
+    const isStatusUpdate = ['answered', 'completed', 'ended', 'failed', 'voicemail'].includes(callStatus.toLowerCase())
+    const isInitialEvent = ['ringing', 'queued', 'pending', 'calling', 'initiated', 'started'].includes(callStatus.toLowerCase())
+    
+    // Skip access check for status updates (they're just informational)
+    // Only check access on initial events or if we don't know the status
+    let accessCheck = { hasAccess: true, reason: 'skipped_status_update' }
+    if (!isStatusUpdate || isInitialEvent || callStatus === 'unknown') {
+      accessCheck = await checkOrganizationAccess(supabase, organizationId)
+      console.log(`[Webhook] 🔒 Access check result:`, {
+        hasAccess: accessCheck.hasAccess,
+        reason: accessCheck.reason,
+        organizationId,
+        callStatus,
+        isStatusUpdate,
+      })
+    } else {
+      console.log(`[Webhook] ⏭️ Skipping access check for status update: ${callStatus}`)
+    }
     
     if (!accessCheck.hasAccess) {
       // CRITICAL: Log this prominently so it shows up in truncated logs
@@ -521,7 +537,6 @@ export async function POST(request: Request) {
       console.error(`[Webhook] ⛔⛔⛔ ATTEMPTING TO HANG UP CALL ⛔⛔⛔`)
       
       // Check call status - if it's early enough, we might be able to reject it
-      const callStatus = payload.status || payload.state || 'unknown'
       const isEarlyStage = ['ringing', 'queued', 'pending', 'calling', 'initiated'].includes(callStatus.toLowerCase())
       
       console.log(`[Webhook] Call status: ${callStatus}, Early stage: ${isEarlyStage}`)
@@ -599,9 +614,12 @@ export async function POST(request: Request) {
           
           // WARNING: Even if API returns success, the call may continue
           // Vapi webhooks cannot prevent calls from connecting - they're informational only
-          console.error(`[Webhook] ⚠️⚠️⚠️ LIMITATION: Vapi webhooks cannot prevent calls from connecting ⚠️⚠️⚠️`)
-          console.error(`[Webhook] ⚠️ The call may continue even if API returns success`)
-          console.error(`[Webhook] ⚠️ SOLUTION: Need to configure Vapi assistant to check access BEFORE answering`)
+          // Only log this once per call, not on every webhook event
+          if (isInitialEvent) {
+            console.error(`[Webhook] ⚠️⚠️⚠️ LIMITATION: Vapi webhooks cannot prevent calls from connecting ⚠️⚠️⚠️`)
+            console.error(`[Webhook] ⚠️ The call may continue even if API returns success`)
+            console.error(`[Webhook] ⚠️ SOLUTION: Need to configure Vapi assistant to check access BEFORE answering`)
+          }
           
         } catch (err: any) {
           console.error(`[Webhook] ❌❌❌ ERROR HANGING UP CALL: ${err?.message || err}`)
