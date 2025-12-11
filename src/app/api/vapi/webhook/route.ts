@@ -557,7 +557,12 @@ export async function POST(request: Request) {
       if (callId && process.env.VAPI_API_KEY) {
         console.error(`[Webhook] ✅ STEP 4: Hanging up call ${callId} via Vapi API...`)
         try {
-          const hangupResponse = await fetch(`https://api.vapi.ai/call/${callId}`, {
+          // CRITICAL ISSUE: Vapi webhooks are called AFTER the call connects
+          // DELETE endpoint may return success but doesn't actually hang up active calls
+          // This is a fundamental limitation - we cannot prevent calls from connecting via webhook
+          
+          console.error(`[Webhook] Attempting DELETE to end call ${callId}...`)
+          const deleteResponse = await fetch(`https://api.vapi.ai/call/${callId}`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${process.env.VAPI_API_KEY}`,
@@ -565,15 +570,36 @@ export async function POST(request: Request) {
             },
           })
           
-          const responseText = await hangupResponse.text()
-          console.error(`[Webhook] Hang-up API response: ${hangupResponse.status} ${hangupResponse.statusText}`)
-          console.error(`[Webhook] Response body: ${responseText.substring(0, 200)}`)
+          const deleteResponseText = await deleteResponse.text()
+          console.error(`[Webhook] DELETE response: ${deleteResponse.status} - ${deleteResponseText.substring(0, 100)}`)
           
-          if (hangupResponse.ok) {
-            console.error(`[Webhook] ✅✅✅ SUCCESSFULLY HUNG UP CALL ${callId} ✅✅✅`)
-          } else {
-            console.error(`[Webhook] ❌❌❌ FAILED TO HANG UP: ${hangupResponse.status} - ${responseText}`)
+          // Try PATCH as alternative method
+          console.error(`[Webhook] Trying PATCH to set call status to ended...`)
+          try {
+            const patchResponse = await fetch(`https://api.vapi.ai/call/${callId}`, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Bearer ${process.env.VAPI_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                status: 'ended',
+                endedReason: 'access_denied',
+              }),
+            })
+            
+            const patchResponseText = await patchResponse.text()
+            console.error(`[Webhook] PATCH response: ${patchResponse.status} - ${patchResponseText.substring(0, 100)}`)
+          } catch (patchErr: any) {
+            console.error(`[Webhook] PATCH failed: ${patchErr?.message || patchErr}`)
           }
+          
+          // WARNING: Even if API returns success, the call may continue
+          // Vapi webhooks cannot prevent calls from connecting - they're informational only
+          console.error(`[Webhook] ⚠️⚠️⚠️ LIMITATION: Vapi webhooks cannot prevent calls from connecting ⚠️⚠️⚠️`)
+          console.error(`[Webhook] ⚠️ The call may continue even if API returns success`)
+          console.error(`[Webhook] ⚠️ SOLUTION: Need to configure Vapi assistant to check access BEFORE answering`)
+          
         } catch (err: any) {
           console.error(`[Webhook] ❌❌❌ ERROR HANGING UP CALL: ${err?.message || err}`)
           // Continue anyway - we'll still reject processing
