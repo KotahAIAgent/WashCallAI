@@ -484,7 +484,8 @@ export async function POST(request: Request) {
     
     console.log(`[Webhook] ✅ Organization verified: ${orgExists.name} (${orgExists.id})`)
 
-    // 🔒 CHECK ACCESS - Verify organization has active trial or subscription
+    // 🔒 CHECK ACCESS IMMEDIATELY - Before processing anything else
+    // This is critical since Vapi doesn't have pre-call-check
     console.log(`[Webhook] 🔒 Checking access for org ${organizationId}...`)
     
     // First, let's check what the org actually has in the database
@@ -500,6 +501,7 @@ export async function POST(request: Request) {
       admin_granted_plan: orgCheck?.admin_granted_plan || 'null',
       admin_privileges: orgCheck?.admin_privileges || 'null',
       orgName: orgCheck?.name,
+      callStatus: payload.status || payload.state || 'unknown',
     })
     
     const accessCheck = await checkOrganizationAccess(supabase, organizationId)
@@ -511,6 +513,12 @@ export async function POST(request: Request) {
     
     if (!accessCheck.hasAccess) {
       console.log(`[Webhook] ⛔⛔⛔ CALL BLOCKED for org ${organizationId}: ${accessCheck.reason} ⛔⛔⛔`)
+      
+      // Check call status - if it's early enough, we might be able to reject it
+      const callStatus = payload.status || payload.state || 'unknown'
+      const isEarlyStage = ['ringing', 'queued', 'pending', 'calling', 'initiated'].includes(callStatus.toLowerCase())
+      
+      console.log(`[Webhook] Call status: ${callStatus}, Early stage: ${isEarlyStage}`)
       
       // Still log the call attempt for records, but mark it as blocked
       await supabase.from('calls').insert({
@@ -524,15 +532,16 @@ export async function POST(request: Request) {
         raw_payload: payload,
       })
 
-      // Return error - Vapi will handle the call rejection
-      // IMPORTANT: Return 403 to block the call
-      console.log(`[Webhook] ⛔ Returning 403 to block call. Reason: ${accessCheck.reason}`)
+      // Return error - Even if call already connected, we reject processing
+      // IMPORTANT: Return 403 to signal access denied
+      console.log(`[Webhook] ⛔ Returning 403 - Access denied. Reason: ${accessCheck.reason}`)
       return NextResponse.json({ 
         error: accessCheck.reason,
         action: 'reject',
         message: 'Your subscription has ended. Please renew to continue using FusionCaller.',
         blocked: true,
         organizationId,
+        callStatus,
       }, { status: 403 })
     }
     
