@@ -27,6 +27,7 @@ export async function chargeVapiCall({
   callDuration,
   callDirection,
   isOverage,
+  industrySlug: providedIndustrySlug,
 }: ChargeCallOptions) {
   try {
     const supabase = createActionClient()
@@ -49,7 +50,7 @@ export async function chargeVapiCall({
     }
 
     // Get industry-specific overage rate
-    const industrySlug = (org?.industry as IndustrySlug) || options.industrySlug || null
+    const industrySlug = (org?.industry as IndustrySlug) || providedIndustrySlug || null
     const industryPricing = industrySlug ? getIndustryPricing(org?.plan as any, industrySlug) : null
     const overageRate = industryPricing?.overageRate || 0.20
 
