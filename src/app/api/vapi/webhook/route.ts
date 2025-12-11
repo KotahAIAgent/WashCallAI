@@ -173,6 +173,7 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
   // Check for admin-granted privileges that bypass access checks
   const privileges = org.admin_privileges || {}
   if (privileges.bypass_limits === true) {
+    console.log(`[checkOrganizationAccess] Main path: ✅ ALLOWED - Bypass limits privilege active`)
     return { hasAccess: true, reason: 'admin_privilege_bypass' }
   }
 
@@ -184,24 +185,29 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
 
     // If no expiration or not expired, admin-granted plan is active
     if (!expiresAt || expiresAt > new Date()) {
+      console.log(`[checkOrganizationAccess] Main path: ✅ ALLOWED - Admin-granted plan active: ${org.admin_granted_plan}`)
       return { hasAccess: true, reason: `admin_granted_plan_${org.admin_granted_plan}` }
     }
   }
 
   // Has paid plan - verify subscription is actually active in Stripe
   if (org.plan) {
+    console.log(`[checkOrganizationAccess] Main path: Plan found: ${org.plan}, billing_customer_id: ${org.billing_customer_id || 'none'}`)
     // If we have a billing customer ID, verify the subscription is actually active
     if (org.billing_customer_id && stripe) {
       try {
+        console.log(`[checkOrganizationAccess] Main path: Checking Stripe subscription for customer: ${org.billing_customer_id}`)
         const subscriptions = await stripe.subscriptions.list({
           customer: org.billing_customer_id,
           status: 'active',
           limit: 1,
         })
 
+        console.log(`[checkOrganizationAccess] Main path: Stripe subscriptions found: ${subscriptions.data.length}`)
+
         // If no active subscription found, deny access (but don't clear plan - preserves data)
         if (subscriptions.data.length === 0) {
-          console.warn(`[checkOrganizationAccess] Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
+          console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
           
           // Don't clear the plan - this allows "suspend" functionality to preserve data
           // The plan field stays but access is blocked
@@ -209,9 +215,10 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
         }
 
         // Subscription is active, allow access
+        console.log(`[checkOrganizationAccess] Main path: ✅ ALLOWED - Active subscription found: ${subscriptions.data[0].id}`)
         return { hasAccess: true, reason: 'active_plan' }
       } catch (error: any) {
-        console.error(`[checkOrganizationAccess] Error checking Stripe subscription for org ${organizationId}:`, error)
+        console.error(`[checkOrganizationAccess] Main path: Error checking Stripe subscription for org ${organizationId}:`, error)
         // If Stripe check fails, deny access (fail closed) for security
         // This ensures we don't allow access if we can't verify subscription
         return { hasAccess: false, reason: 'Unable to verify subscription status' }
@@ -222,12 +229,13 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
     // Check if there's an admin-granted plan that might be active
     // Otherwise, deny access if we can't verify subscription
     if (!org.admin_granted_plan) {
-      console.warn(`[checkOrganizationAccess] Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
+      console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
       return { hasAccess: false, reason: 'Cannot verify subscription - no billing customer ID' }
     }
 
     // If admin-granted plan exists and is active, allow access
     // Otherwise deny
+    console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - No active subscription`)
     return { hasAccess: false, reason: 'No active subscription' }
   }
 
@@ -235,12 +243,15 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
   if (org.trial_ends_at) {
     const trialEndsAt = new Date(org.trial_ends_at)
     if (new Date() < trialEndsAt) {
+      console.log(`[checkOrganizationAccess] Main path: ✅ ALLOWED - Active trial`)
       return { hasAccess: true, reason: 'active_trial' }
     } else {
+      console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - Trial expired`)
       return { hasAccess: false, reason: 'Trial expired' }
     }
   }
 
+  console.warn(`[checkOrganizationAccess] Main path: ❌ BLOCKED - No active subscription or trial`)
   return { hasAccess: false, reason: 'No active subscription or trial' }
 }
 
