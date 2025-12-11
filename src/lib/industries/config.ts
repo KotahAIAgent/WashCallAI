@@ -438,9 +438,14 @@ export const industries: Record<IndustrySlug, IndustryConfig> = {
     heroDescription: 'Answer every call while you\'re on the job, book estimates automatically, and grow your customer base effortlessly.',
     description: 'AI-powered call answering for pressure washing businesses',
     pricing: {
-      starter: 149,
-      growth: 349,
-      pro: 699,
+      starter: 139,
+      growth: 329,
+      pro: 649,
+      starterMinutes: 500,
+      growthMinutes: 1200,
+      proMinutes: 3000,
+      overageRate: 0.20,
+      avgCallDuration: 4,
     },
     painPoints: [
       'Missing calls while operating equipment',
