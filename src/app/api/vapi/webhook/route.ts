@@ -15,6 +15,7 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
   hasAccess: boolean
   reason: string
 }> {
+  // Try to get organization data - use simpler query first to avoid permission issues
   const { data: org, error: orgError } = await supabase
     .from('organizations')
     .select('plan, trial_ends_at, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges, id, name, billing_customer_id')
@@ -57,11 +58,19 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
       
       if (retryOrg) {
         console.log(`[checkOrganizationAccess] Retry successful, org found:`, retryOrg.id)
+        console.log(`[checkOrganizationAccess] Retry org data:`, {
+          id: retryOrg.id,
+          plan: retryOrg.plan,
+          billing_customer_id: retryOrg.billing_customer_id,
+          admin_granted_plan: retryOrg.admin_granted_plan,
+          trial_ends_at: retryOrg.trial_ends_at,
+        })
         // Use the retry result
         const org = retryOrg as any
         // Check for admin-granted privileges that bypass access checks
         const privileges = org.admin_privileges || {}
         if (privileges.bypass_limits === true) {
+          console.log(`[checkOrganizationAccess] Retry path: Bypass limits privilege active`)
           return { hasAccess: true, reason: 'admin_privilege_bypass' }
         }
         // Check admin-granted plan
@@ -70,11 +79,13 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
             ? new Date(org.admin_granted_plan_expires_at)
             : null
           if (!expiresAt || expiresAt > new Date()) {
+            console.log(`[checkOrganizationAccess] Retry path: Admin-granted plan active: ${org.admin_granted_plan}`)
             return { hasAccess: true, reason: `admin_granted_plan_${org.admin_granted_plan}` }
           }
         }
         // Has paid plan - MUST verify Stripe subscription is active
         if (org.plan) {
+          console.log(`[checkOrganizationAccess] Retry path: Plan found: ${org.plan}, checking Stripe subscription...`)
           // If we have a billing customer ID, verify the subscription is actually active
           if (org.billing_customer_id && stripe) {
             try {
@@ -84,13 +95,16 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
                 limit: 1,
               })
 
+              console.log(`[checkOrganizationAccess] Retry path: Stripe subscriptions found: ${subscriptions.data.length}`)
+
               // If no active subscription found, deny access
               if (subscriptions.data.length === 0) {
-                console.warn(`[checkOrganizationAccess] Retry path: Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
+                console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no active Stripe subscription. Blocking access.`)
                 return { hasAccess: false, reason: 'Subscription ended - no active subscription in Stripe' }
               }
 
               // Subscription is active, allow access
+              console.log(`[checkOrganizationAccess] Retry path: ✅ ALLOWED - Active subscription found: ${subscriptions.data[0].id}`)
               return { hasAccess: true, reason: 'active_plan' }
             } catch (error: any) {
               console.error(`[checkOrganizationAccess] Retry path: Error checking Stripe subscription for org ${organizationId}:`, error)
@@ -103,23 +117,27 @@ async function checkOrganizationAccess(supabase: any, organizationId: string): P
           // Check if there's an admin-granted plan that might be active
           // Otherwise, deny access if we can't verify subscription
           if (!org.admin_granted_plan) {
-            console.warn(`[checkOrganizationAccess] Retry path: Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
+            console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - Org ${organizationId} has plan ${org.plan} but no billing_customer_id. Cannot verify subscription.`)
             return { hasAccess: false, reason: 'Cannot verify subscription - no billing customer ID' }
           }
 
           // If admin-granted plan exists and is active, allow access
           // Otherwise deny
+          console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - No active subscription`)
           return { hasAccess: false, reason: 'No active subscription' }
         }
         // Check trial status
         if (org.trial_ends_at) {
           const trialEndsAt = new Date(org.trial_ends_at)
           if (new Date() < trialEndsAt) {
+            console.log(`[checkOrganizationAccess] Retry path: ✅ ALLOWED - Active trial`)
             return { hasAccess: true, reason: 'active_trial' }
           } else {
+            console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - Trial expired`)
             return { hasAccess: false, reason: 'Trial expired' }
           }
         }
+        console.warn(`[checkOrganizationAccess] Retry path: ❌ BLOCKED - No active subscription or trial`)
         return { hasAccess: false, reason: 'No active subscription or trial' }
       } else {
         console.error(`[checkOrganizationAccess] Retry also failed:`, retryError)
