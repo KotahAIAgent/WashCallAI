@@ -660,6 +660,68 @@ export async function adminRemoveAllPlans(
     }
   }
   
+  // Get agent configs to disable assistants in Vapi
+  const { data: agentConfigs } = await supabase
+    .from('agent_configs')
+    .select('inbound_agent_id, outbound_agent_id')
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  // Disable assistants in Vapi to prevent calls from connecting
+  const vapiApiKey = process.env.VAPI_API_KEY
+  if (vapiApiKey && agentConfigs) {
+    try {
+      // Disable inbound assistant
+      if (agentConfigs.inbound_agent_id) {
+        try {
+          const inboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.inbound_agent_id}`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${vapiApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              status: 'inactive', // or 'disabled' - check Vapi docs for correct field
+            }),
+          })
+          if (inboundResponse.ok) {
+            console.log(`[adminRemoveAllPlans] ✅ Disabled inbound assistant ${agentConfigs.inbound_agent_id} in Vapi`)
+          } else {
+            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable inbound assistant: ${inboundResponse.status}`)
+          }
+        } catch (err: any) {
+          console.error(`[adminRemoveAllPlans] Error disabling inbound assistant:`, err?.message || err)
+        }
+      }
+
+      // Disable outbound assistant
+      if (agentConfigs.outbound_agent_id) {
+        try {
+          const outboundResponse = await fetch(`https://api.vapi.ai/assistant/${agentConfigs.outbound_agent_id}`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${vapiApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              status: 'inactive', // or 'disabled' - check Vapi docs for correct field
+            }),
+          })
+          if (outboundResponse.ok) {
+            console.log(`[adminRemoveAllPlans] ✅ Disabled outbound assistant ${agentConfigs.outbound_agent_id} in Vapi`)
+          } else {
+            console.error(`[adminRemoveAllPlans] ⚠️ Could not disable outbound assistant: ${outboundResponse.status}`)
+          }
+        } catch (err: any) {
+          console.error(`[adminRemoveAllPlans] Error disabling outbound assistant:`, err?.message || err)
+        }
+      }
+    } catch (err: any) {
+      console.error(`[adminRemoveAllPlans] Error disabling assistants:`, err?.message || err)
+      // Continue anyway - we'll still remove the plan
+    }
+  }
+
   const { error: updateError, data: updatedOrg } = await supabase
     .from('organizations')
     .update({
