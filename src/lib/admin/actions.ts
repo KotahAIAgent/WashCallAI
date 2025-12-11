@@ -663,17 +663,28 @@ export async function adminRemoveAllPlans(
   // CRITICAL: Unassign phone numbers from assistants in Vapi
   // This prevents calls from connecting at all - no credits wasted
   const vapiApiKey = process.env.VAPI_API_KEY
+  console.log(`[adminRemoveAllPlans] Starting phone number unassignment. VAPI_API_KEY configured: ${!!vapiApiKey}`)
+  
   if (vapiApiKey) {
     try {
       // Get all phone numbers for this organization
-      const { data: phoneNumbers } = await supabase
+      const { data: phoneNumbers, error: phoneError } = await supabase
         .from('phone_numbers')
         .select('provider_phone_id, phone_number')
         .eq('organization_id', organizationId)
         .not('provider_phone_id', 'is', null)
       
+      if (phoneError) {
+        console.error(`[adminRemoveAllPlans] Error fetching phone numbers:`, phoneError)
+      }
+      
+      console.log(`[adminRemoveAllPlans] Phone numbers query result:`, {
+        count: phoneNumbers?.length || 0,
+        phoneNumbers: phoneNumbers?.map(p => ({ id: p.provider_phone_id, number: p.phone_number })),
+      })
+      
       if (phoneNumbers && phoneNumbers.length > 0) {
-        console.log(`[adminRemoveAllPlans] Found ${phoneNumbers.length} phone numbers to unassign`)
+        console.log(`[adminRemoveAllPlans] ✅ Found ${phoneNumbers.length} phone numbers to unassign`)
         
         for (const phone of phoneNumbers) {
           if (!phone.provider_phone_id) continue

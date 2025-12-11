@@ -36,13 +36,33 @@ export async function POST(request: Request) {
   try {
     const payload = await request.json()
     console.log('[Vapi Check Access] Received request:', JSON.stringify(payload, null, 2))
+    console.log('[Vapi Check Access] All payload keys:', Object.keys(payload))
     
     const supabase = createServiceRoleClient()
     
-    // Extract identifiers from payload
-    const assistantId = payload.assistantId || payload.assistant_id || payload.assistant?.id
-    const phoneNumberId = payload.phoneNumberId || payload.phoneNumber_id || payload.phoneNumber?.id
-    const toNumber = payload.to || payload.callee?.number || payload.phoneNumber?.number
+    // Extract identifiers from payload - try all possible formats
+    const assistantId = payload.assistantId || 
+                       payload.assistant_id || 
+                       payload.assistant?.id ||
+                       payload.assistantId ||
+                       payload.assistant?.assistantId
+    const phoneNumberId = payload.phoneNumberId || 
+                         payload.phoneNumber_id || 
+                         payload.phoneNumber?.id ||
+                         payload.phone?.id ||
+                         payload.phoneNumberId
+    const toNumber = payload.to || 
+                    payload.callee?.number || 
+                    payload.phoneNumber?.number ||
+                    payload.phone?.number ||
+                    payload.customer?.number
+    
+    console.log('[Vapi Check Access] Extracted identifiers:', {
+      assistantId,
+      phoneNumberId,
+      toNumber,
+      fullPayload: payload,
+    })
     
     let organizationId: string | null = null
     

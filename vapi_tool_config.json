@@ -1,0 +1,14 @@
+{
+  "id": "b948493a-ba52-4790-a16b-f303adb667a1",
+  "createdAt": "2025-12-11T13:39:02.510Z",
+  "updatedAt": "2025-12-11T13:39:02.510Z",
+  "type": "apiRequest",
+  "function": {
+    "name": "check_access",
+    "description": "Check if the organization has an active subscription before proceeding with the call. Call this function at the very start of every call."
+  },
+  "orgId": "5909a499-5e95-4223-8904-272084ab7b41",
+  "url": "https://www.fusioncaller.com/api/vapi/check-access",
+  "method": "POST"
+}
+
