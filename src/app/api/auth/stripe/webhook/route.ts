@@ -36,31 +36,31 @@ export async function POST(request: Request) {
       if (organizationId && plan) {
         // Only update if subscription is active
         if (subscription.status === 'active' || subscription.status === 'trialing') {
-          // Check if subscription_started_at is already set (to avoid overwriting)
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('subscription_started_at, plan')
-            .eq('id', organizationId)
-            .single()
+        // Check if subscription_started_at is already set (to avoid overwriting)
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('subscription_started_at, plan')
+          .eq('id', organizationId)
+          .single()
 
-          // Only set subscription_started_at if:
-          // 1. It's not already set, OR
-          // 2. The plan is changing (upgrade/downgrade)
-          const shouldSetStartDate = !org?.subscription_started_at || org.plan !== plan
+        // Only set subscription_started_at if:
+        // 1. It's not already set, OR
+        // 2. The plan is changing (upgrade/downgrade)
+        const shouldSetStartDate = !org?.subscription_started_at || org.plan !== plan
 
-          const updateData: any = {
-            plan: plan,
-            updated_at: new Date().toISOString(),
-          }
+        const updateData: any = {
+          plan: plan,
+          updated_at: new Date().toISOString(),
+        }
 
-          if (shouldSetStartDate) {
-            updateData.subscription_started_at = new Date().toISOString()
-          }
+        if (shouldSetStartDate) {
+          updateData.subscription_started_at = new Date().toISOString()
+        }
 
-          await supabase
-            .from('organizations')
-            .update(updateData)
-            .eq('id', organizationId)
+        await supabase
+          .from('organizations')
+          .update(updateData)
+          .eq('id', organizationId)
 
           console.log(`✓ Updated subscription for org ${organizationId}: plan=${plan}, status=${subscription.status}`)
         } else {
