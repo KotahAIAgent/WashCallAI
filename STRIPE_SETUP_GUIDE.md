@@ -7,6 +7,24 @@ This guide will walk you through connecting your new Stripe account to FusionCal
 - Access to your Stripe Dashboard
 - Access to your Vercel project settings (for environment variables)
 
+## ⚠️ Important: Test Mode vs Live Mode
+
+**You're currently in Sandbox/Test Mode** - this is perfect for setup!
+
+- ✅ **Test Mode (Sandbox)**: Use this to set everything up and test
+  - All API keys start with `pk_test_` and `sk_test_`
+  - No real money is charged
+  - Use test card: `4242 4242 4242 4242` for testing
+  - This is where you should start!
+
+- 🔴 **Live Mode**: Switch to this when ready for real customers
+  - API keys start with `pk_live_` and `sk_live_`
+  - Real money is charged
+  - You'll need to create products again in live mode
+  - Only switch when everything is tested and working
+
+**For now, stay in Test Mode and complete all the setup steps below.**
+
 ---
 
 ## Step 1: Get Your Stripe API Keys
