@@ -28,22 +28,27 @@ export function UpgradeButton({ planKey, planName, isUpgrade, isOnTrial = false,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          plan: planKey,
+          planId: planKey, // Fixed: should be planId not plan
           isTrialConversion 
         }),
       })
 
       const data = await response.json()
 
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to create checkout session: ${response.status}`)
+      }
+
       if (data.url) {
         window.location.href = data.url
       } else {
         throw new Error(data.error || 'Failed to create checkout session')
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Checkout error:', error)
       toast({
         title: 'Error',
-        description: 'Failed to start checkout. Please try again.',
+        description: error.message || 'Failed to start checkout. Please try again.',
         variant: 'destructive',
       })
       setLoading(false)

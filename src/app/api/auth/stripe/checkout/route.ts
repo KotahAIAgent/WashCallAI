@@ -5,6 +5,15 @@ import { isStarterPlanBlocked } from '@/lib/admin/utils'
 
 export async function POST(request: Request) {
   try {
+    // Check if Stripe is configured
+    if (!stripe) {
+      console.error('[Checkout] Stripe is not configured - STRIPE_SECRET_KEY is missing')
+      return NextResponse.json(
+        { error: 'Payment system is not configured. Please contact support.' },
+        { status: 500 }
+      )
+    }
+
     const supabase = createServerClient()
     const { data: { session } } = await supabase.auth.getSession()
 
@@ -48,23 +57,47 @@ export async function POST(request: Request) {
 
     const plan = STRIPE_PLANS[planId as keyof typeof STRIPE_PLANS]
 
+    // Validate plan configuration
+    if (!plan) {
+      console.error(`[Checkout] Plan not found: ${planId}`)
+      return NextResponse.json({ error: 'Invalid plan configuration' }, { status: 400 })
+    }
+
+    if (!plan.priceId || plan.priceId.includes('_test') && !process.env.STRIPE_STARTER_PRICE_ID) {
+      console.error(`[Checkout] Plan price ID not configured: ${planId} - ${plan.priceId}`)
+      return NextResponse.json(
+        { error: 'Plan pricing is not configured. Please contact support.' },
+        { status: 500 }
+      )
+    }
+
     // Get or create Stripe customer
     let customerId = organization.billing_customer_id
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: session.user.email || undefined,
-        metadata: {
-          organization_id: organization.id,
-        },
-      })
-      customerId = customer.id
+      try {
+        const customer = await stripe.customers.create({
+          email: session.user.email || undefined,
+          metadata: {
+            organization_id: organization.id,
+          },
+        })
+        customerId = customer.id
 
-      // Update organization with customer ID
-      await (supabase
-        .from('organizations') as any)
-        .update({ billing_customer_id: customerId })
-        .eq('id', organization.id)
+        // Update organization with customer ID
+        await (supabase
+          .from('organizations') as any)
+          .update({ billing_customer_id: customerId })
+          .eq('id', organization.id)
+        
+        console.log(`[Checkout] Created Stripe customer: ${customerId} for org ${organization.id}`)
+      } catch (error: any) {
+        console.error('[Checkout] Error creating Stripe customer:', error)
+        return NextResponse.json(
+          { error: `Failed to create customer: ${error.message || 'Unknown error'}` },
+          { status: 500 }
+        )
+      }
     }
 
     // Check if user is converting from a trial
@@ -106,40 +139,67 @@ export async function POST(request: Request) {
 
     // Create checkout session with subscription
     // The setup fee invoice item will be included in the first invoice
-    const checkoutSession = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: plan.priceId,
-          quantity: 1,
+    try {
+      console.log(`[Checkout] Creating checkout session for plan: ${planId}, priceId: ${plan.priceId}`)
+      
+      const checkoutSession = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: plan.priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        subscription_data: {
+          metadata: {
+            organization_id: organization.id,
+            plan: planId,
+            setup_fee_amount: plan.setupFee.toString(),
+          },
         },
-      ],
-      mode: 'subscription',
-      subscription_data: {
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/app/settings?success=true`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/app/settings?canceled=true`,
         metadata: {
           organization_id: organization.id,
           plan: planId,
           setup_fee_amount: plan.setupFee.toString(),
         },
-      },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/app/settings?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/app/settings?canceled=true`,
-      metadata: {
-        organization_id: organization.id,
-        plan: planId,
-        setup_fee_amount: plan.setupFee.toString(),
-      },
-    })
+      })
 
-    return NextResponse.json({ 
-      success: true, 
-      url: checkoutSession.url 
-    })
-  } catch (error) {
-    console.error('Stripe checkout error:', error)
+      console.log(`[Checkout] ✅ Checkout session created: ${checkoutSession.id}`)
+
+      return NextResponse.json({ 
+        success: true, 
+        url: checkoutSession.url 
+      })
+    } catch (stripeError: any) {
+      console.error('[Checkout] Stripe API error:', {
+        message: stripeError.message,
+        type: stripeError.type,
+        code: stripeError.code,
+        planId,
+        priceId: plan.priceId,
+      })
+      
+      // Provide more helpful error messages
+      if (stripeError.code === 'resource_missing') {
+        return NextResponse.json(
+          { error: `Price ID not found in Stripe. Please verify ${planId} plan is configured correctly.` },
+          { status: 400 }
+        )
+      }
+      
+      return NextResponse.json(
+        { error: `Payment error: ${stripeError.message || 'Failed to create checkout session'}` },
+        { status: 500 }
+      )
+    }
+  } catch (error: any) {
+    console.error('[Checkout] Unexpected error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     )
   }
