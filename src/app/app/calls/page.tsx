@@ -4,8 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { CallDetailSheet } from '@/components/dashboard/CallDetailSheet'
 import { CallFilters } from '@/components/calls/CallFilters'
+import { CallsMobileTable } from '@/components/calls/CallsMobileTable'
 import { ExportButton } from '@/components/export/ExportButton'
-import { MobileTable } from '@/components/ui/mobile-table'
 
 async function getCalls(organizationId: string, searchParams: { direction?: string; status?: string; dateFrom?: string; dateTo?: string }) {
   try {
@@ -164,48 +164,7 @@ export default async function CallsPage({
             
             {/* Mobile Card View */}
             <div className="block md:hidden">
-              <MobileTable
-                items={validCalls}
-                columns={[
-                  {
-                    key: 'direction',
-                    label: 'Direction',
-                    render: (call) => (
-                      <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                        {call.direction || 'unknown'}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    key: 'from_number',
-                    label: 'From',
-                    render: (call) => call.from_number || 'N/A',
-                  },
-                  {
-                    key: 'to_number',
-                    label: 'To',
-                    render: (call) => call.to_number || 'N/A',
-                  },
-                  {
-                    key: 'status',
-                    label: 'Status',
-                    render: (call) => (
-                      <Badge variant="outline">{call.status || 'unknown'}</Badge>
-                    ),
-                  },
-                  {
-                    key: 'duration_seconds',
-                    label: 'Duration',
-                    render: (call) => call.duration_seconds ? `${call.duration_seconds}s` : 'N/A',
-                  },
-                  {
-                    key: 'created_at',
-                    label: 'Date',
-                    render: (call: any) => call.formatted_date || 'N/A',
-                  },
-                ]}
-                emptyMessage="No calls found"
-              />
+              <CallsMobileTable calls={validCalls} />
             </div>
 
             {/* Desktop Table View */}
