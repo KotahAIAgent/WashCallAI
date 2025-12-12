@@ -756,6 +756,51 @@ export async function POST(request: Request) {
       }
     }
     
+    // Extract recording URL from multiple possible locations in the payload
+    // Vapi may send recordings in different webhook events (status updates, call end, etc.)
+    const recordingUrl = payload.recording?.url || 
+                        payload.recordingUrl ||
+                        payload.recording_url ||
+                        payload.message?.recording?.url ||
+                        payload.message?.recordingUrl ||
+                        payload.call?.recording?.url ||
+                        payload.call?.recordingUrl ||
+                        payload.conversation?.recording?.url ||
+                        payload.conversation?.recordingUrl ||
+                        null
+    
+    // Extract transcript from multiple possible locations
+    const transcript = payload.transcript || 
+                      payload.transcriptText ||
+                      payload.transcript_text ||
+                      payload.message?.transcript ||
+                      payload.message?.transcriptText ||
+                      payload.call?.transcript ||
+                      payload.conversation?.transcript ||
+                      payload.conversation?.transcriptText ||
+                      null
+    
+    // Extract summary from multiple possible locations
+    const summary = payload.summary || 
+                   payload.conversation?.summary ||
+                   payload.message?.summary ||
+                   payload.call?.summary ||
+                   null
+    
+    // Log what we found for debugging
+    if (recordingUrl) {
+      console.log('[Webhook] ✅ Found recording URL:', recordingUrl)
+    } else {
+      console.log('[Webhook] ⚠️ No recording URL found in payload. Checked locations:', {
+        'payload.recording?.url': payload.recording?.url,
+        'payload.recordingUrl': payload.recordingUrl,
+        'payload.recording_url': payload.recording_url,
+        'payload.message?.recording?.url': payload.message?.recording?.url,
+        'payload.call?.recording?.url': payload.call?.recording?.url,
+        'payload.conversation?.recording?.url': payload.conversation?.recording?.url,
+      })
+    }
+    
     const callData = {
       organization_id: organizationId,
       direction: direction,
@@ -766,9 +811,9 @@ export async function POST(request: Request) {
       organization_phone_number: organizationPhoneNumber,
       status: mapVapiStatus(payload.status || payload.state || payload.message?.status),
       duration_seconds: payload.duration || payload.message?.duration || null,
-      recording_url: payload.recording?.url || payload.message?.recording?.url || null,
-      transcript: payload.transcript || payload.conversation?.transcript || payload.message?.transcript || null,
-      summary: payload.summary || payload.conversation?.summary || payload.message?.summary || null,
+      recording_url: recordingUrl,
+      transcript: transcript,
+      summary: summary,
       raw_payload: payload,
     }
     
@@ -779,6 +824,9 @@ export async function POST(request: Request) {
       status: callData.status,
       provider_call_id: callData.provider_call_id,
       hasVapiCallId: !!providerCallId,
+      hasRecordingUrl: !!callData.recording_url,
+      hasTranscript: !!callData.transcript,
+      hasSummary: !!callData.summary,
     })
 
     // Create or update call
@@ -805,6 +853,40 @@ export async function POST(request: Request) {
       }
     }
     
+    // If we don't have a recording URL but we have a call ID, try to fetch it from Vapi API
+    // This handles cases where Vapi sends the recording in a separate webhook event
+    if (!callData.recording_url && providerCallId && process.env.VAPI_API_KEY) {
+      try {
+        console.log('[Webhook] No recording URL in payload, attempting to fetch from Vapi API...')
+        const vapiResponse = await fetch(`https://api.vapi.ai/call/${providerCallId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.VAPI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (vapiResponse.ok) {
+          const vapiCallData = await vapiResponse.json()
+          const apiRecordingUrl = vapiCallData.recording?.url || 
+                                 vapiCallData.recordingUrl ||
+                                 vapiCallData.recording_url ||
+                                 null
+          
+          if (apiRecordingUrl) {
+            callData.recording_url = apiRecordingUrl
+            console.log('[Webhook] ✅ Found recording URL from Vapi API:', apiRecordingUrl)
+          } else {
+            console.log('[Webhook] ⚠️ No recording URL in Vapi API response either')
+          }
+        } else {
+          console.log('[Webhook] ⚠️ Could not fetch call from Vapi API:', vapiResponse.status)
+        }
+      } catch (apiError: any) {
+        console.error('[Webhook] Error fetching recording from Vapi API:', apiError?.message || apiError)
+        // Continue anyway - we'll still save the call
+      }
+    }
+    
     const { data: call, error: callError } = await supabase
       .from('calls')
       .upsert(callData, {
@@ -817,6 +899,13 @@ export async function POST(request: Request) {
     if (callError) {
       console.error('Error creating call:', callError)
       return NextResponse.json({ error: callError.message }, { status: 500 })
+    }
+    
+    // Log if recording was saved
+    if (call?.recording_url) {
+      console.log('[Webhook] ✅ Recording URL saved to database:', call.recording_url)
+    } else {
+      console.log('[Webhook] ⚠️ No recording URL saved. Call status:', callData.status, 'Call ID:', providerCallId)
     }
     
     // Determine if this was a new call by comparing created_at
