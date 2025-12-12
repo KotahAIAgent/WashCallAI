@@ -3,9 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { CallDetailSheet } from '@/components/dashboard/CallDetailSheet'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { CallFilters } from '@/components/calls/CallFilters'
 import { ExportButton } from '@/components/export/ExportButton'
 import { MobileTable } from '@/components/ui/mobile-table'
 import { format } from 'date-fns'
@@ -109,47 +107,12 @@ export default async function CallsPage({
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex flex-wrap gap-4">
-              <form method="get" className="flex flex-wrap gap-4">
-                <Select name="direction" defaultValue={params.direction || 'all'}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All Directions" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Directions</SelectItem>
-                    <SelectItem value="inbound">Inbound</SelectItem>
-                    <SelectItem value="outbound">Outbound</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select name="status" defaultValue={params.status || 'all'}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="queued">Queued</SelectItem>
-                    <SelectItem value="ringing">Ringing</SelectItem>
-                    <SelectItem value="answered">Answered</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
-                    <SelectItem value="voicemail">Voicemail</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="date"
-                  name="dateFrom"
-                  placeholder="From Date"
-                  defaultValue={params.dateFrom}
-                  className="w-[180px]"
-                />
-                <Input
-                  type="date"
-                  name="dateTo"
-                  placeholder="To Date"
-                  defaultValue={params.dateTo}
-                  className="w-[180px]"
-                />
-                <Button type="submit">Filter</Button>
-              </form>
+              <CallFilters 
+                defaultDirection={params.direction || 'all'}
+                defaultStatus={params.status || 'all'}
+                defaultDateFrom={params.dateFrom}
+                defaultDateTo={params.dateTo}
+              />
             </div>
             
             {/* Mobile Card View */}
