@@ -94,6 +94,7 @@ export default async function CallsPage({
 
     // Ensure calls is always an array and filter out any invalid entries
     // Also ensure all required fields exist with defaults and pre-format dates
+    // Only include serializable properties to avoid server component errors
     const validCalls = Array.isArray(calls) 
       ? calls
           .filter(call => call && call.id)
@@ -110,16 +111,20 @@ export default async function CallsPage({
               // Keep as 'N/A'
             }
             
+            // Explicitly select only serializable properties
             return {
-              ...call,
-              id: call.id || '',
-              direction: call.direction || 'unknown',
-              status: call.status || 'unknown',
-              from_number: call.from_number || null,
-              to_number: call.to_number || null,
-              duration_seconds: call.duration_seconds || null,
-              created_at: call.created_at || null,
-              formatted_date: formattedDate, // Pre-formatted date
+              id: String(call.id || ''),
+              direction: String(call.direction || 'unknown'),
+              status: String(call.status || 'unknown'),
+              from_number: call.from_number ? String(call.from_number) : null,
+              to_number: call.to_number ? String(call.to_number) : null,
+              duration_seconds: call.duration_seconds ? Number(call.duration_seconds) : null,
+              created_at: call.created_at ? String(call.created_at) : null,
+              formatted_date: formattedDate,
+              summary: call.summary ? String(call.summary) : null,
+              transcript: call.transcript ? String(call.transcript) : null,
+              recording_url: call.recording_url ? String(call.recording_url) : null,
+              organization_id: String(call.organization_id || ''),
             }
           })
       : []
