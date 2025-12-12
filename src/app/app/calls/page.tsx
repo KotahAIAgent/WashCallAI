@@ -93,20 +93,35 @@ export default async function CallsPage({
     const calls = await getCalls(profile.organization_id, params)
 
     // Ensure calls is always an array and filter out any invalid entries
-    // Also ensure all required fields exist with defaults
+    // Also ensure all required fields exist with defaults and pre-format dates
     const validCalls = Array.isArray(calls) 
       ? calls
           .filter(call => call && call.id)
-          .map(call => ({
-            ...call,
-            id: call.id || '',
-            direction: call.direction || 'unknown',
-            status: call.status || 'unknown',
-            from_number: call.from_number || null,
-            to_number: call.to_number || null,
-            duration_seconds: call.duration_seconds || null,
-            created_at: call.created_at || null,
-          }))
+          .map(call => {
+            let formattedDate = 'N/A'
+            try {
+              if (call.created_at) {
+                const date = new Date(call.created_at)
+                if (!isNaN(date.getTime())) {
+                  formattedDate = format(date, 'MMM d, yyyy h:mm a')
+                }
+              }
+            } catch (e) {
+              // Keep as 'N/A'
+            }
+            
+            return {
+              ...call,
+              id: call.id || '',
+              direction: call.direction || 'unknown',
+              status: call.status || 'unknown',
+              from_number: call.from_number || null,
+              to_number: call.to_number || null,
+              duration_seconds: call.duration_seconds || null,
+              created_at: call.created_at || null,
+              formatted_date: formattedDate, // Pre-formatted date
+            }
+          })
       : []
 
     return (
@@ -175,19 +190,7 @@ export default async function CallsPage({
                   {
                     key: 'created_at',
                     label: 'Date',
-                    render: (call: any) => {
-                      try {
-                        if (call?.created_at) {
-                          const date = new Date(call.created_at)
-                          if (!isNaN(date.getTime())) {
-                            return format(date, 'MMM d, yyyy h:mm a')
-                          }
-                        }
-                        return 'N/A'
-                      } catch (e) {
-                        return 'N/A'
-                      }
-                    },
+                    render: (call: any) => call.formatted_date || 'N/A',
                   },
                 ]}
                 emptyMessage="No calls found"
@@ -216,40 +219,25 @@ export default async function CallsPage({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    validCalls.map((call: any) => {
-                      // Safely handle date formatting
-                      let formattedDate = 'N/A'
-                      try {
-                        if (call?.created_at) {
-                          const date = new Date(call.created_at)
-                          if (!isNaN(date.getTime())) {
-                            formattedDate = format(date, 'MMM d, yyyy h:mm a')
-                          }
-                        }
-                      } catch (e) {
-                        // Silently fail - don't log in production
-                      }
-
-                      return (
-                        <TableRow key={call.id}>
-                          <TableCell>
-                            <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                              {call.direction || 'unknown'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{call.from_number || 'N/A'}</TableCell>
-                          <TableCell>{call.to_number || 'N/A'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{call.status || 'unknown'}</Badge>
-                          </TableCell>
-                          <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
-                          <TableCell>{formattedDate}</TableCell>
-                          <TableCell>
-                            <CallDetailSheet call={call} />
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
+                    validCalls.map((call: any) => (
+                      <TableRow key={call.id}>
+                        <TableCell>
+                          <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
+                            {call.direction || 'unknown'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{call.from_number || 'N/A'}</TableCell>
+                        <TableCell>{call.to_number || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{call.status || 'unknown'}</Badge>
+                        </TableCell>
+                        <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
+                        <TableCell>{call.formatted_date || 'N/A'}</TableCell>
+                        <TableCell>
+                          <CallDetailSheet call={call} />
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
