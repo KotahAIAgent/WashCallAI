@@ -90,50 +90,9 @@ export default async function CallsPage({
     
     const calls = await getCalls(profile.organization_id, params)
 
-    // Ensure calls is always an array and filter out any invalid entries
-    // Also ensure all required fields exist with defaults and pre-format dates
-    // Only include serializable properties to avoid server component errors
-    const validCalls = Array.isArray(calls) 
-      ? calls
-          .filter(call => call && call.id)
-          .map(call => {
-            let formattedDate = 'N/A'
-            try {
-              if (call.created_at) {
-                const date = new Date(call.created_at)
-                if (!isNaN(date.getTime())) {
-                  // Use native JavaScript date formatting instead of date-fns
-                  formattedDate = date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })
-                }
-              }
-            } catch (e) {
-              // Keep as 'N/A'
-            }
-            
-            // Explicitly select only serializable properties
-            return {
-              id: String(call.id || ''),
-              direction: String(call.direction || 'unknown'),
-              status: String(call.status || 'unknown'),
-              from_number: call.from_number ? String(call.from_number) : null,
-              to_number: call.to_number ? String(call.to_number) : null,
-              organization_phone_number: call.organization_phone_number ? String(call.organization_phone_number) : null,
-              duration_seconds: call.duration_seconds ? Number(call.duration_seconds) : null,
-              created_at: call.created_at ? String(call.created_at) : null,
-              formatted_date: formattedDate,
-              summary: call.summary ? String(call.summary) : null,
-              transcript: call.transcript ? String(call.transcript) : null,
-              recording_url: call.recording_url ? String(call.recording_url) : null,
-              organization_id: String(call.organization_id || ''),
-            }
-          })
-      : []
+    // Pass full calls array to client components - they can handle the full database types
+    // The client components will handle serialization and formatting
+    const fullCalls = Array.isArray(calls) ? calls.filter(call => call && call.id) : []
 
     return (
       <div className="space-y-6">
@@ -165,12 +124,12 @@ export default async function CallsPage({
             
             {/* Mobile Card View */}
             <div className="block md:hidden">
-              <CallsMobileTableWithSelection calls={validCalls} />
+              <CallsMobileTableWithSelection calls={fullCalls} />
             </div>
 
             {/* Desktop Table View */}
             <div className="hidden md:block">
-              <CallsTableWithSelection calls={validCalls} />
+              <CallsTableWithSelection calls={fullCalls} />
             </div>
           </CardContent>
         </Card>
