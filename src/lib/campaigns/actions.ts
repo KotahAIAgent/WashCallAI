@@ -200,6 +200,7 @@ export async function addContact(formData: FormData) {
   const city = formData.get('city') as string
   const state = formData.get('state') as string
   const notes = formData.get('notes') as string
+  const phoneNumberId = formData.get('phoneNumberId') as string || null
 
   if (!phone) {
     return { error: 'Phone number is required' }
@@ -221,6 +222,7 @@ export async function addContact(formData: FormData) {
       city: city || null,
       state: state || null,
       notes: notes || null,
+      phone_number_id: phoneNumberId || null,
       status: 'pending',
     })
 
@@ -347,6 +349,31 @@ export async function updateContactStatus(
   return { success: true }
 }
 
+export async function updateContactPhoneNumber(
+  contactId: string,
+  phoneNumberId: string | null,
+  campaignId: string
+) {
+  const supabase = createActionClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+
+  const { error } = await supabase
+    .from('campaign_contacts')
+    .update({ phone_number_id: phoneNumberId })
+    .eq('id', contactId)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath(`/app/campaigns/${campaignId}`)
+  return { success: true }
+}
+
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
@@ -445,10 +472,10 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
     return { error: 'Not authenticated' }
   }
 
-  // Get contact
+  // Get contact with phone_number_id
   const { data: contact, error: contactError } = await supabase
     .from('campaign_contacts')
-    .select('*')
+    .select('*, phone_number_id')
     .eq('id', contactId)
     .eq('campaign_id', campaignId)
     .single()
@@ -458,7 +485,7 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
     return { error: 'Contact not found' }
   }
 
-  // Get campaign separately (including schedule)
+  // Get campaign separately (including schedule and phone_number_id)
   const { data: campaign, error: campaignError } = await supabase
     .from('campaigns')
     .select('organization_id, phone_number_id, schedule')
@@ -471,7 +498,8 @@ export async function makeCallForContact(contactId: string, campaignId: string) 
   }
 
   const organizationId = campaign.organization_id
-  const phoneNumberId = campaign.phone_number_id
+  // Priority: contact phone_number_id > campaign phone_number_id > auto-assign (null)
+  const phoneNumberId = (contact as any).phone_number_id || campaign.phone_number_id || undefined
   const campaignSchedule = campaign.schedule as { enabledDays?: string[]; startTime?: string; endTime?: string; timezone?: string } | null
 
   if (!organizationId) {

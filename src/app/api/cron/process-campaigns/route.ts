@@ -146,7 +146,7 @@ export async function POST(request: Request) {
         // Get pending contacts for this campaign (limit to avoid overwhelming)
         const { data: pendingContacts, error: contactsError } = await supabase
           .from('campaign_contacts')
-          .select('id, phone, name, business_name, call_count, last_call_at')
+          .select('id, phone, name, business_name, call_count, last_call_at, phone_number_id')
           .eq('campaign_id', campaign.id)
           .eq('status', 'pending')
           .limit(10) // Process up to 10 contacts per campaign per run
@@ -200,6 +200,35 @@ export async function POST(request: Request) {
             }
           }
 
+          // Determine phone number to use: contact phone_number_id > campaign phone_number_id > auto-assigned
+          let contactPhoneNumberId = (contact as any).phone_number_id || campaign.phone_number_id || phoneNumberId
+          
+          // If contact has a specific phone number, check its daily limit instead
+          if ((contact as any).phone_number_id && (contact as any).phone_number_id !== phoneNumberId) {
+            const { data: contactPhoneNumber } = await supabase
+              .from('phone_numbers')
+              .select('calls_today, daily_limit, last_reset_date')
+              .eq('id', (contact as any).phone_number_id)
+              .single()
+
+            if (contactPhoneNumber) {
+              const contactToday = new Date().toISOString().split('T')[0]
+              let contactAvailableCalls = contactPhoneNumber.daily_limit - contactPhoneNumber.calls_today
+
+              if (contactPhoneNumber.last_reset_date !== contactToday) {
+                await supabase
+                  .from('phone_numbers')
+                  .update({ calls_today: 0, last_reset_date: contactToday })
+                  .eq('id', (contact as any).phone_number_id)
+                contactAvailableCalls = contactPhoneNumber.daily_limit
+              }
+
+              if (contactAvailableCalls <= 0) {
+                continue // Skip this contact, its assigned phone number has reached daily limit
+              }
+            }
+          }
+
           // Initiate call using service role client context
           // Note: initiateOutboundCall uses createActionClient which requires a session
           // We need to create a server-side version or use a different approach
@@ -229,11 +258,11 @@ export async function POST(request: Request) {
               ...(agentConfig.custom_variables || {}),
             }
 
-            // Get phone number provider ID
+            // Get phone number provider ID (use contact's assigned phone number or fallback)
             const { data: phoneNumberData } = await supabase
               .from('phone_numbers')
-              .select('provider_phone_id, phone_number')
-              .eq('id', phoneNumberId)
+              .select('provider_phone_id, phone_number, calls_today, daily_limit')
+              .eq('id', contactPhoneNumberId)
               .single()
 
             if (!phoneNumberData) {
@@ -265,7 +294,7 @@ export async function POST(request: Request) {
                 metadata: {
                   organizationId: campaign.organization_id,
                   campaignContactId: contact.id,
-                  phoneNumberId: phoneNumberId,
+                  phoneNumberId: contactPhoneNumberId,
                 },
               }),
             })
@@ -323,11 +352,18 @@ export async function POST(request: Request) {
               raw_payload: callData,
             })
 
-            // Update phone number call count
+            // Update phone number call count (use the actual phone number used for the call)
+            const phoneNumberToUpdate = contactPhoneNumberId
+            const { data: currentPhoneData } = await supabase
+              .from('phone_numbers')
+              .select('calls_today')
+              .eq('id', phoneNumberToUpdate)
+              .single()
+            
             await supabase
               .from('phone_numbers')
-              .update({ calls_today: (phoneNumber.calls_today || 0) + 1 })
-              .eq('id', phoneNumberId)
+              .update({ calls_today: (currentPhoneData?.calls_today || 0) + 1 })
+              .eq('id', phoneNumberToUpdate)
 
             // Update campaign contact
             await supabase

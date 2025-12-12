@@ -13,16 +13,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { addContact } from '@/lib/campaigns/actions'
 import { useToast } from '@/hooks/use-toast'
 import { Plus, Loader2 } from 'lucide-react'
+import { Database } from '@/types/database'
+
+type PhoneNumber = Database['public']['Tables']['phone_numbers']['Row']
 
 export function AddContactDialog({
   campaignId,
   organizationId,
+  phoneNumbers,
 }: {
   campaignId: string
   organizationId: string
+  phoneNumbers: PhoneNumber[]
 }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -32,6 +44,12 @@ export function AddContactDialog({
     setLoading(true)
     formData.append('campaignId', campaignId)
     formData.append('organizationId', organizationId)
+    
+    // Convert "auto" to empty string (which becomes null in the action)
+    const phoneNumberId = formData.get('phoneNumberId') as string
+    if (phoneNumberId === 'auto') {
+      formData.set('phoneNumberId', '')
+    }
     
     const result = await addContact(formData)
     
@@ -103,6 +121,25 @@ export function AddContactDialog({
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
             <Textarea id="notes" name="notes" placeholder="Any notes about this contact..." rows={2} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phoneNumberId">Caller ID (Phone Number)</Label>
+            <Select name="phoneNumberId" defaultValue="auto">
+              <SelectTrigger>
+                <SelectValue placeholder="Auto-assign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto-assign (uses campaign default)</SelectItem>
+                {phoneNumbers.map((phone) => (
+                  <SelectItem key={phone.id} value={phone.id}>
+                    {phone.friendly_name || phone.phone_number} ({phone.phone_number})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Assign a specific phone number to this contact, or leave as auto-assign to use the campaign's default
+            </p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">

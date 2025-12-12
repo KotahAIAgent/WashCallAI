@@ -318,7 +318,7 @@ export default async function OutboundAIPage() {
                 4. Built-in Protection
               </h4>
               <p className="text-sm text-muted-foreground">
-                We limit calls to 100/day per number and 2/day per contact to avoid spam flags.
+                20/Day Per Number. We limit calls to 2/day per contact to avoid spam flags.
               </p>
             </div>
           </CardContent>

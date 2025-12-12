@@ -40,9 +40,22 @@ async function getContacts(campaignId: string) {
   const supabase = createServerClient()
   const { data } = await supabase
     .from('campaign_contacts')
-    .select('*')
+    .select('*, phone_numbers(phone_number, friendly_name)')
     .eq('campaign_id', campaignId)
     .order('created_at', { ascending: false })
+
+  return data || []
+}
+
+async function getPhoneNumbers(organizationId: string) {
+  const supabase = createServerClient()
+  const { data } = await supabase
+    .from('phone_numbers')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('active', true)
+    .or('type.eq.outbound,type.eq.both')
+    .order('created_at', { ascending: true })
 
   return data || []
 }
@@ -83,7 +96,10 @@ export default async function CampaignDetailPage({
     notFound()
   }
 
-  const contacts = await getContacts(id)
+  const [contacts, phoneNumbers] = await Promise.all([
+    getContacts(id),
+    getPhoneNumbers(profile.organization_id)
+  ])
   const status = statusConfig[campaign.status as keyof typeof statusConfig]
   const StatusIcon = status.icon
 
@@ -207,6 +223,7 @@ export default async function CampaignDetailPage({
               <AddContactDialog 
                 campaignId={campaign.id}
                 organizationId={profile.organization_id}
+                phoneNumbers={phoneNumbers}
               />
             </div>
           </div>
@@ -215,6 +232,7 @@ export default async function CampaignDetailPage({
           <CampaignContacts 
             contacts={contacts}
             campaignId={campaign.id}
+            phoneNumbers={phoneNumbers}
           />
         </CardContent>
       </Card>

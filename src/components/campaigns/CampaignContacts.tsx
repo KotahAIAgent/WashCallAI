@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Database } from '@/types/database'
-import { deleteContact, updateContactStatus, convertToLead, makeCallForContact } from '@/lib/campaigns/actions'
+import { deleteContact, updateContactStatus, convertToLead, makeCallForContact, updateContactPhoneNumber } from '@/lib/campaigns/actions'
 import { useToast } from '@/hooks/use-toast'
 import { 
   Phone, 
@@ -33,11 +33,20 @@ import {
   XCircle,
   Clock,
   PhoneOff,
-  Voicemail
+  Voicemail,
+  Edit
 } from 'lucide-react'
 import { format } from 'date-fns'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 type Contact = Database['public']['Tables']['campaign_contacts']['Row']
+type PhoneNumber = Database['public']['Tables']['phone_numbers']['Row']
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending: { label: 'Pending', color: 'bg-gray-100 text-gray-700', icon: Clock },
@@ -56,9 +65,11 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 export function CampaignContacts({
   contacts,
   campaignId,
+  phoneNumbers,
 }: {
   contacts: Contact[]
   campaignId: string
+  phoneNumbers: PhoneNumber[]
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -120,6 +131,16 @@ export function CampaignContacts({
     const result = await updateContactStatus(contactId, newStatus, campaignId)
     if (result.error) {
       toast({ title: 'Error', description: result.error, variant: 'destructive' })
+    }
+  }
+
+  async function handlePhoneNumberChange(contactId: string, phoneNumberId: string | null) {
+    const result = await updateContactPhoneNumber(contactId, phoneNumberId, campaignId)
+    if (result.error) {
+      toast({ title: 'Error', description: result.error, variant: 'destructive' })
+    } else {
+      toast({ title: 'Phone number updated', description: 'The contact\'s phone number assignment has been updated' })
+      window.location.reload()
     }
   }
 
@@ -204,6 +225,7 @@ export function CampaignContacts({
             <TableRow>
               <TableHead>Contact</TableHead>
               <TableHead>Phone</TableHead>
+              <TableHead>Caller ID</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Calls</TableHead>
               <TableHead>Last Call</TableHead>
@@ -233,6 +255,24 @@ export function CampaignContacts({
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm">{contact.phone}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={(contact as any).phone_number_id || 'auto'}
+                      onValueChange={(value) => handlePhoneNumberChange(contact.id, value === 'auto' ? null : value)}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Auto-assign" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto-assign</SelectItem>
+                        {phoneNumbers.map((phone) => (
+                          <SelectItem key={phone.id} value={phone.id}>
+                            {phone.friendly_name || phone.phone_number}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell>
                     <Badge className={status.color}>
                       <StatusIcon className="h-3 w-3 mr-1" />

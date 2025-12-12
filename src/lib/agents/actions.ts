@@ -222,16 +222,101 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     return { error: 'Outbound calling is disabled' }
   }
 
-  // Get phone number
+  // Get contact info first to determine phone number assignment
+  let contactPhone: string
+  let contactName: string | null = null
+  let actualLeadId: string | null = leadId || null
+  let campaignData: { script_type?: string; description?: string; name?: string } | null = null
+  let resolvedPhoneNumberId: string | undefined = phoneNumberId
+
+  if (campaignContactId) {
+    // Get campaign contact info with campaign data and phone_number_id
+    const { data: contact, error: contactError } = await supabase
+      .from('campaign_contacts')
+      .select('*, campaigns(script_type, description, name, phone_number_id)')
+      .eq('id', campaignContactId)
+      .eq('organization_id', organizationId)
+      .single()
+
+    if (contactError || !contact) {
+      return { error: 'Campaign contact not found' }
+    }
+
+    if (!contact.phone) {
+      return { error: 'Contact has no phone number' }
+    }
+
+    // Check if contact has already been called 2+ times today
+    const today = new Date().toISOString().split('T')[0]
+    if (contact.last_call_at) {
+      const lastCallDate = new Date(contact.last_call_at).toISOString().split('T')[0]
+      if (lastCallDate === today && contact.call_count >= 2) {
+        return { error: 'Maximum 2 calls per contact per day reached' }
+      }
+    }
+
+    // Determine phone number to use: contact phone_number_id > campaign phone_number_id > use phoneNumberId param
+    const campaign = (contact as any).campaigns
+    const contactPhoneNumberId = (contact as any).phone_number_id
+    const campaignPhoneNumberId = campaign?.phone_number_id
+    
+    // Priority: contact phone_number_id > campaign phone_number_id > phoneNumberId param
+    if (contactPhoneNumberId) {
+      resolvedPhoneNumberId = contactPhoneNumberId
+    } else if (campaignPhoneNumberId) {
+      resolvedPhoneNumberId = campaignPhoneNumberId
+    }
+
+    contactPhone = normalizePhoneNumberForStorage(contact.phone)
+    contactName = contact.name || contact.business_name
+
+    // Extract campaign data for dynamic prompts
+    if (campaign) {
+      campaignData = {
+        script_type: campaign.script_type,
+        description: campaign.description,
+        name: campaign.name,
+      }
+    }
+
+    // Update contact status to queued
+    await supabase
+      .from('campaign_contacts')
+      .update({ status: 'queued' })
+      .eq('id', campaignContactId)
+  } else if (leadId) {
+    // Get lead info
+    const { data: lead, error: leadError } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('id', leadId)
+      .eq('organization_id', organizationId)
+      .single()
+
+    if (leadError || !lead) {
+      return { error: 'Lead not found' }
+    }
+
+    if (!lead.phone) {
+      return { error: 'Lead has no phone number' }
+    }
+
+    contactPhone = normalizePhoneNumberForStorage(lead.phone)
+    contactName = lead.name
+  } else {
+    return { error: 'Either leadId or campaignContactId is required' }
+  }
+
+  // Get phone number using resolved phone number ID
   let phoneNumber
   let actualPhoneNumberId: string
   
-  if (phoneNumberId) {
-    // Use specified phone number
+  if (resolvedPhoneNumberId) {
+    // Use specified phone number (from contact, campaign, or param)
     const { data: phone, error: phoneError } = await supabase
       .from('phone_numbers')
       .select('*')
-      .eq('id', phoneNumberId)
+      .eq('id', resolvedPhoneNumberId)
       .eq('organization_id', organizationId)
       .single()
 
@@ -239,15 +324,16 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
       return { error: 'Phone number not found' }
     }
     phoneNumber = phone
-    actualPhoneNumberId = phoneNumberId
+    actualPhoneNumberId = resolvedPhoneNumberId
   } else {
-    // Get first available outbound phone number for this organization
+    // Auto-assign: Get first available outbound phone number for this organization
     const { data: phoneNumbers, error: phoneError } = await supabase
       .from('phone_numbers')
       .select('*')
       .eq('organization_id', organizationId)
       .eq('active', true)
       .in('type', ['outbound', 'both'])
+      .order('created_at', { ascending: true })
       .limit(1)
 
     if (phoneError || !phoneNumbers || phoneNumbers.length === 0) {
@@ -283,57 +369,8 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     return { error: 'Daily call limit reached for this phone number' }
   }
 
-  // Get contact info - either from lead or campaign contact
-  let contactPhone: string
-  let contactName: string | null = null
-  let actualLeadId: string | null = leadId || null
-  let campaignData: { script_type?: string; description?: string; name?: string } | null = null
-
-  if (campaignContactId) {
-    // Get campaign contact info with campaign data
-    const { data: contact, error: contactError } = await supabase
-      .from('campaign_contacts')
-      .select('*, campaigns(script_type, description, name)')
-      .eq('id', campaignContactId)
-      .eq('organization_id', organizationId)
-      .single()
-
-    if (contactError || !contact) {
-      return { error: 'Campaign contact not found' }
-    }
-
-    if (!contact.phone) {
-      return { error: 'Contact has no phone number' }
-    }
-
-    // Check if contact has already been called 2+ times today
-    if (contact.last_call_at) {
-      const lastCallDate = new Date(contact.last_call_at).toISOString().split('T')[0]
-      if (lastCallDate === today && contact.call_count >= 2) {
-        return { error: 'Maximum 2 calls per contact per day reached' }
-      }
-    }
-
-    contactPhone = normalizePhoneNumberForStorage(contact.phone)
-    contactName = contact.name || contact.business_name
-
-    // Extract campaign data for dynamic prompts
-    const campaign = (contact as any).campaigns
-    if (campaign) {
-      campaignData = {
-        script_type: campaign.script_type,
-        description: campaign.description,
-        name: campaign.name,
-      }
-    }
-
-    // Update contact status to queued
-    await supabase
-      .from('campaign_contacts')
-      .update({ status: 'queued' })
-      .eq('id', campaignContactId)
-  } else if (leadId) {
-    // Check calls to this lead today
+  // Check call limits for leads (campaign contacts are checked above)
+  if (leadId) {
     const { data: callLimit } = await supabase
       .from('call_limits')
       .select('*')
@@ -345,27 +382,6 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     if (callLimit && callLimit.calls_today >= 2) {
       return { error: 'Maximum 2 calls per lead per day reached' }
     }
-
-    // Get lead info
-    const { data: lead, error: leadError } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('id', leadId)
-      .eq('organization_id', organizationId)
-      .single()
-
-    if (leadError || !lead) {
-      return { error: 'Lead not found' }
-    }
-
-    if (!lead.phone) {
-      return { error: 'Lead has no phone number' }
-    }
-
-    contactPhone = normalizePhoneNumberForStorage(lead.phone)
-    contactName = lead.name
-  } else {
-    return { error: 'Either leadId or campaignContactId is required' }
   }
 
   // Check schedule - skip if manual call, otherwise use campaign schedule if provided, or agent config schedule

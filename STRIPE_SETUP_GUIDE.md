@@ -29,63 +29,117 @@ You need to create products for each plan (Starter, Growth, Pro) and their setup
 
 ### 2.1 Create Subscription Products
 
-1. **Go to Products**: https://dashboard.stripe.com/products
-2. **Click "Add product"** for each plan:
+**Step-by-Step Instructions:**
 
-#### Starter Plan
-- **Name**: `FusionCaller Starter Plan`
-- **Description**: `Unlimited inbound AI calls`
-- **Pricing Model**: Recurring
-- **Price**: `$149.00 USD`
-- **Billing Period**: Monthly
-- **Click "Save product"**
-- **Copy the Price ID** (starts with `price_`) - you'll need this!
+1. **Go to Products Page**:
+   - Log into Stripe Dashboard: https://dashboard.stripe.com
+   - Click **"Products"** in the left sidebar
+   - You'll see a list of existing products (if any)
 
-#### Growth Plan
+2. **Click "Add product"** button (usually in the top right)
+
+3. **Fill in the Product Details**:
+
+#### For Starter Plan Subscription:
+
+**Product Information Section:**
+- **Name**: Type `FusionCaller Starter Plan`
+- **Description** (optional): `Unlimited inbound AI calls, lead capture, and basic analytics`
+
+**Pricing Section:**
+- **Pricing model**: Select **"Recurring"** (this is important - it creates a subscription)
+- **Price**: Enter `149.00`
+- **Currency**: Select `USD` (United States Dollar)
+- **Billing period**: Select **"Monthly"**
+- **Usage type**: Leave as **"Licensed"** (default)
+
+**Advanced options** (click to expand if needed):
+- **Billing period anchor**: Leave as default
+- **Proration behavior**: Leave as default
+- **Trial period**: Leave empty (unless you want to offer free trials)
+
+4. **Click "Save product"** (blue button at bottom)
+
+5. **Copy the Price ID**:
+   - After saving, you'll see the product page
+   - Look for a section showing "Pricing" or "Prices"
+   - You'll see a Price ID that looks like: `price_1ABC123xyz...`
+   - **Click the copy icon** next to the Price ID
+   - **Save this somewhere** - you'll need it for environment variables!
+
+#### For Growth Plan Subscription:
+
+Repeat the same steps with these values:
 - **Name**: `FusionCaller Growth Plan`
-- **Description**: `Inbound + Outbound AI calls`
-- **Pricing Model**: Recurring
-- **Price**: `$349.00 USD`
-- **Billing Period**: Monthly
-- **Click "Save product"**
-- **Copy the Price ID**
+- **Description**: `Inbound + Outbound AI calls, campaigns, and advanced analytics`
+- **Pricing model**: **Recurring**
+- **Price**: `349.00`
+- **Currency**: `USD`
+- **Billing period**: **Monthly**
+- **Save and copy the Price ID**
 
-#### Pro Plan
+#### For Pro Plan Subscription:
+
+Repeat the same steps with these values:
 - **Name**: `FusionCaller Pro Plan`
-- **Description**: `Unlimited power for high-volume operations`
-- **Pricing Model**: Recurring
-- **Price**: `$699.00 USD`
-- **Billing Period**: Monthly
-- **Click "Save product"**
-- **Copy the Price ID**
+- **Description**: `Unlimited power for high-volume operations with custom AI and API access`
+- **Pricing model**: **Recurring**
+- **Price**: `699.00`
+- **Currency**: `USD`
+- **Billing period**: **Monthly**
+- **Save and copy the Price ID**
+
+**Important Notes:**
+- Make sure you select **"Recurring"** pricing model (not "One time")
+- The Price ID is what you'll use in your code - not the Product ID
+- You can find the Price ID later by going to the product and looking at the "Pricing" section
 
 ### 2.2 Create Setup Fee Products (One-time charges)
 
-1. **Click "Add product"** for each setup fee:
+**Step-by-Step Instructions:**
 
-#### Starter Setup Fee
+1. **Go to Products Page** (same as before): https://dashboard.stripe.com/products
+2. **Click "Add product"** again
+
+#### For Starter Setup Fee:
+
+**Product Information Section:**
 - **Name**: `FusionCaller Starter Setup Fee`
-- **Description**: `One-time setup fee for Starter plan`
-- **Pricing Model**: One time
-- **Price**: `$99.00 USD`
-- **Click "Save product"**
-- **Copy the Price ID**
+- **Description** (optional): `One-time setup fee for Starter plan`
 
-#### Growth Setup Fee
+**Pricing Section:**
+- **Pricing model**: Select **"One time"** (this is different from subscriptions!)
+- **Price**: Enter `99.00`
+- **Currency**: Select `USD`
+- **Usage type**: Leave as **"Licensed"** (default)
+
+3. **Click "Save product"**
+4. **Copy the Price ID** (same process as before)
+
+#### For Growth Setup Fee:
+
+Repeat with:
 - **Name**: `FusionCaller Growth Setup Fee`
 - **Description**: `One-time setup fee for Growth plan`
-- **Pricing Model**: One time
-- **Price**: `$149.00 USD`
-- **Click "Save product"**
-- **Copy the Price ID**
+- **Pricing model**: **One time**
+- **Price**: `149.00`
+- **Currency**: `USD`
+- **Save and copy the Price ID**
 
-#### Pro Setup Fee
+#### For Pro Setup Fee:
+
+Repeat with:
 - **Name**: `FusionCaller Pro Setup Fee`
 - **Description**: `One-time setup fee for Pro plan`
-- **Pricing Model**: One time
-- **Price**: `$199.00 USD`
-- **Click "Save product"**
-- **Copy the Price ID**
+- **Pricing model**: **One time**
+- **Price**: `199.00`
+- **Currency**: `USD`
+- **Save and copy the Price ID**
+
+**Important Notes:**
+- Setup fees use **"One time"** pricing (not "Recurring")
+- These are charged once when the customer subscribes
+- You'll still get a Price ID for one-time products
 
 ---
 

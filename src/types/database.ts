@@ -586,6 +586,7 @@ export interface Database {
           city: string | null
           state: string | null
           notes: string | null
+          phone_number_id: string | null
           status: 'pending' | 'queued' | 'calling' | 'no_answer' | 'voicemail' | 'answered' | 'interested' | 'not_interested' | 'callback' | 'wrong_number' | 'do_not_call'
           call_count: number
           last_call_at: string | null
@@ -607,6 +608,7 @@ export interface Database {
           city?: string | null
           state?: string | null
           notes?: string | null
+          phone_number_id?: string | null
           status?: 'pending' | 'queued' | 'calling' | 'no_answer' | 'voicemail' | 'answered' | 'interested' | 'not_interested' | 'callback' | 'wrong_number' | 'do_not_call'
           call_count?: number
           last_call_at?: string | null
@@ -628,6 +630,7 @@ export interface Database {
           city?: string | null
           state?: string | null
           notes?: string | null
+          phone_number_id?: string | null
           status?: 'pending' | 'queued' | 'calling' | 'no_answer' | 'voicemail' | 'answered' | 'interested' | 'not_interested' | 'callback' | 'wrong_number' | 'do_not_call'
           call_count?: number
           last_call_at?: string | null

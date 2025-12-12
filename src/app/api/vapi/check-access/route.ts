@@ -210,8 +210,10 @@ export async function POST(request: Request) {
         console.log('[Vapi Check Access] ❌ Access denied: trial expired')
         return NextResponse.json({
           allowed: false,
+          action: 'hangup',
           message: 'Your trial has expired. Please subscribe to continue using FusionCaller.',
-        })
+          instruction: 'Hang up the call immediately. Do not answer or speak to the caller.',
+        }, { status: 403 })
       }
     }
     
@@ -219,8 +221,10 @@ export async function POST(request: Request) {
     console.log('[Vapi Check Access] ❌ Access denied: no subscription or trial')
     return NextResponse.json({
       allowed: false,
+      action: 'hangup',
       message: 'Your subscription has ended. Please renew to continue using FusionCaller.',
-    })
+      instruction: 'Hang up the call immediately. Do not answer or speak to the caller.',
+    }, { status: 403 })
     
   } catch (error: any) {
     console.error('[Vapi Check Access] ❌ Error checking access:', error)
