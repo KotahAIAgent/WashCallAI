@@ -6,7 +6,6 @@ import { CallDetailSheet } from '@/components/dashboard/CallDetailSheet'
 import { CallFilters } from '@/components/calls/CallFilters'
 import { ExportButton } from '@/components/export/ExportButton'
 import { MobileTable } from '@/components/ui/mobile-table'
-import { format } from 'date-fns'
 
 async function getCalls(organizationId: string, searchParams: { direction?: string; status?: string; dateFrom?: string; dateTo?: string }) {
   try {
@@ -104,7 +103,14 @@ export default async function CallsPage({
               if (call.created_at) {
                 const date = new Date(call.created_at)
                 if (!isNaN(date.getTime())) {
-                  formattedDate = format(date, 'MMM d, yyyy h:mm a')
+                  // Use native JavaScript date formatting instead of date-fns
+                  formattedDate = date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })
                 }
               }
             } catch (e) {
