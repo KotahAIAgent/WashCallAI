@@ -3,6 +3,8 @@
 import { createActionClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { autoConfigureWebhook } from '@/lib/vapi/auto-webhook'
+import { planHasAccess } from '@/lib/stripe/server'
+import { getEffectivePlan } from '@/lib/admin/utils'
 
 const VAPI_API_URL = 'https://api.vapi.ai'
 
@@ -169,6 +171,31 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
 
   if (!session) {
     return { error: 'Not authenticated' }
+  }
+
+  // Check if organization has access to outbound calling based on plan
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('plan, admin_granted_plan, admin_granted_plan_expires_at, admin_privileges')
+    .eq('id', organizationId)
+    .maybeSingle()
+
+  if (!org) {
+    return { error: 'Organization not found' }
+  }
+
+  // Get effective plan (considers admin-granted plans)
+  const effectivePlan = getEffectivePlan({
+    plan: org.plan as 'starter' | 'growth' | 'pro' | null,
+    admin_granted_plan: org.admin_granted_plan as 'starter' | 'growth' | 'pro' | null,
+    admin_granted_plan_expires_at: org.admin_granted_plan_expires_at,
+  })
+
+  // Check if plan has outbound access
+  if (!planHasAccess(effectivePlan, 'outbound')) {
+    return { 
+      error: 'Outbound calling is not available on your current plan. Please upgrade to Growth or Pro plan to access outbound calling features.' 
+    }
   }
 
   // Must have either leadId or campaignContactId
