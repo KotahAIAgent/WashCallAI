@@ -82,11 +82,32 @@ export default async function CallsPage({
       )
     }
 
-    const params = await searchParams
+    let params: { direction?: string; status?: string; dateFrom?: string; dateTo?: string } = {}
+    try {
+      params = await searchParams || {}
+    } catch (e) {
+      console.error('[CallsPage] Error reading searchParams:', e)
+      params = {}
+    }
+    
     const calls = await getCalls(profile.organization_id, params)
 
     // Ensure calls is always an array and filter out any invalid entries
-    const validCalls = Array.isArray(calls) ? calls.filter(call => call && call.id) : []
+    // Also ensure all required fields exist with defaults
+    const validCalls = Array.isArray(calls) 
+      ? calls
+          .filter(call => call && call.id)
+          .map(call => ({
+            ...call,
+            id: call.id || '',
+            direction: call.direction || 'unknown',
+            status: call.status || 'unknown',
+            from_number: call.from_number || null,
+            to_number: call.to_number || null,
+            duration_seconds: call.duration_seconds || null,
+            created_at: call.created_at || null,
+          }))
+      : []
 
     return (
       <div className="space-y-6">
@@ -108,10 +129,10 @@ export default async function CallsPage({
           <CardContent>
             <div className="mb-4 flex flex-wrap gap-4">
               <CallFilters 
-                defaultDirection={params.direction || 'all'}
-                defaultStatus={params.status || 'all'}
-                defaultDateFrom={params.dateFrom}
-                defaultDateTo={params.dateTo}
+                defaultDirection={params?.direction || 'all'}
+                defaultStatus={params?.status || 'all'}
+                defaultDateFrom={params?.dateFrom}
+                defaultDateTo={params?.dateTo}
               />
             </div>
             
@@ -154,10 +175,13 @@ export default async function CallsPage({
                   {
                     key: 'created_at',
                     label: 'Date',
-                    render: (call) => {
+                    render: (call: any) => {
                       try {
-                        if (call.created_at) {
-                          return format(new Date(call.created_at), 'MMM d, yyyy h:mm a')
+                        if (call?.created_at) {
+                          const date = new Date(call.created_at)
+                          if (!isNaN(date.getTime())) {
+                            return format(date, 'MMM d, yyyy h:mm a')
+                          }
                         }
                         return 'N/A'
                       } catch (e) {
@@ -192,15 +216,18 @@ export default async function CallsPage({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    validCalls.map((call) => {
+                    validCalls.map((call: any) => {
                       // Safely handle date formatting
                       let formattedDate = 'N/A'
                       try {
-                        if (call.created_at) {
-                          formattedDate = format(new Date(call.created_at), 'MMM d, yyyy h:mm a')
+                        if (call?.created_at) {
+                          const date = new Date(call.created_at)
+                          if (!isNaN(date.getTime())) {
+                            formattedDate = format(date, 'MMM d, yyyy h:mm a')
+                          }
                         }
                       } catch (e) {
-                        console.error('Error formatting date:', e)
+                        // Silently fail - don't log in production
                       }
 
                       return (
