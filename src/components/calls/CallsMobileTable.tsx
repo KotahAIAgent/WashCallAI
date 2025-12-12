@@ -10,6 +10,7 @@ interface Call {
   status: string
   from_number: string | null
   to_number: string | null
+  organization_phone_number: string | null
   duration_seconds: number | null
   formatted_date: string
 }
@@ -41,6 +42,13 @@ export function CallsMobileTable({ calls }: CallsMobileTableProps) {
           key: 'to_number',
           label: 'To',
           render: (call) => call.to_number || 'N/A',
+        },
+        {
+          key: 'organization_phone_number',
+          label: 'Your Number',
+          render: (call) => (
+            <span className="font-medium">{call.organization_phone_number || 'N/A'}</span>
+          ),
         },
         {
           key: 'status',

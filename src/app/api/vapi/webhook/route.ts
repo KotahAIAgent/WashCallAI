@@ -720,12 +720,50 @@ export async function POST(request: Request) {
       }
     }
     
+    // Identify which phone number from the organization was used
+    // For inbound: to_number is the organization's phone number
+    // For outbound: from_number is the organization's phone number
+    const orgPhoneNumber = direction === 'inbound' ? toNumber : fromNumber
+    let phoneNumberId: string | null = null
+    let organizationPhoneNumber: string | null = null
+    
+    if (orgPhoneNumber) {
+      // Normalize the phone number for matching
+      const normalizedOrgPhone = normalizePhoneNumber(orgPhoneNumber)
+      
+      if (normalizedOrgPhone) {
+        // Look up the phone number in the database
+        const { data: phoneNumberRecord } = await supabase
+          .from('phone_numbers')
+          .select('id, phone_number')
+          .eq('organization_id', organizationId)
+          .or(`phone_number.eq.${normalizedOrgPhone},phone_number.eq.${orgPhoneNumber}`)
+          .maybeSingle()
+        
+        if (phoneNumberRecord) {
+          phoneNumberId = phoneNumberRecord.id
+          organizationPhoneNumber = phoneNumberRecord.phone_number
+          console.log('[Webhook] Found phone number record:', {
+            phoneNumberId,
+            phoneNumber: organizationPhoneNumber,
+            direction,
+          })
+        } else {
+          // If not found in database, still store the number for display
+          organizationPhoneNumber = normalizedOrgPhone
+          console.log('[Webhook] Phone number not found in database, storing as-is:', normalizedOrgPhone)
+        }
+      }
+    }
+    
     const callData = {
       organization_id: organizationId,
       direction: direction,
       provider_call_id: finalProviderCallId,
       from_number: fromNumber,
       to_number: toNumber,
+      phone_number_id: phoneNumberId,
+      organization_phone_number: organizationPhoneNumber,
       status: mapVapiStatus(payload.status || payload.state || payload.message?.status),
       duration_seconds: payload.duration || payload.message?.duration || null,
       recording_url: payload.recording?.url || payload.message?.recording?.url || null,

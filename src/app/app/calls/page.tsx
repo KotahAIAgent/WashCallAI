@@ -125,6 +125,7 @@ export default async function CallsPage({
               status: String(call.status || 'unknown'),
               from_number: call.from_number ? String(call.from_number) : null,
               to_number: call.to_number ? String(call.to_number) : null,
+              organization_phone_number: call.organization_phone_number ? String(call.organization_phone_number) : null,
               duration_seconds: call.duration_seconds ? Number(call.duration_seconds) : null,
               created_at: call.created_at ? String(call.created_at) : null,
               formatted_date: formattedDate,
@@ -177,6 +178,7 @@ export default async function CallsPage({
                     <TableHead>Direction</TableHead>
                     <TableHead>From</TableHead>
                     <TableHead>To</TableHead>
+                    <TableHead>Your Number</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Date</TableHead>
@@ -186,7 +188,7 @@ export default async function CallsPage({
                 <TableBody>
                   {validCalls.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         No calls found
                       </TableCell>
                     </TableRow>
@@ -200,6 +202,9 @@ export default async function CallsPage({
                         </TableCell>
                         <TableCell>{call.from_number || 'N/A'}</TableCell>
                         <TableCell>{call.to_number || 'N/A'}</TableCell>
+                        <TableCell className="font-medium">
+                          {call.organization_phone_number || 'N/A'}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">{call.status || 'unknown'}</Badge>
                         </TableCell>
