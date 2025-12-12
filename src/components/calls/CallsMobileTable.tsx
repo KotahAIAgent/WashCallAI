@@ -3,6 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MobileTable } from '@/components/ui/mobile-table'
+import { DeleteCallButton } from '@/components/calls/DeleteCallButton'
 
 interface Call {
   id: string
@@ -66,6 +67,15 @@ export function CallsMobileTable({ calls }: CallsMobileTableProps) {
           key: 'formatted_date',
           label: 'Date',
           render: (call) => call.formatted_date || 'N/A',
+        },
+        {
+          key: 'actions',
+          label: 'Actions',
+          render: (call) => (
+            <div className="flex items-center gap-2">
+              <DeleteCallButton callId={call.id} callDirection={call.direction} />
+            </div>
+          ),
         },
       ]}
       emptyMessage="No calls found"

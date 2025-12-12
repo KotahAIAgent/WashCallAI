@@ -47,8 +47,24 @@ const AlertDialogDescription = ({ className, ...props }: React.ComponentPropsWit
   <AlertDialogPrimitive.Description className={cn("text-sm text-muted-foreground", className)} {...props} />
 )
 
+const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 const AlertDialogAction = AlertDialogPrimitive.Action
 const AlertDialogCancel = AlertDialogPrimitive.Cancel
+
+// Export AlertDialog components for use in other components
+export {
+  AlertDialog,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogTrigger,
+}
 
 interface ConfirmDialogProps {
   open: boolean

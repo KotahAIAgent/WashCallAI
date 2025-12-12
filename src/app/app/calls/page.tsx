@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { CallDetailSheet } from '@/components/dashboard/CallDetailSheet'
 import { CallFilters } from '@/components/calls/CallFilters'
 import { CallsMobileTable } from '@/components/calls/CallsMobileTable'
+import { DeleteCallButton } from '@/components/calls/DeleteCallButton'
 import { AutoRefresh } from '@/components/calls/AutoRefresh'
 import { ExportButton } from '@/components/export/ExportButton'
 
@@ -182,13 +183,13 @@ export default async function CallsPage({
                     <TableHead>Status</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {validCalls.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">
                         No calls found
                       </TableCell>
                     </TableRow>
@@ -211,7 +212,10 @@ export default async function CallsPage({
                         <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
                         <TableCell>{call.formatted_date || 'N/A'}</TableCell>
                         <TableCell>
-                          <CallDetailSheet call={call} />
+                          <div className="flex items-center gap-2">
+                            <CallDetailSheet call={call} />
+                            <DeleteCallButton callId={call.id} callDirection={call.direction} />
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
