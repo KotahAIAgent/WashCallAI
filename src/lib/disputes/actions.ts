@@ -112,7 +112,7 @@ export async function getUsageStats(organizationId: string) {
   // Get organization billing info
   const { data: org } = await supabase
     .from('organizations')
-    .select('plan, billable_calls_this_month, billing_period_month, billing_period_year')
+    .select('plan, billable_minutes_this_month, billable_calls_this_month, billing_period_month, billing_period_year, industry')
     .eq('id', organizationId)
     .single()
 
@@ -125,21 +125,20 @@ export async function getUsageStats(organizationId: string) {
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 
+  let billableMinutesThisMonth = org.billable_minutes_this_month || 0
   let billableCallsThisMonth = org.billable_calls_this_month || 0
 
   // Reset if new month
   if (org.billing_period_month !== currentMonth || org.billing_period_year !== currentYear) {
+    billableMinutesThisMonth = 0
     billableCallsThisMonth = 0
   }
 
-  // Get plan limits
-  const planLimits: Record<string, number> = {
-    starter: 0,
-    growth: 500,
-    pro: 2500,
-  }
-
-  const monthlyLimit = planLimits[org.plan || 'starter'] || 0
+  // Get plan limits (in minutes, industry-specific)
+  const { getIndustryPricing } = await import('@/lib/stripe/server')
+  const industrySlug = (org.industry as any) || null
+  const industryPricing = getIndustryPricing(org.plan as any, industrySlug)
+  const monthlyLimitMinutes = industryPricing.minutes || 0
 
   // Get pending disputes count
   const { count: pendingDisputes } = await supabase
@@ -159,9 +158,10 @@ export async function getUsageStats(organizationId: string) {
 
   return {
     plan: org.plan,
+    billableMinutesThisMonth,
     billableCallsThisMonth,
-    monthlyLimit,
-    remainingCalls: monthlyLimit === 0 ? 0 : monthlyLimit - billableCallsThisMonth + (refundedCredits || 0),
+    monthlyLimitMinutes,
+    remainingMinutes: monthlyLimitMinutes === -1 ? -1 : Math.max(0, monthlyLimitMinutes - billableMinutesThisMonth),
     pendingDisputes: pendingDisputes || 0,
     refundedCredits: refundedCredits || 0,
     billingPeriod: {

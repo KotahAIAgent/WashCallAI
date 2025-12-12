@@ -1099,12 +1099,21 @@ export async function POST(request: Request) {
       const isBillable = BILLABLE_STATUSES.includes(contactStatus)
 
       if (isBillable) {
+        // Calculate actual minutes used for this call
+        const callDurationSeconds = callData.duration_seconds || 0
+        const callMinutes = Math.ceil(callDurationSeconds / 60) // Round up to nearest minute
+
         // Get current organization billing info
         const { data: org } = await supabase
           .from('organizations')
-          .select('billable_calls_this_month, billing_period_month, billing_period_year')
+          .select('billable_minutes_this_month, billable_calls_this_month, billing_period_month, billing_period_year')
           .eq('id', organizationId)
-          .single() as { data: { billable_calls_this_month: number | null; billing_period_month: number | null; billing_period_year: number | null } | null }
+          .single() as { data: { 
+            billable_minutes_this_month: number | null
+            billable_calls_this_month: number | null
+            billing_period_month: number | null
+            billing_period_year: number | null
+          } | null }
 
         if (org) {
           const now = new Date()
@@ -1113,40 +1122,41 @@ export async function POST(request: Request) {
 
           // Check if we need to reset the counter for a new billing period
           if (org.billing_period_month !== currentMonth || org.billing_period_year !== currentYear) {
-            // New billing period - reset counter
+            // New billing period - reset counters
             await (supabase
               .from('organizations') as any)
               .update({
+                billable_minutes_this_month: callMinutes,
                 billable_calls_this_month: 1,
                 billing_period_month: currentMonth,
                 billing_period_year: currentYear,
               })
               .eq('id', organizationId)
           } else {
-            // Same billing period - increment counter
+            // Same billing period - increment both counters
             await (supabase
               .from('organizations') as any)
               .update({
+                billable_minutes_this_month: (org.billable_minutes_this_month || 0) + callMinutes,
                 billable_calls_this_month: (org.billable_calls_this_month || 0) + 1,
               })
               .eq('id', organizationId)
           }
         }
 
-        console.log(`📊 Billable call counted: ${contactStatus} for org ${organizationId}`)
+        console.log(`📊 Billable call counted: ${contactStatus} for org ${organizationId} - ${callMinutes} minutes`)
 
         // 💳 CHARGE VAPI CALL VIA STRIPE (if overage)
         // Check if this call exceeds plan limits and should be charged
-        const chargeCheck = await shouldChargeCall(organizationId)
+        // Pass actual call duration to get accurate overage calculation
+        const chargeCheck = await shouldChargeCall(organizationId, callDurationSeconds)
         
         if (chargeCheck.shouldCharge && call?.id) {
-          const callDuration = callData.duration_seconds || 0
-          
-          // Charge for overage call
+          // Charge for overage call (only overage minutes will be charged)
           const chargeResult = await chargeVapiCall({
             organizationId,
             callId: call.id,
-            callDuration,
+            callDuration: callDurationSeconds,
             callDirection: direction as 'inbound' | 'outbound',
             isOverage: true,
           })

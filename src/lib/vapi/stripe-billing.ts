@@ -54,31 +54,39 @@ export async function chargeVapiCall({
     const industryPricing = industrySlug ? getIndustryPricing(org?.plan as any, industrySlug) : null
     const overageRate = industryPricing?.overageRate || 0.20
 
-    const callMinutes = Math.ceil(callDuration / 60) // Round up to nearest minute
-    const callCostCents = Math.round(callMinutes * overageRate * 100)
+    // Calculate how many minutes of this call are overage
+    // Get current usage to determine overage minutes
+    const chargeCheck = await shouldChargeCall(organizationId, callDuration)
+    const overageMinutes = chargeCheck.overageMinutes || 0
 
-    // Only charge for overage calls (or customize this logic)
-    if (!isOverage) {
+    // Only charge for the overage portion of the call
+    if (overageMinutes <= 0 || !isOverage) {
       return { success: true, message: 'Call within plan limits, no charge' }
     }
 
-    // Create invoice item for this call
+    // Charge only for the overage minutes (not the entire call)
+    const callCostCents = Math.round(overageMinutes * overageRate * 100)
+    const totalCallMinutes = Math.ceil(callDuration / 60)
+
+    // Create invoice item for this call (only for overage minutes)
     const invoiceItem = await stripe.invoiceItems.create({
       customer: org.billing_customer_id,
       amount: callCostCents,
       currency: 'usd',
-      description: `Vapi ${callDirection} call (${callMinutes} min) - Overage @ $${overageRate}/min`,
+      description: `Vapi ${callDirection} call - ${overageMinutes} overage min @ $${overageRate}/min (${totalCallMinutes} min total)`,
       metadata: {
         organization_id: organizationId,
         call_id: callId,
         call_direction: callDirection,
         call_duration_seconds: callDuration.toString(),
-        call_minutes: callMinutes.toString(),
+        total_call_minutes: totalCallMinutes.toString(),
+        overage_minutes: overageMinutes.toString(),
+        overage_rate: overageRate.toString(),
         is_overage: 'true',
       },
     })
 
-    console.log(`✅ Charged $${(callCostCents / 100).toFixed(2)} for overage call ${callId}`)
+    console.log(`✅ Charged $${(callCostCents / 100).toFixed(2)} for ${overageMinutes} overage minutes (${totalCallMinutes} min total) on call ${callId}`)
 
     return {
       success: true,
@@ -97,7 +105,7 @@ export async function chargeVapiCall({
 
 /**
  * Check if a call should be charged (exceeds plan limits)
- * Now tracks minutes instead of calls
+ * Uses actual minutes tracked in billable_minutes_this_month
  */
 export async function shouldChargeCall(organizationId: string, callDurationSeconds: number = 0): Promise<{
   shouldCharge: boolean
@@ -105,12 +113,13 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
   currentUsage: number // in minutes
   planLimit: number // in minutes
   callMinutes: number
+  overageMinutes: number // minutes that exceed the limit
 }> {
   const supabase = createActionClient()
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('plan, billable_calls_this_month, billing_period_month, billing_period_year, industry')
+    .select('plan, billable_minutes_this_month, billing_period_month, billing_period_year, industry')
     .eq('id', organizationId)
     .single()
 
@@ -121,6 +130,7 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
       currentUsage: 0,
       planLimit: 0,
       callMinutes: 0,
+      overageMinutes: 0,
     }
   }
 
@@ -132,6 +142,7 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
       currentUsage: 0,
       planLimit: 0,
       callMinutes: Math.ceil(callDurationSeconds / 60),
+      overageMinutes: 0,
     }
   }
 
@@ -148,16 +159,18 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
       currentUsage: 0,
       planLimit: -1,
       callMinutes: Math.ceil(callDurationSeconds / 60),
+      overageMinutes: 0,
     }
   }
 
-  // TODO: Update database schema to track billable_minutes_this_month instead of billable_calls_this_month
-  // For now, we'll use a conversion estimate (assuming average call duration)
-  const avgCallDuration = industryPricing.avgCallDuration || 5
-  const currentUsageMinutes = (org.billable_calls_this_month || 0) * avgCallDuration
+  // Use actual minutes tracked in database
+  const currentUsageMinutes = org.billable_minutes_this_month || 0
   const callMinutes = Math.ceil(callDurationSeconds / 60)
   const projectedUsage = currentUsageMinutes + callMinutes
-  const isOverage = projectedUsage > planLimit
+  
+  // Calculate how many minutes exceed the limit
+  const overageMinutes = Math.max(0, projectedUsage - planLimit)
+  const isOverage = overageMinutes > 0
 
   return {
     shouldCharge: isOverage,
@@ -165,6 +178,7 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
     currentUsage: currentUsageMinutes,
     planLimit,
     callMinutes,
+    overageMinutes,
   }
 }
 

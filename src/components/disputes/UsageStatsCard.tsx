@@ -7,9 +7,13 @@ import { Phone, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react'
 interface UsageStatsProps {
   stats: {
     plan: string | null
-    billableCallsThisMonth: number
-    monthlyLimit: number
-    remainingCalls: number
+    billableMinutesThisMonth?: number
+    billableCallsThisMonth?: number
+    monthlyLimitMinutes?: number
+    remainingMinutes?: number
+    // Legacy fields for backward compatibility
+    monthlyLimit?: number
+    remainingCalls?: number
     pendingDisputes: number
     refundedCredits: number
     billingPeriod: {
@@ -25,9 +29,15 @@ const monthNames = [
 ]
 
 export function UsageStatsCard({ stats }: UsageStatsProps) {
-  const usagePercent = stats.monthlyLimit > 0 
-    ? Math.min((stats.billableCallsThisMonth / stats.monthlyLimit) * 100, 100)
-    : 0
+  // Use minutes if available, fallback to calls for backward compatibility
+  const billableMinutes = stats.billableMinutesThisMonth ?? 0
+  const monthlyLimitMinutes = stats.monthlyLimitMinutes ?? (stats.monthlyLimit ?? 0)
+  const remainingMinutes = stats.remainingMinutes ?? (stats.remainingCalls ?? 0)
+  
+  // For unlimited plans, monthlyLimitMinutes will be -1
+  const usagePercent = monthlyLimitMinutes > 0 
+    ? Math.min((billableMinutes / monthlyLimitMinutes) * 100, 100)
+    : monthlyLimitMinutes === -1 ? 0 : 0
 
   const isNearLimit = usagePercent >= 80
   const isOverLimit = usagePercent >= 100
@@ -37,17 +47,17 @@ export function UsageStatsCard({ stats }: UsageStatsProps) {
       {/* Current Usage */}
       <Card className={isOverLimit ? 'border-red-200' : isNearLimit ? 'border-yellow-200' : ''}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Outbound Calls Used</CardTitle>
+          <CardTitle className="text-sm font-medium">Outbound Minutes Used</CardTitle>
           <Phone className={`h-4 w-4 ${isOverLimit ? 'text-red-500' : isNearLimit ? 'text-yellow-500' : 'text-muted-foreground'}`} />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {stats.billableCallsThisMonth}
+            {billableMinutes.toLocaleString()}
             <span className="text-sm font-normal text-muted-foreground">
-              {stats.monthlyLimit > 0 ? ` / ${stats.monthlyLimit}` : ' (no limit)'}
+              {monthlyLimitMinutes > 0 ? ` / ${monthlyLimitMinutes.toLocaleString()}` : monthlyLimitMinutes === -1 ? ' (unlimited)' : ' (no limit)'}
             </span>
           </div>
-          {stats.monthlyLimit > 0 && (
+          {monthlyLimitMinutes > 0 && (
             <Progress 
               value={usagePercent} 
               className={`mt-2 ${isOverLimit ? '[&>div]:bg-red-500' : isNearLimit ? '[&>div]:bg-yellow-500' : ''}`}
@@ -55,19 +65,22 @@ export function UsageStatsCard({ stats }: UsageStatsProps) {
           )}
           <p className="text-xs text-muted-foreground mt-2">
             {monthNames[stats.billingPeriod.month - 1]} {stats.billingPeriod.year}
+            {stats.billableCallsThisMonth && (
+              <span className="ml-2">({stats.billableCallsThisMonth} calls)</span>
+            )}
           </p>
         </CardContent>
       </Card>
 
-      {/* Remaining Calls */}
+      {/* Remaining Minutes */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Remaining Calls</CardTitle>
+          <CardTitle className="text-sm font-medium">Remaining Minutes</CardTitle>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {stats.monthlyLimit > 0 ? Math.max(stats.remainingCalls, 0) : '∞'}
+            {monthlyLimitMinutes === -1 ? '∞' : monthlyLimitMinutes > 0 ? Math.max(remainingMinutes, 0).toLocaleString() : 'N/A'}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             {stats.plan ? `${stats.plan.charAt(0).toUpperCase() + stats.plan.slice(1)} plan` : 'No plan'}
