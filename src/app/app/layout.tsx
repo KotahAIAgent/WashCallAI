@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider'
 import { TourProvider } from '@/components/onboarding/OnboardingTour'
 import { KeyboardShortcutsProvider } from '@/components/keyboard/KeyboardShortcutsProvider'
 import { createServerClient } from '@/lib/supabase/server'
+import { getEffectivePlan } from '@/lib/admin/utils'
 
 // Add your admin email(s) here - keep in sync with admin/page.tsx
 const ADMIN_EMAILS = [
@@ -49,12 +50,20 @@ export default async function AppLayout({
       
       const { data: org } = await supabase
         .from('organizations')
-        .select('onboarding_completed, plan, setup_status, trial_started_at, trial_ends_at, trial_used')
+        .select('onboarding_completed, plan, admin_granted_plan, admin_granted_plan_expires_at, setup_status, trial_started_at, trial_ends_at, trial_used')
         .eq('id', profile.organization_id)
         .single()
 
       onboardingCompleted = org?.onboarding_completed || false
-      hasPlan = !!org?.plan && org.plan !== null
+      
+      // Use getEffectivePlan to consider admin-granted plans
+      const effectivePlan = getEffectivePlan({
+        plan: org?.plan || null,
+        admin_granted_plan: org?.admin_granted_plan || null,
+        admin_granted_plan_expires_at: org?.admin_granted_plan_expires_at || null,
+      })
+      hasPlan = !!effectivePlan
+      
       setupStatus = (org?.setup_status as SetupStatus) || 'pending'
 
       // Calculate trial status
@@ -70,7 +79,7 @@ export default async function AppLayout({
           : 0
       }
 
-      // Can start trial if never used and no paid plan
+      // Can start trial if never used and no paid plan (including admin-granted)
       canStartTrial = !hasUsedTrial && !hasPlan
     }
   }
