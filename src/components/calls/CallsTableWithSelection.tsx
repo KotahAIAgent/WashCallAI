@@ -7,21 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { CallDetailSheet } from '@/components/dashboard/CallDetailSheet'
 import { DeleteCallButton } from '@/components/calls/DeleteCallButton'
+import { Database } from '@/types/database'
 
-interface Call {
-  id: string
-  direction: string
-  status: string
-  from_number: string | null
-  to_number: string | null
-  organization_phone_number: string | null
-  duration_seconds: number | null
-  formatted_date: string
-  summary: string | null
-  transcript: string | null
-  recording_url: string | null
-  organization_id: string
-}
+type Call = Database['public']['Tables']['calls']['Row']
 
 interface CallsTableWithSelectionProps {
   calls: Call[]
@@ -105,38 +93,52 @@ export function CallsTableWithSelection({ calls }: CallsTableWithSelectionProps)
                 </TableCell>
               </TableRow>
             ) : (
-              calls.map((call) => (
-                <TableRow key={call.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedIds.has(call.id)}
-                      onCheckedChange={(checked) => handleSelectOne(call.id, checked as boolean)}
-                      aria-label={`Select call ${call.id}`}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                      {call.direction || 'unknown'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{call.from_number || 'N/A'}</TableCell>
-                  <TableCell>{call.to_number || 'N/A'}</TableCell>
-                  <TableCell className="font-medium">
-                    {call.organization_phone_number || 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{call.status || 'unknown'}</Badge>
-                  </TableCell>
-                  <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
-                  <TableCell>{call.formatted_date || 'N/A'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <CallDetailSheet call={call} />
-                      <DeleteCallButton callId={call.id} callDirection={call.direction} />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              calls.map((call) => {
+                // organization_phone_number may not be in TypeScript types yet, but exists in DB
+                const orgPhoneNumber = (call as any)?.organization_phone_number
+                return (
+                  <TableRow key={call.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(call.id)}
+                        onCheckedChange={(checked) => handleSelectOne(call.id, checked as boolean)}
+                        aria-label={`Select call ${call.id}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
+                        {call.direction || 'unknown'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{call.from_number || 'N/A'}</TableCell>
+                    <TableCell>{call.to_number || 'N/A'}</TableCell>
+                    <TableCell className="font-medium">
+                      {orgPhoneNumber || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{call.status || 'unknown'}</Badge>
+                    </TableCell>
+                    <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
+                    <TableCell>
+                      {call.created_at
+                        ? new Date(call.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <CallDetailSheet call={call} />
+                        <DeleteCallButton callId={call.id} callDirection={call.direction || 'unknown'} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

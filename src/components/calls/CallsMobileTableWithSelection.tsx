@@ -123,8 +123,10 @@ export function CallsMobileTableWithSelection({ calls }: CallsMobileTableWithSel
               label: 'Your Number',
               render: (item) => {
                 const call = callsMap.get(item.id as string)
+                // organization_phone_number may not be in TypeScript types yet, but exists in DB
+                const orgPhoneNumber = (call as any)?.organization_phone_number
                 return (
-                  <span className="font-medium">{call?.organization_phone_number || 'N/A'}</span>
+                  <span className="font-medium">{orgPhoneNumber || 'N/A'}</span>
                 )
               },
             },
