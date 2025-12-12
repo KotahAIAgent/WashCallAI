@@ -147,23 +147,48 @@ Repeat with:
 
 The webhook allows Stripe to notify your app about subscription changes.
 
-1. **Go to Webhooks**: https://dashboard.stripe.com/webhooks
-2. **Click "Add endpoint"**
-3. **Endpoint URL**: 
-   ```
-   https://www.fusioncaller.com/api/auth/stripe/webhook
-   ```
-   (Replace with your actual domain if different)
-4. **Description**: `FusionCaller Subscription Events`
-5. **Events to send**: Click "Select events" and choose:
-   - `customer.subscription.created`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `checkout.session.completed`
-   - `invoice.payment_succeeded`
-   - `invoice.payment_failed`
-6. **Click "Add endpoint"**
-7. **Copy the Signing secret** (starts with `whsec_`) - you'll need this!
+1. **Go to Webhooks**: 
+   - In Stripe Dashboard, click **"Webhooks"** in the left sidebar (under "Workbench" section)
+   - Or go directly to: https://dashboard.stripe.com/test/webhooks
+
+2. **Click "+ Add destination" button**:
+   - You'll see a large blue button in the center that says **"+ Add destination"**
+   - This button is below the text "Trigger reactions in your integration with Stripe events"
+   - Click this button
+
+3. **Select "Webhook endpoint"**:
+   - You'll see options for different destination types
+   - Select **"Webhook endpoint"** (not EventBridge or other options)
+
+4. **Fill in the webhook details**:
+   - **Endpoint URL**: Enter:
+     ```
+     https://www.fusioncaller.com/api/auth/stripe/webhook
+     ```
+     (Replace `www.fusioncaller.com` with your actual domain if different)
+   - **Description** (optional): `FusionCaller Subscription Events`
+
+5. **Select events to listen to**:
+   - Click **"Select events"** or **"Add events"**
+   - You'll see a list of event types
+   - Select these specific events:
+     - ✅ `customer.subscription.created`
+     - ✅ `customer.subscription.updated`
+     - ✅ `customer.subscription.deleted`
+     - ✅ `checkout.session.completed`
+     - ✅ `invoice.payment_succeeded`
+     - ✅ `invoice.payment_failed`
+   - Click **"Add events"** or **"Done"** when finished
+
+6. **Save the webhook**:
+   - Click **"Add endpoint"** or **"Save"** button at the bottom
+
+7. **Copy the Signing secret**:
+   - After creating the webhook, you'll see the webhook details page
+   - Look for **"Signing secret"** section
+   - Click **"Reveal"** or **"Click to reveal"** to show the secret
+   - Copy the secret (starts with `whsec_`) - **you'll need this for environment variables!**
+   - ⚠️ **Important**: You can only see this secret once when first created. Copy it immediately!
 
 ---
 
