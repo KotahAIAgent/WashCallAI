@@ -865,6 +865,74 @@ export async function adminAddPhoneNumber(
   return { success: true }
 }
 
+/**
+ * Remove a phone number from an organization
+ */
+export async function adminRemovePhoneNumber(
+  phoneNumberId: string,
+  adminEmail: string
+) {
+  const supabase = createServiceRoleClient()
+
+  // Get phone number details for logging
+  const { data: phoneNumber, error: fetchError } = await supabase
+    .from('phone_numbers')
+    .select('id, phone_number, organization_id, provider_phone_id')
+    .eq('id', phoneNumberId)
+    .single()
+
+  if (fetchError || !phoneNumber) {
+    return { error: 'Phone number not found' }
+  }
+
+  // Optionally unassign from Vapi phone number (set assistantId to null)
+  const vapiApiKey = process.env.VAPI_API_KEY
+  if (vapiApiKey && phoneNumber.provider_phone_id) {
+    try {
+      const unassignResponse = await fetch(`https://api.vapi.ai/phone-number/${phoneNumber.provider_phone_id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${vapiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assistantId: null, // Unassign assistant
+        }),
+      })
+
+      if (unassignResponse.ok) {
+        console.log(`[Admin] ✅ Unassigned assistant from Vapi phone number ${phoneNumber.provider_phone_id}`)
+      } else {
+        const errorText = await unassignResponse.text()
+        console.error(`[Admin] ⚠️ Failed to unassign Vapi phone number: ${unassignResponse.status} - ${errorText.substring(0, 200)}`)
+        // Continue with deletion even if Vapi unassignment fails
+      }
+    } catch (err: any) {
+      console.error(`[Admin] Error unassigning Vapi phone number:`, err?.message || err)
+      // Continue with deletion even if Vapi call fails
+    }
+  }
+
+  // Delete the phone number from database
+  const { error: deleteError } = await supabase
+    .from('phone_numbers')
+    .delete()
+    .eq('id', phoneNumberId)
+
+  if (deleteError) {
+    console.error('[Admin] Error removing phone number:', deleteError)
+    return { error: deleteError.message }
+  }
+
+  console.log(`[Admin] ✅ Removed phone number ${phoneNumber.phone_number} (${phoneNumberId}) from org ${phoneNumber.organization_id}`)
+
+  revalidatePath('/app/admin')
+  return { 
+    success: true, 
+    message: `Phone number ${phoneNumber.phone_number} removed successfully` 
+  }
+}
+
 export async function adminUpdatePhoneNumber(
   phoneNumberId: string,
   providerPhoneId?: string,

@@ -7,6 +7,7 @@ import { Shield, Users, Phone, Bot, Clock, RefreshCw } from 'lucide-react'
 import { AdminOrganizationList } from '@/components/admin/AdminOrganizationList'
 import { AdminAddPhoneNumber } from '@/components/admin/AdminAddPhoneNumber'
 import { AdminUpdatePhoneNumber } from '@/components/admin/AdminUpdatePhoneNumber'
+import { AdminRemovePhoneNumber } from '@/components/admin/AdminRemovePhoneNumber'
 import { AdminSetAgent } from '@/components/admin/AdminSetAgent'
 import { AdminUpdateStatus } from '@/components/admin/AdminUpdateStatus'
 import { AdminManagePrivileges } from '@/components/admin/AdminManagePrivileges'
@@ -239,6 +240,7 @@ export default async function AdminPage() {
         <AdminSetAgent organizations={organizations} />
         <AdminAddPhoneNumber organizations={organizations} />
         <AdminUpdatePhoneNumber organizations={organizations} />
+        <AdminRemovePhoneNumber organizations={organizations} />
       </div>
 
       {/* Privilege Management */}

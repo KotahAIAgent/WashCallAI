@@ -19,12 +19,15 @@ import {
   XCircle,
   ExternalLink 
 } from 'lucide-react'
+import { getEffectivePlan } from '@/lib/admin/utils'
 
 interface Organization {
   id: string
   name: string
   slug: string
   plan: string | null
+  admin_granted_plan: string | null
+  admin_granted_plan_expires_at: string | null
   created_at: string
   onboarding_completed: boolean | null
   setup_status: string | null
@@ -130,13 +133,28 @@ export function AdminOrganizationList({ organizations }: { organizations: Organi
                     </div>
                   </TableCell>
                   <TableCell>
-                    {org.plan ? (
-                      <Badge variant={org.plan === 'pro' ? 'default' : org.plan === 'growth' ? 'secondary' : 'outline'}>
-                        {org.plan}
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">No plan</span>
-                    )}
+                    {(() => {
+                      const effectivePlan = getEffectivePlan({
+                        plan: org.plan,
+                        admin_granted_plan: org.admin_granted_plan,
+                        admin_granted_plan_expires_at: org.admin_granted_plan_expires_at,
+                      })
+                      
+                      if (effectivePlan) {
+                        const isAdminGranted = org.admin_granted_plan && effectivePlan === org.admin_granted_plan
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={effectivePlan === 'pro' ? 'default' : effectivePlan === 'growth' ? 'secondary' : 'outline'}>
+                              {effectivePlan}
+                            </Badge>
+                            {isAdminGranted && (
+                              <span className="text-xs text-muted-foreground">(Admin)</span>
+                            )}
+                          </div>
+                        )
+                      }
+                      return <span className="text-sm text-muted-foreground">No plan</span>
+                    })()}
                   </TableCell>
                   <TableCell>
                     {config?.inbound_agent_id ? (
