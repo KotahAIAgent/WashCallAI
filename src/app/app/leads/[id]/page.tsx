@@ -147,78 +147,102 @@ export default async function LeadDetailPage({
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {calls.map((call) => (
-                    <div key={call.id} className="border rounded-lg overflow-hidden">
-                      {/* Call Header */}
-                      <div className="flex items-center justify-between p-3 bg-muted/50">
-                        <div className="flex items-center gap-3">
-                          {call.direction === 'inbound' ? (
-                            <PhoneIncoming className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <PhoneOutgoing className="h-4 w-4 text-blue-600" />
-                          )}
-                          <div>
-                            <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                              {call.direction}
-                            </Badge>
-                            <span className="ml-2 text-sm text-muted-foreground">
-                              {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
-                            </span>
+                  {calls.map((call) => {
+                    // Safely handle date formatting
+                    let formattedDate = 'N/A'
+                    try {
+                      if (call.created_at) {
+                        formattedDate = format(new Date(call.created_at), 'MMM d, yyyy h:mm a')
+                      }
+                    } catch (e) {
+                      console.error('Error formatting date:', e)
+                    }
+
+                    // Safely handle duration formatting
+                    let formattedDuration = 'N/A'
+                    try {
+                      if (call.duration_seconds && call.duration_seconds > 0) {
+                        const mins = Math.floor(call.duration_seconds / 60)
+                        const secs = call.duration_seconds % 60
+                        formattedDuration = `${mins}:${secs.toString().padStart(2, '0')}`
+                      }
+                    } catch (e) {
+                      console.error('Error formatting duration:', e)
+                    }
+
+                    return (
+                      <div key={call.id} className="border rounded-lg overflow-hidden">
+                        {/* Call Header */}
+                        <div className="flex items-center justify-between p-3 bg-muted/50">
+                          <div className="flex items-center gap-3">
+                            {call.direction === 'inbound' ? (
+                              <PhoneIncoming className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <PhoneOutgoing className="h-4 w-4 text-blue-600" />
+                            )}
+                            <div>
+                              <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
+                                {call.direction || 'unknown'}
+                              </Badge>
+                              <span className="ml-2 text-sm text-muted-foreground">
+                                {formattedDate}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {call.duration_seconds && call.duration_seconds > 0 && (
+                              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formattedDuration}
+                              </span>
+                            )}
+                            <Badge variant="outline">{call.status || 'unknown'}</Badge>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {call.duration_seconds && (
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {Math.floor(call.duration_seconds / 60)}:{(call.duration_seconds % 60).toString().padStart(2, '0')}
-                            </span>
+
+                        {/* Call Details */}
+                        <div className="p-3 space-y-3">
+                          {/* Recording */}
+                          {call.recording_url && (
+                            <CallRecordingPlayer url={call.recording_url} />
                           )}
-                          <Badge variant="outline">{call.status}</Badge>
-                        </div>
-                      </div>
 
-                      {/* Call Details */}
-                      <div className="p-3 space-y-3">
-                        {/* Recording */}
-                        {call.recording_url && (
-                          <CallRecordingPlayer url={call.recording_url} />
-                        )}
-
-                        {/* Summary */}
-                        {call.summary && (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              AI Summary
+                          {/* Summary */}
+                          {call.summary && (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                AI Summary
+                              </div>
+                              <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                                {call.summary}
+                              </p>
                             </div>
-                            <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                              {call.summary}
+                          )}
+
+                          {/* Transcript */}
+                          {call.transcript && (
+                            <details className="group">
+                              <summary className="flex items-center gap-2 text-sm font-medium cursor-pointer hover:text-primary">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                View Transcript
+                              </summary>
+                              <div className="mt-2 text-sm text-muted-foreground bg-muted/30 p-3 rounded-md max-h-48 overflow-y-auto">
+                                <pre className="whitespace-pre-wrap font-sans">{call.transcript}</pre>
+                              </div>
+                            </details>
+                          )}
+
+                          {/* No details message */}
+                          {!call.recording_url && !call.summary && !call.transcript && (
+                            <p className="text-sm text-muted-foreground italic">
+                              No recording or transcript available for this call
                             </p>
-                          </div>
-                        )}
-
-                        {/* Transcript */}
-                        {call.transcript && (
-                          <details className="group">
-                            <summary className="flex items-center gap-2 text-sm font-medium cursor-pointer hover:text-primary">
-                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                              View Transcript
-                            </summary>
-                            <div className="mt-2 text-sm text-muted-foreground bg-muted/30 p-3 rounded-md max-h-48 overflow-y-auto">
-                              <pre className="whitespace-pre-wrap font-sans">{call.transcript}</pre>
-                            </div>
-                          </details>
-                        )}
-
-                        {/* No details message */}
-                        {!call.recording_url && !call.summary && !call.transcript && (
-                          <p className="text-sm text-muted-foreground italic">
-                            No recording or transcript available for this call
-                          </p>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>

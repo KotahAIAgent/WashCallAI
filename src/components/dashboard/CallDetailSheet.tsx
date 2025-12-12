@@ -20,6 +20,17 @@ type Call = Database['public']['Tables']['calls']['Row']
 export function CallDetailSheet({ call }: { call: Call }) {
   const [open, setOpen] = useState(false)
 
+  // Safely handle potentially null/undefined values
+  const safeDate = call.created_at ? new Date(call.created_at) : new Date()
+  const safeDirection = call.direction || 'unknown'
+  const safeStatus = call.status || 'unknown'
+  const safeFrom = call.from_number || 'N/A'
+  const safeTo = call.to_number || 'N/A'
+  const safeDuration = call.duration_seconds || 0
+  const safeSummary = call.summary || null
+  const safeTranscript = call.transcript || null
+  const safeRecordingUrl = call.recording_url || null
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -38,55 +49,63 @@ export function CallDetailSheet({ call }: { call: Call }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Direction</p>
-              <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                {call.direction}
+              <Badge variant={safeDirection === 'inbound' ? 'default' : 'secondary'}>
+                {safeDirection}
               </Badge>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Status</p>
-              <Badge variant="outline">{call.status}</Badge>
+              <Badge variant="outline">{safeStatus}</Badge>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">From</p>
-              <p className="text-sm">{call.from_number || 'N/A'}</p>
+              <p className="text-sm">{safeFrom}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">To</p>
-              <p className="text-sm">{call.to_number || 'N/A'}</p>
+              <p className="text-sm">{safeTo}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Duration</p>
-              <p className="text-sm">{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</p>
+              <p className="text-sm">{safeDuration > 0 ? `${safeDuration}s` : 'N/A'}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Date</p>
-              <p className="text-sm">{format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}</p>
+              <p className="text-sm">
+                {isNaN(safeDate.getTime()) ? 'N/A' : format(safeDate, 'MMM d, yyyy h:mm a')}
+              </p>
             </div>
           </div>
 
-          {call.summary && (
+          {safeSummary && (
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">Summary</p>
-              <p className="text-sm bg-muted p-3 rounded-md">{call.summary}</p>
+              <p className="text-sm bg-muted p-3 rounded-md">{safeSummary}</p>
             </div>
           )}
 
-          {call.transcript && (
+          {safeTranscript && (
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">Transcript</p>
               <div className="text-sm bg-muted p-3 rounded-md max-h-96 overflow-y-auto">
-                <pre className="whitespace-pre-wrap">{call.transcript}</pre>
+                <pre className="whitespace-pre-wrap">{safeTranscript}</pre>
               </div>
             </div>
           )}
 
-          {call.recording_url && (
+          {safeRecordingUrl && (
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">Recording</p>
               <audio controls className="w-full">
-                <source src={call.recording_url} type="audio/mpeg" />
+                <source src={safeRecordingUrl} type="audio/mpeg" />
                 Your browser does not support the audio element.
               </audio>
+            </div>
+          )}
+
+          {!safeSummary && !safeTranscript && !safeRecordingUrl && (
+            <div className="text-sm text-muted-foreground italic text-center py-4">
+              No transcript, summary, or recording available for this call
             </div>
           )}
         </div>

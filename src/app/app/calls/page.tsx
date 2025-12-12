@@ -176,7 +176,16 @@ export default async function CallsPage({
                 {
                   key: 'created_at',
                   label: 'Date',
-                  render: (call) => format(new Date(call.created_at), 'MMM d, yyyy h:mm a'),
+                  render: (call) => {
+                    try {
+                      if (call.created_at) {
+                        return format(new Date(call.created_at), 'MMM d, yyyy h:mm a')
+                      }
+                      return 'N/A'
+                    } catch (e) {
+                      return 'N/A'
+                    }
+                  },
                 },
               ]}
               emptyMessage="No calls found"
@@ -205,27 +214,37 @@ export default async function CallsPage({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  calls.map((call) => (
-                    <TableRow key={call.id}>
-                      <TableCell>
-                        <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                          {call.direction}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{call.from_number || 'N/A'}</TableCell>
-                      <TableCell>{call.to_number || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{call.status}</Badge>
-                      </TableCell>
-                      <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
-                      <TableCell>
-                        {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
-                      </TableCell>
-                      <TableCell>
-                        <CallDetailSheet call={call} />
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  calls.map((call) => {
+                    // Safely handle date formatting
+                    let formattedDate = 'N/A'
+                    try {
+                      if (call.created_at) {
+                        formattedDate = format(new Date(call.created_at), 'MMM d, yyyy h:mm a')
+                      }
+                    } catch (e) {
+                      console.error('Error formatting date:', e)
+                    }
+
+                    return (
+                      <TableRow key={call.id}>
+                        <TableCell>
+                          <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
+                            {call.direction || 'unknown'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{call.from_number || 'N/A'}</TableCell>
+                        <TableCell>{call.to_number || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{call.status || 'unknown'}</Badge>
+                        </TableCell>
+                        <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
+                        <TableCell>{formattedDate}</TableCell>
+                        <TableCell>
+                          <CallDetailSheet call={call} />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
