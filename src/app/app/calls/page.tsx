@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { CallDetailSheet } from '@/components/dashboard/CallDetailSheet'
 import { CallFilters } from '@/components/calls/CallFilters'
 import { CallsMobileTable } from '@/components/calls/CallsMobileTable'
+import { AutoRefresh } from '@/components/calls/AutoRefresh'
 import { ExportButton } from '@/components/export/ExportButton'
 
 async function getCalls(organizationId: string, searchParams: { direction?: string; status?: string; dateFrom?: string; dateTo?: string }) {
@@ -137,6 +138,7 @@ export default async function CallsPage({
 
     return (
       <div className="space-y-6">
+        <AutoRefresh interval={30000} /> {/* Auto-refresh every 30 seconds */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Calls</h2>
