@@ -1,11 +1,8 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { CallDetailSheet } from '@/components/dashboard/CallDetailSheet'
 import { CallFilters } from '@/components/calls/CallFilters'
-import { CallsMobileTable } from '@/components/calls/CallsMobileTable'
-import { DeleteCallButton } from '@/components/calls/DeleteCallButton'
+import { CallsTableWithSelection } from '@/components/calls/CallsTableWithSelection'
+import { CallsMobileTableWithSelection } from '@/components/calls/CallsMobileTableWithSelection'
 import { AutoRefresh } from '@/components/calls/AutoRefresh'
 import { ExportButton } from '@/components/export/ExportButton'
 
@@ -168,60 +165,12 @@ export default async function CallsPage({
             
             {/* Mobile Card View */}
             <div className="block md:hidden">
-              <CallsMobileTable calls={validCalls} />
+              <CallsMobileTableWithSelection calls={validCalls} />
             </div>
 
             {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Direction</TableHead>
-                    <TableHead>From</TableHead>
-                    <TableHead>To</TableHead>
-                    <TableHead>Your Number</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {validCalls.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground">
-                        No calls found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    validCalls.map((call: any) => (
-                      <TableRow key={call.id}>
-                        <TableCell>
-                          <Badge variant={call.direction === 'inbound' ? 'default' : 'secondary'}>
-                            {call.direction || 'unknown'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{call.from_number || 'N/A'}</TableCell>
-                        <TableCell>{call.to_number || 'N/A'}</TableCell>
-                        <TableCell className="font-medium">
-                          {call.organization_phone_number || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{call.status || 'unknown'}</Badge>
-                        </TableCell>
-                        <TableCell>{call.duration_seconds ? `${call.duration_seconds}s` : 'N/A'}</TableCell>
-                        <TableCell>{call.formatted_date || 'N/A'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <CallDetailSheet call={call} />
-                            <DeleteCallButton callId={call.id} callDirection={call.direction} />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+            <div className="hidden md:block">
+              <CallsTableWithSelection calls={validCalls} />
             </div>
           </CardContent>
         </Card>
