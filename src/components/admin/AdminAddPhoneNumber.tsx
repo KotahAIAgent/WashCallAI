@@ -22,7 +22,7 @@ export function AdminAddPhoneNumber({ organizations }: { organizations: Organiza
   const [providerPhoneId, setProviderPhoneId] = useState('')
   const [friendlyName, setFriendlyName] = useState('')
   const [phoneType, setPhoneType] = useState<'inbound' | 'outbound' | 'both'>('both')
-  const [dailyLimit, setDailyLimit] = useState('100')
+  const [dailyLimit, setDailyLimit] = useState('20')
   const { toast } = useToast()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -156,7 +156,19 @@ export function AdminAddPhoneNumber({ organizations }: { organizations: Organiza
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Type</Label>
-              <Select value={phoneType} onValueChange={(v) => setPhoneType(v as 'inbound' | 'outbound' | 'both')}>
+              <Select 
+                value={phoneType} 
+                onValueChange={(v) => {
+                  const newType = v as 'inbound' | 'outbound' | 'both'
+                  setPhoneType(newType)
+                  // Auto-update daily limit based on type
+                  if (newType === 'inbound') {
+                    setDailyLimit('100')
+                  } else {
+                    setDailyLimit('20')
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -175,8 +187,19 @@ export function AdminAddPhoneNumber({ organizations }: { organizations: Organiza
                 value={dailyLimit}
                 onChange={(e) => setDailyLimit(e.target.value)}
                 min="1"
-                max="150"
+                max={phoneType === 'inbound' ? '150' : '20'}
+                onFocus={() => {
+                  // Auto-set to appropriate default if empty or still at old default
+                  if (!dailyLimit || dailyLimit === '100') {
+                    setDailyLimit(phoneType === 'inbound' ? '100' : '20')
+                  }
+                }}
               />
+              <p className="text-xs text-muted-foreground">
+                {phoneType === 'inbound' 
+                  ? 'Maximum calls per day for inbound numbers (max 150)'
+                  : 'Maximum calls per day for outbound numbers (max 20)'}
+              </p>
             </div>
           </div>
 

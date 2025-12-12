@@ -815,8 +815,11 @@ export async function adminAddPhoneNumber(
   providerPhoneId: string,
   friendlyName: string,
   type: 'inbound' | 'outbound' | 'both',
-  dailyLimit: number = 100
+  dailyLimit?: number
 ) {
+  // Default to 20 for outbound/both, 100 for inbound-only
+  const defaultLimit = type === 'inbound' ? 100 : 20
+  const finalDailyLimit = dailyLimit ?? defaultLimit
   // Use service role client for admin operations to bypass RLS
   const supabase = createServiceRoleClient()
   
@@ -836,7 +839,7 @@ export async function adminAddPhoneNumber(
     provider_phone_id: providerPhoneId.trim(),
     friendly_name: friendlyName || null,
     type,
-    daily_limit: dailyLimit,
+    daily_limit: finalDailyLimit,
     active: true,
   })
 
