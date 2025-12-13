@@ -118,8 +118,8 @@ export default async function PricingPage() {
       <div className="text-center">
         <h2 className="text-3xl font-bold tracking-tight">Choose Your Plan</h2>
         <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
-          Pricing is based on minutes, not calls. Select your industry to see customized pricing 
-          based on average call duration and usage patterns.
+          Simple, transparent pricing. All plans include unlimited inbound calls. 
+          Choose the plan that fits your business needs.
         </p>
       </div>
 
@@ -141,22 +141,21 @@ export default async function PricingPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Why is pricing based on minutes?</CardTitle>
+              <CardTitle className="text-base">What happens if I exceed my minutes?</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              Different industries have different average call durations. Pricing by minutes ensures 
-              fair pricing - you pay for actual usage, not just call count. Emergency services like 
-              locksmiths have shorter calls, while electricians may have longer consultations.
+              Additional minutes are charged at $0.20/minute. You'll receive notifications as you 
+              approach your limit, and can upgrade anytime to a higher plan with more included minutes.
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">What happens if I exceed my minutes?</CardTitle>
+              <CardTitle className="text-base">How does minute-based billing work?</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              Additional minutes are charged at your industry's overage rate (typically $0.20/minute). 
-              You'll receive notifications as you approach your limit, and can upgrade anytime.
+              You're billed based on actual talk time, not just call count. This ensures fair pricing 
+              - you pay for what you use. All inbound calls are unlimited on all plans.
             </CardContent>
           </Card>
 
