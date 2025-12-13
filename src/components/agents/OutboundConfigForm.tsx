@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { updateOutboundConfig } from '@/lib/agents/actions'
+import { updateOutboundConfig, setAgentId } from '@/lib/agents/actions'
 import { useToast } from '@/hooks/use-toast'
 import { Database } from '@/types/database'
-import { Clock, Calendar, Phone, AlertTriangle, CheckCircle2, Building2, Briefcase } from 'lucide-react'
+import { Clock, Calendar, Phone, AlertTriangle, CheckCircle2, Building2, Briefcase, Bot, ExternalLink } from 'lucide-react'
 
 type AgentConfig = Database['public']['Tables']['agent_configs']['Row']
 type PhoneNumber = Database['public']['Tables']['phone_numbers']['Row']
@@ -47,6 +47,8 @@ export function OutboundConfigForm({
   phoneNumbers: PhoneNumber[]
 }) {
   const [loading, setLoading] = useState(false)
+  const [agentIdLoading, setAgentIdLoading] = useState(false)
+  const [agentId, setAgentId] = useState('')
   const [selectedPhoneId, setSelectedPhoneId] = useState<string>(
     phoneNumbers.find(p => p.type === 'outbound' || p.type === 'both')?.id || ''
   )
@@ -120,14 +122,96 @@ export function OutboundConfigForm({
                 <p className="text-sm text-muted-foreground">
                   {config?.outbound_agent_id 
                     ? 'Your outbound agent is configured and ready'
-                    : 'Waiting for agent setup by FusionCaller team'}
+                    : 'Add your Vapi Assistant ID below to get started'}
                 </p>
               </div>
             </div>
-            <Badge variant={config?.outbound_agent_id ? 'default' : 'secondary'}>
-              {config?.outbound_agent_id ? 'Configured' : 'Pending Setup'}
+            <Badge variant={config?.outbound_agent_id ? 'default' : 'outline'}>
+              {config?.outbound_agent_id ? 'Configured' : 'Setup Required'}
             </Badge>
           </div>
+
+          {/* Self-Service Assistant ID Setup */}
+          {!config?.outbound_agent_id && (
+            <div className="space-y-3 p-4 rounded-lg border border-dashed border-primary/50 bg-primary/5">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                <Label className="text-base font-semibold">Add Your Vapi Assistant ID</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Connect your Vapi assistant to start making outbound calls. Get your Assistant ID from your Vapi dashboard.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={agentId}
+                  onChange={(e) => setAgentId(e.target.value)}
+                  placeholder="assistant_xxxxx or asst_xxxxx"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!agentId.trim()) {
+                      toast({
+                        title: 'Error',
+                        description: 'Please enter your Vapi Assistant ID',
+                        variant: 'destructive',
+                      })
+                      return
+                    }
+                    setAgentIdLoading(true)
+                    const result = await setAgentId('outbound', agentId.trim())
+                    if (result?.error) {
+                      toast({
+                        title: 'Error',
+                        description: result.error,
+                        variant: 'destructive',
+                      })
+                    } else {
+                      toast({
+                        title: 'Success',
+                        description: 'Assistant ID saved! Your agent is now configured.',
+                      })
+                      setAgentId('')
+                      window.location.reload() // Refresh to show updated status
+                    }
+                    setAgentIdLoading(false)
+                  }}
+                  disabled={agentIdLoading}
+                >
+                  {agentIdLoading ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ExternalLink className="h-3 w-3" />
+                <a 
+                  href="https://dashboard.vapi.ai/assistants" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Open Vapi Dashboard to get your Assistant ID
+                </a>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                💡 Don't have a Vapi assistant yet? Create one in your Vapi dashboard, then paste the ID here.
+              </p>
+            </div>
+          )}
+
+          {config?.outbound_agent_id && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-900">Assistant ID Configured</span>
+                </div>
+                <code className="text-xs bg-white px-2 py-1 rounded border text-green-800">
+                  {config.outbound_agent_id}
+                </code>
+              </div>
+            </div>
+          )}
 
           {/* Phone Number Selection */}
           <div className="space-y-3">
@@ -190,9 +274,15 @@ export function OutboundConfigForm({
             ) : (
               <div className="p-4 rounded-lg border border-dashed text-center">
                 <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  No phone numbers assigned yet. Contact FusionCaller support to add phone numbers to your account.
+                <p className="text-sm text-muted-foreground mb-2">
+                  No phone numbers assigned yet.
                 </p>
+                <a 
+                  href="/app/settings?tab=phone" 
+                  className="text-sm text-primary hover:underline"
+                >
+                  Add a phone number in Settings →
+                </a>
               </div>
             )}
           </div>

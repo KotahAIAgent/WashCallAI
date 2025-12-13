@@ -57,6 +57,20 @@ export async function POST(request: Request) {
           updateData.subscription_started_at = new Date().toISOString()
         }
 
+        // Auto-approve setup status when subscription is created/activated
+        // This makes the system fully hands-off - clients can self-serve
+        const { data: currentOrg } = await supabase
+          .from('organizations')
+          .select('setup_status, onboarding_completed')
+          .eq('id', organizationId)
+          .single()
+
+        // Only auto-approve if onboarding is completed and status is not already active
+        if (currentOrg?.onboarding_completed && currentOrg?.setup_status !== 'active') {
+          updateData.setup_status = 'active'
+          console.log(`✓ Auto-approved setup status for org ${organizationId} (subscription activated)`)
+        }
+
         await supabase
           .from('organizations')
           .update(updateData)

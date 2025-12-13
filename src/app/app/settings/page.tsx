@@ -4,13 +4,14 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { STRIPE_PLANS } from '@/lib/stripe/server'
-import { CreditCard, Bell, Building2, Briefcase, User, Mail } from 'lucide-react'
+import { CreditCard, Bell, Building2, Briefcase, User, Mail, Phone } from 'lucide-react'
 import { ManageBillingButton } from '@/components/settings/ManageBillingButton'
 import { UpdateOrganizationForm } from '@/components/organization/UpdateOrganizationForm'
 import { NotificationSettingsForm } from '@/components/settings/NotificationSettingsForm'
 import { BusinessPreferencesForm } from '@/components/settings/BusinessPreferencesForm'
 import { EmailReportsToggle } from '@/components/settings/EmailReportsToggle'
 import { CreditBalance } from '@/components/settings/CreditBalance'
+import { AddPhoneNumberForm } from '@/components/settings/AddPhoneNumberForm'
 
 async function getOrganization(organizationId: string) {
   const supabase = createServerClient()
@@ -71,10 +72,14 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="phone" className="flex items-center gap-2">
+            <Phone className="h-4 w-4" />
+            <span className="hidden sm:inline">Phone Numbers</span>
           </TabsTrigger>
           <TabsTrigger value="preferences" className="flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
@@ -106,6 +111,37 @@ export default async function SettingsPage() {
               {organization && <UpdateOrganizationForm organization={organization} />}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Phone Numbers Tab */}
+        <TabsContent value="phone" className="space-y-6">
+          <AddPhoneNumberForm />
+          
+          {phoneNumbers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Phone Numbers</CardTitle>
+                <CardDescription>
+                  Phone numbers currently configured for your account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {phoneNumbers.map((phone) => (
+                    <div key={phone.id} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div>
+                        <p className="font-medium">{phone.phone_number}</p>
+                        {phone.friendly_name && (
+                          <p className="text-sm text-muted-foreground">{phone.friendly_name}</p>
+                        )}
+                      </div>
+                      <Badge variant="outline">{phone.type}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* AI Preferences Tab */}

@@ -730,6 +730,193 @@ function generateCampaignPromptContext(
 }
 
 // ============================================
+// CLIENT SELF-SERVICE FUNCTIONS
+// ============================================
+
+/**
+ * Client-facing function to set their own Vapi Assistant ID
+ * Validates that the user belongs to the organization
+ */
+export async function setAgentId(
+  agentType: 'inbound' | 'outbound',
+  agentId: string
+) {
+  const supabase = createActionClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Get user's organization
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', session.user.id)
+    .single()
+
+  if (!profile?.organization_id) {
+    return { error: 'Organization not found' }
+  }
+
+  const organizationId = profile.organization_id
+
+  // Check if user belongs to this organization (RLS will handle this)
+  const { data: existing } = await supabase
+    .from('agent_configs')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  const updateData = agentType === 'inbound' 
+    ? { inbound_agent_id: agentId }
+    : { outbound_agent_id: agentId }
+
+  if (existing) {
+    const { error } = await supabase
+      .from('agent_configs')
+      .update(updateData)
+      .eq('id', existing.id)
+      .eq('organization_id', organizationId) // Extra safety check
+    
+    if (error) {
+      console.error('[Client] Error updating agent ID:', error)
+      return { error: error.message }
+    }
+  } else {
+    const { error } = await supabase
+      .from('agent_configs')
+      .insert({
+        organization_id: organizationId,
+        ...updateData,
+      })
+    
+    if (error) {
+      console.error('[Client] Error inserting agent ID:', error)
+      return { error: error.message }
+    }
+  }
+
+  // Automatically set webhook URL for the assistant
+  const webhookResult = await autoConfigureWebhook(agentId)
+  if (!webhookResult.success) {
+    console.warn('[Client] Failed to set webhook URL for assistant:', webhookResult.error)
+  } else {
+    console.log('[Client] ✅ Webhook URL automatically configured for assistant:', agentId)
+  }
+
+  // Automatically enable the agent when ID is set
+  if (agentType === 'outbound' && agentId) {
+    await supabase
+      .from('agent_configs')
+      .update({ outbound_enabled: true })
+      .eq('organization_id', organizationId)
+    console.log('[Client] ✅ Outbound calling automatically enabled')
+  } else if (agentType === 'inbound' && agentId) {
+    await supabase
+      .from('agent_configs')
+      .update({ inbound_enabled: true })
+      .eq('organization_id', organizationId)
+    console.log('[Client] ✅ Inbound calling automatically enabled')
+  }
+
+  // Auto-set setup_status to 'active' if they have a plan
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('plan, admin_granted_plan, setup_status')
+    .eq('id', organizationId)
+    .single()
+
+  if (org && (org.plan || org.admin_granted_plan) && org.setup_status !== 'active') {
+    await supabase
+      .from('organizations')
+      .update({ setup_status: 'active' })
+      .eq('id', organizationId)
+    console.log('[Client] ✅ Setup status auto-set to active')
+  }
+
+  revalidatePath('/app/inbound-ai')
+  revalidatePath('/app/outbound-ai')
+  return { success: true }
+}
+
+/**
+ * Client-facing function to add their own phone number
+ * Validates that the user belongs to the organization
+ */
+export async function addPhoneNumber(
+  phoneNumber: string,
+  providerPhoneId: string,
+  friendlyName: string,
+  type: 'inbound' | 'outbound' | 'both',
+  dailyLimit?: number
+) {
+  const supabase = createActionClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Get user's organization
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', session.user.id)
+    .single()
+
+  if (!profile?.organization_id) {
+    return { error: 'Organization not found' }
+  }
+
+  const organizationId = profile.organization_id
+
+  // Default to 20 for outbound/both, 100 for inbound-only
+  const defaultLimit = type === 'inbound' ? 100 : 20
+  const finalDailyLimit = dailyLimit ?? defaultLimit
+  
+  // Validate UUID format for provider_phone_id
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(providerPhoneId.trim())) {
+    return { error: 'Vapi Phone Number ID must be a UUID format (e.g., 123e4567-e89b-12d3-a456-426614174000)' }
+  }
+  
+  // Normalize phone number to E.164 format
+  const normalizedPhone = normalizePhoneNumberForStorage(phoneNumber)
+  
+  const { error } = await supabase.from('phone_numbers').insert({
+    organization_id: organizationId,
+    phone_number: normalizedPhone,
+    provider_phone_id: providerPhoneId.trim(),
+    friendly_name: friendlyName || null,
+    type,
+    daily_limit: finalDailyLimit,
+    active: true,
+  })
+
+  if (error) {
+    console.error('[Client] Error adding phone number:', error)
+    return { error: error.message }
+  }
+
+  // Auto-configure webhook for this phone number
+  try {
+    const { setPhoneNumberWebhook } = await import('@/lib/vapi/auto-webhook')
+    const webhookResult = await setPhoneNumberWebhook(providerPhoneId.trim())
+    if (webhookResult.success) {
+      console.log('[Client] ✅ Webhook automatically configured for phone number')
+    }
+  } catch (err) {
+    console.warn('[Client] Failed to auto-configure webhook for phone number:', err)
+  }
+
+  revalidatePath('/app/inbound-ai')
+  revalidatePath('/app/outbound-ai')
+  revalidatePath('/app/settings')
+  return { success: true }
+}
+
+// ============================================
 // ADMIN FUNCTIONS (for you to manage clients)
 // ============================================
 

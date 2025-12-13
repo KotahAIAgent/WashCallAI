@@ -9,10 +9,11 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { updateInboundConfig } from '@/lib/agents/actions'
+import { updateInboundConfig, setAgentId } from '@/lib/agents/actions'
 import { useToast } from '@/hooks/use-toast'
 import { Database } from '@/types/database'
-import { Phone, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Phone, CheckCircle2, AlertTriangle, ExternalLink, Bot } from 'lucide-react'
+import { useState } from 'react'
 
 type AgentConfig = Database['public']['Tables']['agent_configs']['Row']
 type Organization = Database['public']['Tables']['organizations']['Row']
@@ -30,6 +31,8 @@ export function InboundConfigForm({
   phoneNumbers: PhoneNumber[]
 }) {
   const [loading, setLoading] = useState(false)
+  const [agentIdLoading, setAgentIdLoading] = useState(false)
+  const [agentId, setAgentId] = useState('')
   const { toast } = useToast()
 
   // Filter phone numbers that can be used for inbound
@@ -82,14 +85,96 @@ export function InboundConfigForm({
                     ? 'Your inbound agent is active and answering calls'
                     : config?.inbound_agent_id 
                     ? 'Configured - Enable to start'
-                    : 'Waiting for agent setup by FusionCaller team'}
+                    : 'Add your Vapi Assistant ID below to get started'}
                 </p>
               </div>
             </div>
             <Badge variant={config?.inbound_enabled ? 'default' : config?.inbound_agent_id ? 'secondary' : 'outline'}>
-              {config?.inbound_enabled ? 'Active' : config?.inbound_agent_id ? 'Configured' : 'Pending Setup'}
+              {config?.inbound_enabled ? 'Active' : config?.inbound_agent_id ? 'Configured' : 'Setup Required'}
             </Badge>
           </div>
+
+          {/* Self-Service Assistant ID Setup */}
+          {!config?.inbound_agent_id && (
+            <div className="space-y-3 p-4 rounded-lg border border-dashed border-primary/50 bg-primary/5">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                <Label className="text-base font-semibold">Add Your Vapi Assistant ID</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Connect your Vapi assistant to start receiving calls. Get your Assistant ID from your Vapi dashboard.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={agentId}
+                  onChange={(e) => setAgentId(e.target.value)}
+                  placeholder="assistant_xxxxx or asst_xxxxx"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!agentId.trim()) {
+                      toast({
+                        title: 'Error',
+                        description: 'Please enter your Vapi Assistant ID',
+                        variant: 'destructive',
+                      })
+                      return
+                    }
+                    setAgentIdLoading(true)
+                    const result = await setAgentId('inbound', agentId.trim())
+                    if (result?.error) {
+                      toast({
+                        title: 'Error',
+                        description: result.error,
+                        variant: 'destructive',
+                      })
+                    } else {
+                      toast({
+                        title: 'Success',
+                        description: 'Assistant ID saved! Your agent is now configured.',
+                      })
+                      setAgentId('')
+                      window.location.reload() // Refresh to show updated status
+                    }
+                    setAgentIdLoading(false)
+                  }}
+                  disabled={agentIdLoading}
+                >
+                  {agentIdLoading ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ExternalLink className="h-3 w-3" />
+                <a 
+                  href="https://dashboard.vapi.ai/assistants" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Open Vapi Dashboard to get your Assistant ID
+                </a>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                💡 Don't have a Vapi assistant yet? Create one in your Vapi dashboard, then paste the ID here.
+              </p>
+            </div>
+          )}
+
+          {config?.inbound_agent_id && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-900">Assistant ID Configured</span>
+                </div>
+                <code className="text-xs bg-white px-2 py-1 rounded border text-green-800">
+                  {config.inbound_agent_id}
+                </code>
+              </div>
+            </div>
+          )}
 
           {/* Inbound Phone Number Display */}
           <div className="space-y-3">
@@ -133,9 +218,15 @@ export function InboundConfigForm({
             ) : (
               <div className="p-4 rounded-lg border border-dashed text-center">
                 <Phone className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  No phone number assigned yet. Contact FusionCaller support to get your business line set up.
+                <p className="text-sm text-muted-foreground mb-2">
+                  No phone number assigned yet.
                 </p>
+                <a 
+                  href="/app/settings?tab=phone" 
+                  className="text-sm text-primary hover:underline"
+                >
+                  Add a phone number in Settings →
+                </a>
               </div>
             )}
           </div>
@@ -234,12 +325,6 @@ export function InboundConfigForm({
             />
           </div>
           
-          {!config?.inbound_agent_id && (
-            <p className="text-sm text-amber-600 flex items-center gap-1">
-              <AlertTriangle className="h-4 w-4" />
-              Inbound calling will be available once your agent is set up by our team
-            </p>
-          )}
 
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? 'Saving...' : 'Save Configuration'}
