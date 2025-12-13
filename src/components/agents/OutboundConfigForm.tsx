@@ -136,16 +136,16 @@ export function OutboundConfigForm({
             <div className="space-y-3 p-4 rounded-lg border border-dashed border-primary/50 bg-primary/5">
               <div className="flex items-center gap-2">
                 <Bot className="h-5 w-5 text-primary" />
-                <Label className="text-base font-semibold">Add Your Vapi Assistant ID</Label>
+                <Label className="text-base font-semibold">Add Your Assistant ID</Label>
               </div>
               <p className="text-sm text-muted-foreground">
-                Connect your Vapi assistant to start making outbound calls. Get your Assistant ID from your Vapi dashboard.
+                Connect your AI assistant to start making outbound calls. Contact support if you need help finding your Assistant ID.
               </p>
               <div className="flex gap-2">
                 <Input
                   value={agentId}
                   onChange={(e) => setAgentId(e.target.value)}
-                  placeholder="assistant_xxxxx or asst_xxxxx"
+                  placeholder="Enter your Assistant ID"
                   className="flex-1"
                 />
                 <Button
@@ -154,7 +154,7 @@ export function OutboundConfigForm({
                     if (!agentId.trim()) {
                       toast({
                         title: 'Error',
-                        description: 'Please enter your Vapi Assistant ID',
+                        description: 'Please enter your Assistant ID',
                         variant: 'destructive',
                       })
                       return
@@ -182,19 +182,8 @@ export function OutboundConfigForm({
                   {agentIdLoading ? 'Saving...' : 'Save'}
                 </Button>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ExternalLink className="h-3 w-3" />
-                <a 
-                  href="https://dashboard.vapi.ai/assistants" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Open Vapi Dashboard to get your Assistant ID
-                </a>
-              </div>
               <p className="text-xs text-muted-foreground">
-                💡 Don't have a Vapi assistant yet? Create one in your Vapi dashboard, then paste the ID here.
+                💡 Need help? Contact support to get your Assistant ID or create a new assistant.
               </p>
             </div>
           )}
