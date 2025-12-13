@@ -20,6 +20,7 @@ import {
   Plug,
   Gift,
 } from 'lucide-react'
+import { SidebarCredits } from './SidebarCredits'
 
 const navigation = [
   { name: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard, tourId: 'dashboard' },
@@ -110,6 +111,9 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
               })}
             </nav>
           </div>
+          
+          {/* Credits Section - Bottom Left */}
+          <SidebarCredits />
         </div>
       </div>
     </div>
