@@ -134,18 +134,25 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
       planLimit: 0,
       callMinutes: 0,
       overageMinutes: 0,
+      minutesFromMonthly: 0,
+      minutesFromCredits: 0,
+      remainingCredits: 0,
     }
   }
 
   const plan = org.plan as 'starter' | 'growth' | 'pro' | null
   if (!plan) {
+    const callMinutes = Math.ceil(callDurationSeconds / 60)
     return {
       shouldCharge: false,
       reason: 'No plan',
       currentUsage: 0,
       planLimit: 0,
-      callMinutes: Math.ceil(callDurationSeconds / 60),
+      callMinutes,
       overageMinutes: 0,
+      minutesFromMonthly: 0,
+      minutesFromCredits: 0,
+      remainingCredits: 0,
     }
   }
 
@@ -156,13 +163,17 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
 
   // Unlimited plans don't charge (-1 means unlimited)
   if (planLimit === -1 || planLimit < 0) {
+    const callMinutes = Math.ceil(callDurationSeconds / 60)
     return {
       shouldCharge: false,
       reason: 'Unlimited plan',
       currentUsage: 0,
       planLimit: -1,
-      callMinutes: Math.ceil(callDurationSeconds / 60),
+      callMinutes,
       overageMinutes: 0,
+      minutesFromMonthly: callMinutes,
+      minutesFromCredits: 0,
+      remainingCredits: org.purchased_credits_minutes || 0,
     }
   }
 
