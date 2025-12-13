@@ -43,9 +43,12 @@ CREATE INDEX IF NOT EXISTS idx_calls_deleted_at ON calls(deleted_at) WHERE delet
 COMMENT ON COLUMN calls.deleted_at IS 'Timestamp when call was soft deleted. NULL means not deleted. Deleted calls are still counted for billing purposes.';
 ```
 
-## Step 4: Run the Call Disputes Table Migration (if needed)
+## Step 4: Run the Call Disputes Table Migration (REQUIRED)
 
-If you're getting errors about `call_disputes` table:
+**⚠️ You MUST run this migration** - The error "Could not find the table 'public.call_disputes'" means this table doesn't exist yet.
+
+1. Click **"New query"** in Supabase SQL Editor
+2. Copy and paste this SQL:
 
 ```sql
 -- Create call_disputes table for customers to request review of charged calls
@@ -124,6 +127,9 @@ BEGIN
 END $$;
 ```
 
+3. Click **"Run"**
+4. You should see: "Success. No rows returned" or a notice that the table was created
+
 ## Step 5: Verify Migrations Ran Successfully
 
 1. Go to **"Table Editor"** in Supabase
@@ -143,10 +149,11 @@ After running the migrations:
 ---
 
 **Quick Checklist:**
-- [ ] Run `add-credits-to-organizations.sql` migration
-- [ ] Run `add-soft-delete-to-calls.sql` migration (if needed)
-- [ ] Run `create-call-disputes-table.sql` migration (if needed)
-- [ ] Verify columns exist in Supabase Table Editor
+- [ ] Run `add-credits-to-organizations.sql` migration (Step 2) - **REQUIRED for credits purchase**
+- [ ] Run `add-soft-delete-to-calls.sql` migration (Step 3) - Optional but recommended
+- [ ] Run `create-call-disputes-table.sql` migration (Step 4) - **REQUIRED for disputes page**
+- [ ] Verify columns/tables exist in Supabase Table Editor
 - [ ] Test purchase again
-- [ ] Check webhook succeeds
+- [ ] Check webhook succeeds (should be 200, not 500)
+- [ ] Check disputes page loads without errors
 
