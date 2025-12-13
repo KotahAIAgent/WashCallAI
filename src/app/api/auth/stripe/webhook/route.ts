@@ -152,27 +152,48 @@ export async function POST(request: Request) {
 
     // Handle credits purchase (checkout.session.completed)
     if (event.type === 'checkout.session.completed') {
+      console.log('[Webhook] checkout.session.completed event received')
       const session = event.data.object as Stripe.Checkout.Session
       const purchaseType = session.metadata?.purchase_type
       const organizationId = session.metadata?.organization_id
       const minutes = session.metadata?.minutes
 
+      console.log('[Webhook] Session metadata:', {
+        purchaseType,
+        organizationId,
+        minutes,
+        fullMetadata: session.metadata,
+      })
+
       if (purchaseType === 'credits' && organizationId && minutes) {
         const minutesToAdd = parseInt(minutes, 10)
+        console.log(`[Webhook] Processing credits purchase: ${minutesToAdd} minutes for org ${organizationId}`)
         
         if (minutesToAdd > 0) {
           // Get current credits
-          const { data: org } = await supabase
+          const { data: org, error: fetchError } = await supabase
             .from('organizations')
             .select('purchased_credits_minutes')
             .eq('id', organizationId)
             .single()
 
-          const currentCredits = org?.purchased_credits_minutes || 0
+          if (fetchError) {
+            console.error(`[Webhook] Error fetching organization ${organizationId}:`, fetchError)
+            return NextResponse.json({ error: 'Failed to fetch organization' }, { status: 500 })
+          }
+
+          if (!org) {
+            console.error(`[Webhook] Organization not found: ${organizationId}`)
+            return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+          }
+
+          const currentCredits = org.purchased_credits_minutes || 0
           const newCredits = currentCredits + minutesToAdd
 
+          console.log(`[Webhook] Current credits: ${currentCredits}, Adding: ${minutesToAdd}, New total: ${newCredits}`)
+
           // Add credits to organization
-          await supabase
+          const { error: updateError } = await supabase
             .from('organizations')
             .update({
               purchased_credits_minutes: newCredits,
@@ -180,8 +201,21 @@ export async function POST(request: Request) {
             })
             .eq('id', organizationId)
 
-          console.log(`✓ Added ${minutesToAdd} credits to org ${organizationId} (total: ${newCredits})`)
+          if (updateError) {
+            console.error(`[Webhook] Error updating credits for org ${organizationId}:`, updateError)
+            return NextResponse.json({ error: 'Failed to update credits' }, { status: 500 })
+          }
+
+          console.log(`[Webhook] ✓ Successfully added ${minutesToAdd} credits to org ${organizationId} (total: ${newCredits})`)
+        } else {
+          console.warn(`[Webhook] Invalid minutes amount: ${minutesToAdd}`)
         }
+      } else {
+        console.log('[Webhook] Not a credits purchase or missing metadata:', {
+          purchaseType,
+          hasOrgId: !!organizationId,
+          hasMinutes: !!minutes,
+        })
       }
     }
 
