@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/server'
 import Stripe from 'stripe'
 
@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
   }
 
-  const supabase = createServerClient()
+  // Use service role client for webhooks - bypasses RLS since webhooks don't have user sessions
+  const supabase = createServiceRoleClient()
 
   try {
     // Handle subscription created/updated
