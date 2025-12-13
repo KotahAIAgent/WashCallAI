@@ -841,6 +841,203 @@ export async function setAgentId(
 }
 
 /**
+ * Update voice settings for an agent
+ * Automatically applies to Vapi assistant
+ */
+export async function updateVoiceSettings(
+  organizationId: string,
+  agentType: 'inbound' | 'outbound',
+  voiceId: string,
+  voiceName: string
+) {
+  const supabase = createActionClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Verify user belongs to organization
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', session.user.id)
+    .single()
+
+  if (!profile || profile.organization_id !== organizationId) {
+    return { error: 'Not authorized' }
+  }
+
+  // Update voice settings in agent_configs
+  const { data: config } = await supabase
+    .from('agent_configs')
+    .select('id, inbound_agent_id, outbound_agent_id')
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  if (!config) {
+    return { error: 'Agent configuration not found' }
+  }
+
+  const updateData: any = {
+    voice_provider: 'elevenlabs',
+    voice_id: voiceId,
+    voice_name: voiceName,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { error } = await supabase
+    .from('agent_configs')
+    .update(updateData)
+    .eq('id', config.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  // Update Vapi assistant with new voice
+  const vapiApiKey = process.env.VAPI_API_KEY
+  const assistantId = agentType === 'inbound' ? config.inbound_agent_id : config.outbound_agent_id
+
+  if (vapiApiKey && assistantId) {
+    try {
+      const response = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${vapiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          voice: {
+            provider: 'elevenlabs',
+            voiceId: voiceId,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Failed to update Vapi assistant voice:', errorText)
+        // Don't fail the whole operation - voice is saved in DB
+      } else {
+        console.log(`[updateVoiceSettings] ✅ Voice updated for ${agentType} assistant: ${voiceName}`)
+      }
+    } catch (err: any) {
+      console.error('Error updating Vapi assistant voice:', err?.message || err)
+      // Don't fail - voice is saved in DB
+    }
+  }
+
+  revalidatePath('/app/inbound-ai')
+  revalidatePath('/app/outbound-ai')
+  return { success: true }
+}
+
+/**
+ * Submit a prompt change request
+ */
+export async function submitPromptChangeRequest({
+  organizationId,
+  agentType,
+  requestedChanges,
+  reason,
+  priority,
+}: {
+  organizationId: string
+  agentType: 'inbound' | 'outbound' | 'both'
+  requestedChanges: string
+  reason: string | null
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+}) {
+  const supabase = createActionClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Verify user belongs to organization
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', session.user.id)
+    .single()
+
+  if (!profile || profile.organization_id !== organizationId) {
+    return { error: 'Not authorized' }
+  }
+
+  // Get current prompt if available
+  const { data: config } = await supabase
+    .from('agent_configs')
+    .select('inbound_greeting')
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  // Insert request
+  const { error } = await supabase
+    .from('prompt_change_requests')
+    .insert({
+      organization_id: organizationId,
+      user_id: session.user.id,
+      agent_type: agentType,
+      current_prompt: config?.inbound_greeting || null,
+      requested_changes: requestedChanges,
+      reason: reason,
+      priority,
+      status: 'pending',
+    })
+
+  if (error) {
+    console.error('Error submitting prompt change request:', error)
+    return { error: error.message }
+  }
+
+  // Send email notification to admin (optional)
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || 'support@fusioncaller.com'
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', organizationId)
+      .single()
+
+    if (process.env.RESEND_API_KEY) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'FusionCaller <notifications@fusioncaller.com>',
+          to: adminEmail,
+          subject: `📝 Prompt Change Request: ${agentType} agent - ${priority} priority`,
+          html: `
+            <h2>New Prompt Change Request</h2>
+            <p><strong>Agent Type:</strong> ${agentType}</p>
+            <p><strong>Priority:</strong> ${priority}</p>
+            <p><strong>Requested Changes:</strong></p>
+            <p>${requestedChanges.replace(/\n/g, '<br>')}</p>
+            ${reason ? `<p><strong>Reason:</strong> ${reason.replace(/\n/g, '<br>')}</p>` : ''}
+            <hr>
+            <p><strong>Requested by:</strong> ${session.user.email}</p>
+            <p><strong>Organization:</strong> ${org?.name || 'Unknown'}</p>
+          `,
+        }),
+      })
+    }
+  } catch (emailError) {
+    console.error('Error sending prompt change request email:', emailError)
+    // Don't fail the request if email fails
+  }
+
+  revalidatePath('/app/inbound-ai')
+  revalidatePath('/app/outbound-ai')
+  return { success: true }
+}
+
+/**
  * Client-facing function to add their own phone number
  * Validates that the user belongs to the organization
  */

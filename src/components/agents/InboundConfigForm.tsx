@@ -9,11 +9,12 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { updateInboundConfig, setAgentId } from '@/lib/agents/actions'
+import { updateInboundConfig } from '@/lib/agents/actions'
 import { useToast } from '@/hooks/use-toast'
 import { Database } from '@/types/database'
-import { Phone, CheckCircle2, AlertTriangle, ExternalLink, Bot } from 'lucide-react'
-import { useState } from 'react'
+import { Phone, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { VoiceSelector } from '@/components/agents/VoiceSelector'
+import { PromptChangeRequest } from '@/components/agents/PromptChangeRequest'
 
 type AgentConfig = Database['public']['Tables']['agent_configs']['Row']
 type Organization = Database['public']['Tables']['organizations']['Row']
@@ -31,8 +32,6 @@ export function InboundConfigForm({
   phoneNumbers: PhoneNumber[]
 }) {
   const [loading, setLoading] = useState(false)
-  const [agentIdLoading, setAgentIdLoading] = useState(false)
-  const [agentId, setAgentId] = useState('')
   const { toast } = useToast()
 
   // Filter phone numbers that can be used for inbound
@@ -94,60 +93,14 @@ export function InboundConfigForm({
             </Badge>
           </div>
 
-          {/* Self-Service Assistant ID Setup */}
           {!config?.inbound_agent_id && (
-            <div className="space-y-3 p-4 rounded-lg border border-dashed border-primary/50 bg-primary/5">
+            <div className="p-4 rounded-lg border border-amber-200 bg-amber-50">
               <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
-                <Label className="text-base font-semibold">Add Your Assistant ID</Label>
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <p className="text-sm font-medium text-amber-900">
+                  Your inbound agent is being set up by our team. You'll be notified when it's ready.
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Connect your AI assistant to start receiving calls. Contact support if you need help finding your Assistant ID.
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  value={agentId}
-                  onChange={(e) => setAgentId(e.target.value)}
-                  placeholder="Enter your Assistant ID"
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    if (!agentId.trim()) {
-                      toast({
-                        title: 'Error',
-                        description: 'Please enter your Assistant ID',
-                        variant: 'destructive',
-                      })
-                      return
-                    }
-                    setAgentIdLoading(true)
-                    const result = await setAgentId('inbound', agentId.trim())
-                    if (result?.error) {
-                      toast({
-                        title: 'Error',
-                        description: result.error,
-                        variant: 'destructive',
-                      })
-                    } else {
-                      toast({
-                        title: 'Success',
-                        description: 'Assistant ID saved! Your agent is now configured.',
-                      })
-                      setAgentId('')
-                      window.location.reload() // Refresh to show updated status
-                    }
-                    setAgentIdLoading(false)
-                  }}
-                  disabled={agentIdLoading}
-                >
-                  {agentIdLoading ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                💡 Need help? Contact support to get your Assistant ID or create a new assistant.
-              </p>
             </div>
           )}
 
@@ -156,12 +109,29 @@ export function InboundConfigForm({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-900">Assistant ID Configured</span>
+                  <span className="text-sm font-medium text-green-900">Agent Configured</span>
                 </div>
-                <code className="text-xs bg-white px-2 py-1 rounded border text-green-800">
-                  {config.inbound_agent_id}
-                </code>
+                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                  Active
+                </Badge>
               </div>
+            </div>
+          )}
+
+          {/* Voice Selection and Prompt Change Request */}
+          {config?.inbound_agent_id && (
+            <div className="space-y-4">
+              <VoiceSelector
+                organizationId={organizationId}
+                agentType="inbound"
+                currentVoiceId={config.voice_id}
+                currentVoiceName={config.voice_name}
+              />
+              
+              <PromptChangeRequest
+                organizationId={organizationId}
+                agentType="inbound"
+              />
             </div>
           )}
 
