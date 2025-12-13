@@ -475,6 +475,9 @@ export interface Database {
           custom_service_area: string | null
           custom_greeting: string | null
           custom_variables: Json | null
+          voice_provider: string | null
+          voice_id: string | null
+          voice_name: string | null
         }
         Insert: {
           id?: string
@@ -496,6 +499,9 @@ export interface Database {
           custom_service_area?: string | null
           custom_greeting?: string | null
           custom_variables?: Json | null
+          voice_provider?: string | null
+          voice_id?: string | null
+          voice_name?: string | null
         }
         Update: {
           id?: string
@@ -517,6 +523,9 @@ export interface Database {
           custom_service_area?: string | null
           custom_greeting?: string | null
           custom_variables?: Json | null
+          voice_provider?: string | null
+          voice_id?: string | null
+          voice_name?: string | null
         }
       }
       campaigns: {
