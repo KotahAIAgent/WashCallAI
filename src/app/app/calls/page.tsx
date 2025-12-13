@@ -15,7 +15,7 @@ async function getCalls(organizationId: string, searchParams: { direction?: stri
       .eq('organization_id', organizationId)
       .is('deleted_at', null) // Only show non-deleted calls
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(500) // Increased limit to show more calls
 
     if (searchParams.direction && searchParams.direction !== 'all') {
       query = query.eq('direction', searchParams.direction)
