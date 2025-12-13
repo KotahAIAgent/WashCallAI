@@ -19,7 +19,7 @@ export async function validatePhoneNumberForSMS(
     return {
       valid: !!normalized,
       smsCapable: !!normalized,
-      formatted: normalized || undefined,
+      formatted: normalized ?? undefined,
     }
   }
 
@@ -48,7 +48,7 @@ export async function validatePhoneNumberForSMS(
       }
       // For other errors, assume valid but log
       console.warn('Twilio Lookup error:', error)
-      return { valid: true, smsCapable: true, formatted: normalized }
+      return { valid: true, smsCapable: true, formatted: normalized ?? undefined }
     }
 
     const data = await response.json()
@@ -61,7 +61,7 @@ export async function validatePhoneNumberForSMS(
     return {
       valid: true,
       smsCapable,
-      formatted: normalized,
+      formatted: normalized ?? undefined,
     }
   } catch (error: any) {
     console.error('Phone validation error:', error)
@@ -70,7 +70,7 @@ export async function validatePhoneNumberForSMS(
     return {
       valid: !!normalized,
       smsCapable: true,
-      formatted: normalized,
+      formatted: normalized || undefined,
     }
   }
 }
