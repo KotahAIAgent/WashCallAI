@@ -37,11 +37,16 @@ export async function POST(request: Request) {
         // Only update if subscription is active
         if (subscription.status === 'active' || subscription.status === 'trialing') {
         // Check if subscription_started_at is already set (to avoid overwriting)
-        const { data: org } = await supabase
+        const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('subscription_started_at, plan')
           .eq('id', organizationId)
-          .single()
+          .maybeSingle()
+
+        if (orgError) {
+          console.error(`[Webhook] Error fetching org for subscription_started_at:`, orgError)
+          // Continue anyway - not critical
+        }
 
         // Only set subscription_started_at if:
         // 1. It's not already set, OR
@@ -59,11 +64,16 @@ export async function POST(request: Request) {
 
         // Auto-approve setup status when subscription is created/activated
         // This makes the system fully hands-off - clients can self-serve
-        const { data: currentOrg } = await supabase
+        const { data: currentOrg, error: currentOrgError } = await supabase
           .from('organizations')
           .select('setup_status, onboarding_completed')
           .eq('id', organizationId)
-          .single()
+          .maybeSingle()
+
+        if (currentOrgError) {
+          console.error(`[Webhook] Error fetching org for setup_status:`, currentOrgError)
+          // Continue anyway - not critical
+        }
 
         // Only auto-approve if onboarding is completed and status is not already active
         if (currentOrg?.onboarding_completed && currentOrg?.setup_status !== 'active') {
@@ -136,11 +146,16 @@ export async function POST(request: Request) {
 
       if (customerId) {
         // Get organization by customer ID
-        const { data: org } = await supabase
+        const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('id, account_credit')
           .eq('billing_customer_id', customerId)
-          .single()
+          .maybeSingle()
+
+        if (orgError) {
+          console.error(`[Webhook] Error fetching org by customer ID:`, orgError)
+          // Continue anyway - not critical for invoice events
+        }
 
         if (org && org.account_credit > 0) {
           // Apply credit to invoice (Stripe will handle this automatically via customer balance)
@@ -175,7 +190,7 @@ export async function POST(request: Request) {
             .from('organizations')
             .select('purchased_credits_minutes')
             .eq('id', organizationId)
-            .single()
+            .maybeSingle()
 
           if (fetchError) {
             console.error(`[Webhook] Error fetching organization ${organizationId}:`, {
