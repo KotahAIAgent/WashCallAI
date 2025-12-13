@@ -37,14 +37,17 @@ export async function updateInboundConfig(formData: FormData) {
     .eq('organization_id', organizationId)
     .single()
 
+  // Handle greeting: empty string means use default (set to null), otherwise use the custom greeting
+  const greetingValue = inboundGreeting?.trim() || null
+
   const configData = {
     organization_id: organizationId,
     inbound_phone_number_id: inboundPhoneNumberId || null,
-    inbound_greeting: inboundGreeting || null,
+    inbound_greeting: greetingValue,
     // Store custom variables for overriding Vapi agent settings
     custom_business_name: businessName || null,
     custom_service_area: serviceArea || null,
-    custom_greeting: inboundGreeting || null,
+    custom_greeting: greetingValue,
     inbound_enabled: enableInbound && !!existing?.inbound_agent_id,
     updated_at: new Date().toISOString(),
   }
@@ -74,6 +77,62 @@ export async function updateInboundConfig(formData: FormData) {
       .from('organizations')
       .update({ name: businessName })
       .eq('id', organizationId)
+  }
+
+  // Update Vapi assistant with custom greeting (if assistant exists)
+  const vapiApiKey = process.env.VAPI_API_KEY
+  const assistantId = existing?.inbound_agent_id
+
+  if (vapiApiKey && assistantId) {
+    // Validate assistant ID is not organization ID
+    if (assistantId === organizationId) {
+      console.warn(`[updateInboundConfig] ⚠️ Assistant ID matches organization ID, skipping Vapi update`)
+    } else {
+      try {
+        const updatePayload: any = {}
+        
+        // If greeting is provided, set it. If null/empty, clear it to use Vapi default
+        if (greetingValue) {
+          updatePayload.firstMessage = greetingValue
+          console.log(`[updateInboundConfig] Setting custom greeting: ${greetingValue.substring(0, 50)}...`)
+        } else {
+          // If greeting is disabled, try to clear it by setting to null
+          // Vapi may use the default from the model/system prompt if firstMessage is null
+          updatePayload.firstMessage = null
+          console.log(`[updateInboundConfig] Custom greeting disabled, clearing to use Vapi default`)
+        }
+
+        const response = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${vapiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatePayload),
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`[updateInboundConfig] ❌ Failed to update Vapi assistant greeting:`, {
+            status: response.status,
+            error: errorText,
+            assistantId,
+            greetingValue: greetingValue ? 'custom' : 'default',
+          })
+          // Don't fail the whole operation - greeting is saved in DB
+        } else {
+          const responseData = await response.json().catch(() => ({}))
+          console.log(`[updateInboundConfig] ✅ Greeting updated for inbound assistant:`, {
+            assistantId,
+            usingCustom: !!greetingValue,
+            greeting: greetingValue ? greetingValue.substring(0, 50) + '...' : 'Vapi default',
+          })
+        }
+      } catch (err: any) {
+        console.error(`[updateInboundConfig] ❌ Error updating Vapi assistant greeting:`, err?.message || err)
+        // Don't fail - greeting is saved in DB
+      }
+    }
   }
 
   revalidatePath('/app/inbound-ai')

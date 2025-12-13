@@ -32,6 +32,7 @@ export function InboundConfigForm({
   phoneNumbers: PhoneNumber[]
 }) {
   const [loading, setLoading] = useState(false)
+  const [useCustomGreeting, setUseCustomGreeting] = useState(!!config?.inbound_greeting)
   const { toast } = useToast()
 
   // Filter phone numbers that can be used for inbound
@@ -219,18 +220,40 @@ export function InboundConfigForm({
           </div>
 
           {/* Custom Greeting */}
-          <div className="space-y-2">
-            <Label htmlFor="inboundGreeting">Custom Greeting (Optional)</Label>
-            <Textarea
-              id="inboundGreeting"
-              name="inboundGreeting"
-              defaultValue={config?.inbound_greeting || ''}
-              placeholder="e.g., Thank you for calling [Business Name], this is your AI assistant. How can I help you today?"
-              rows={2}
-            />
-            <p className="text-sm text-muted-foreground">
-              Customize how your AI greets callers, or leave blank for the default
-            </p>
+          <div className="space-y-4 pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="useCustomGreeting">Use Custom Greeting</Label>
+                <p className="text-sm text-muted-foreground">
+                  Override the default greeting from your Vapi assistant
+                </p>
+              </div>
+              <Switch 
+                id="useCustomGreeting" 
+                checked={useCustomGreeting}
+                onCheckedChange={setUseCustomGreeting}
+              />
+            </div>
+            
+            {useCustomGreeting && (
+              <div className="space-y-2">
+                <Label htmlFor="inboundGreeting">Custom Greeting</Label>
+                <Textarea
+                  id="inboundGreeting"
+                  name="inboundGreeting"
+                  defaultValue={config?.inbound_greeting || ''}
+                  placeholder="e.g., Thank you for calling [Business Name], this is your AI assistant. How can I help you today?"
+                  rows={3}
+                />
+                <p className="text-sm text-muted-foreground">
+                  This greeting will replace the default greeting in your Vapi assistant
+                </p>
+              </div>
+            )}
+            
+            {!useCustomGreeting && (
+              <input type="hidden" name="inboundGreeting" value="" />
+            )}
           </div>
 
           {/* Lead Preferences */}
