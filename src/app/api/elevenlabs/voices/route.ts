@@ -101,7 +101,10 @@ export async function GET() {
     })
     
     // Remove the _original property before returning
-    const voices = customVoices.map(({ _original, ...voice }) => voice)
+    const voices = customVoices.map((voice: any) => {
+      const { _original, ...cleanVoice } = voice
+      return cleanVoice
+    })
     
     console.log(`[ElevenLabs API] Custom voices after filtering: ${voices.length}`)
     
