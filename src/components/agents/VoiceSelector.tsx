@@ -66,26 +66,52 @@ export function VoiceSelector({ organizationId, agentType, currentVoiceId, curre
   }, [toast])
 
   const handleVoiceChange = async (voiceId: string) => {
+    console.log(`[VoiceSelector] 🎤 Voice change triggered:`, {
+      organizationId,
+      agentType,
+      voiceId,
+      currentVoiceId,
+      timestamp: new Date().toISOString(),
+    })
+
     setSelectedVoiceId(voiceId)
     const selectedVoice = voices.find(v => v.id === voiceId)
     
-    setLoading(true)
-    const result = await updateVoiceSettings(organizationId, agentType, voiceId, selectedVoice?.name || '')
+    console.log(`[VoiceSelector] Selected voice:`, selectedVoice)
     
-    if (result?.error) {
+    setLoading(true)
+    
+    try {
+      console.log(`[VoiceSelector] Calling updateVoiceSettings...`)
+      const result = await updateVoiceSettings(organizationId, agentType, voiceId, selectedVoice?.name || '')
+      console.log(`[VoiceSelector] updateVoiceSettings result:`, result)
+      
+      if (result?.error) {
+        console.error(`[VoiceSelector] ❌ Error from updateVoiceSettings:`, result.error)
+        toast({
+          title: 'Error',
+          description: result.error,
+          variant: 'destructive',
+        })
+        setSelectedVoiceId(currentVoiceId || '') // Revert on error
+      } else {
+        console.log(`[VoiceSelector] ✅ Voice update successful`)
+        toast({
+          title: 'Voice updated',
+          description: `Your ${agentType} agent will now use ${selectedVoice?.name || 'the selected voice'}.`,
+        })
+      }
+    } catch (error: any) {
+      console.error(`[VoiceSelector] ❌ Exception in handleVoiceChange:`, error)
       toast({
         title: 'Error',
-        description: result.error,
+        description: error?.message || 'Failed to update voice',
         variant: 'destructive',
       })
       setSelectedVoiceId(currentVoiceId || '') // Revert on error
-    } else {
-      toast({
-        title: 'Voice updated',
-        description: `Your ${agentType} agent will now use ${selectedVoice?.name || 'the selected voice'}.`,
-      })
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (

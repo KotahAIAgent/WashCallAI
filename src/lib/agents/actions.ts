@@ -850,12 +850,23 @@ export async function updateVoiceSettings(
   voiceId: string,
   voiceName: string
 ) {
+  console.log(`[updateVoiceSettings] 🎯 FUNCTION CALLED with:`, {
+    organizationId,
+    agentType,
+    voiceId,
+    voiceName,
+    timestamp: new Date().toISOString(),
+  })
+
   const supabase = createActionClient()
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
+    console.error(`[updateVoiceSettings] ❌ No session found`)
     return { error: 'Not authenticated' }
   }
+
+  console.log(`[updateVoiceSettings] ✅ Session found for user: ${session.user.id}`)
 
   // Verify user belongs to organization
   const { data: profile } = await supabase
