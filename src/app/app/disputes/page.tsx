@@ -18,11 +18,16 @@ export default async function DisputesPage() {
   }
 
   // Get user's organization
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('organization_id')
     .eq('id', session.user.id)
-    .single()
+    .maybeSingle()
+
+  if (profileError) {
+    console.error('[Disputes Page] Error fetching profile:', profileError)
+    redirect('/login')
+  }
 
   if (!profile?.organization_id) {
     redirect('/login')

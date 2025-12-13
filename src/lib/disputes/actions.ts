@@ -110,11 +110,16 @@ export async function getUsageStats(organizationId: string) {
   const supabase = createActionClient()
 
   // Get organization billing info
-  const { data: org } = await supabase
+  const { data: org, error: orgError } = await supabase
     .from('organizations')
     .select('plan, billable_minutes_this_month, billable_calls_this_month, billing_period_month, billing_period_year, industry, purchased_credits_minutes')
     .eq('id', organizationId)
-    .single()
+    .maybeSingle()
+
+  if (orgError) {
+    console.error('[getUsageStats] Error fetching organization:', orgError)
+    return { error: 'Failed to fetch organization', details: orgError.message }
+  }
 
   if (!org) {
     return { error: 'Organization not found' }
