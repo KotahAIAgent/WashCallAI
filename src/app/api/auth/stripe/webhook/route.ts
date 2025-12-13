@@ -186,12 +186,34 @@ export async function POST(request: Request) {
         console.log(`[Webhook] Processing credits purchase: ${minutesToAdd} minutes for org ${organizationId}`)
         
         if (minutesToAdd > 0) {
-          // Get current credits
+          console.log(`[Webhook] 🔍 Looking up organization ${organizationId}...`)
+          
+          // First, try to find the organization with just the ID to verify it exists
+          const { data: orgCheck, error: checkError } = await supabase
+            .from('organizations')
+            .select('id, name')
+            .eq('id', organizationId)
+            .maybeSingle()
+          
+          console.log(`[Webhook] Organization check result:`, {
+            found: !!orgCheck,
+            name: orgCheck?.name,
+            error: checkError?.message,
+          })
+          
+          // Get current credits (this will fail if column doesn't exist)
           const { data: org, error: fetchError } = await supabase
             .from('organizations')
             .select('purchased_credits_minutes')
             .eq('id', organizationId)
             .maybeSingle()
+
+          console.log(`[Webhook] Credits query result:`, {
+            found: !!org,
+            credits: org?.purchased_credits_minutes,
+            error: fetchError?.message,
+            errorCode: fetchError?.code,
+          })
 
           if (fetchError) {
             console.error(`[Webhook] Error fetching organization ${organizationId}:`, {
@@ -203,7 +225,7 @@ export async function POST(request: Request) {
             })
             
             // Check if it's a column missing error
-            if (fetchError.message?.includes('column') || fetchError.message?.includes('does not exist')) {
+            if (fetchError.message?.includes('column') || fetchError.message?.includes('does not exist') || fetchError.code === '42703') {
               console.error(`[Webhook] ⚠️ Database column missing! Run migration: add-credits-to-organizations.sql`)
               return NextResponse.json({ 
                 error: 'Database column missing. Please run the migration to add purchased_credits_minutes column.',
