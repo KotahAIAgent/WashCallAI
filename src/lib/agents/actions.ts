@@ -1447,8 +1447,16 @@ export async function adminAddPhoneNumber(
   // Use service role client for admin operations to bypass RLS
   const supabase = createServiceRoleClient()
   
-  // Validate UUID format for provider_phone_id
+  // Validate organizationId is not empty and is a valid UUID
+  if (!organizationId || organizationId.trim() === '') {
+    return { error: 'Organization ID is required' }
+  }
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(organizationId.trim())) {
+    return { error: 'Organization ID must be a valid UUID format' }
+  }
+  
+  // Validate UUID format for provider_phone_id
   if (!uuidRegex.test(providerPhoneId.trim())) {
     return { error: 'Vapi Phone Number ID must be a UUID format (e.g., 123e4567-e89b-12d3-a456-426614174000)' }
   }

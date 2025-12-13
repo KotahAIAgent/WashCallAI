@@ -13,6 +13,15 @@ export async function updateOrganization(formData: FormData) {
 
   const organizationId = formData.get('organizationId') as string
   
+  // Validate organizationId is not empty and is a valid UUID
+  if (!organizationId || organizationId.trim() === '') {
+    return { error: 'Organization ID is required' }
+  }
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(organizationId.trim())) {
+    return { error: 'Organization ID must be a valid UUID format' }
+  }
+  
   // Basic info
   const name = formData.get('name') as string
   const email = formData.get('email') as string
@@ -69,7 +78,7 @@ export async function updateOrganization(formData: FormData) {
       primary_color: primary_color || '#3B82F6',
       updated_at: new Date().toISOString(),
     })
-    .eq('id', organizationId)
+    .eq('id', organizationId.trim())
 
   if (error) {
     return { error: error.message }
@@ -114,7 +123,7 @@ export async function updateBusinessPreferences(
   const { data: org } = await supabase
     .from('organizations')
     .select('onboarding_data')
-    .eq('id', organizationId)
+    .eq('id', organizationId.trim())
     .single()
 
   // Merge with existing data
@@ -132,7 +141,7 @@ export async function updateBusinessPreferences(
       onboarding_data: updatedOnboardingData,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', organizationId)
+    .eq('id', organizationId.trim())
 
   if (error) {
     return { error: error.message }
@@ -168,7 +177,7 @@ export async function updateNotificationSettings(
       notification_phone: cleanPhone || null,
       notification_settings: settings,
     })
-    .eq('id', organizationId)
+    .eq('id', organizationId.trim())
 
   if (error) {
     return { error: error.message }
@@ -194,7 +203,7 @@ export async function updateEmailReportsSettings(
     .update({
       email_reports_enabled: enabled,
     })
-    .eq('id', organizationId)
+    .eq('id', organizationId.trim())
 
   if (error) {
     return { error: error.message }

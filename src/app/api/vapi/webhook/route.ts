@@ -1,6 +1,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendLeadNotification, determineNotificationType } from '@/lib/notifications/sms'
+import { sendClientSMS } from '@/lib/notifications/client-sms'
 import { triggerWorkflows } from '@/lib/workflows/engine'
 import { chargeVapiCall, shouldChargeCall } from '@/lib/vapi/stripe-billing'
 import { stripe } from '@/lib/stripe/server'
@@ -1297,6 +1298,63 @@ export async function POST(request: Request) {
           leadId,
         }).catch(err => console.error('Workflow trigger error:', err))
       }
+    }
+
+    // 📱 SEND CLIENT SMS (Hormozi-style AI-generated)
+    // Send SMS to the client after call completion (all outcomes: completed, voicemail, failed)
+    console.log('[Webhook] Client SMS check:', {
+      payloadStatus: payload.status,
+      callDataStatus: callData.status,
+      direction,
+      shouldSend: payload.status === 'ended' || payload.status === 'completed' || callData.status === 'completed' || callData.status === 'voicemail' || callData.status === 'failed'
+    })
+    
+    if (payload.status === 'ended' || payload.status === 'completed' || callData.status === 'completed' || callData.status === 'voicemail' || callData.status === 'failed') {
+      // Determine client phone number
+      const clientPhone = direction === 'inbound' 
+        ? callData.from_number 
+        : callData.to_number
+
+      console.log('[Webhook] Client SMS attempt:', {
+        clientPhone,
+        hasPhone: !!clientPhone,
+        direction,
+        organizationId,
+        callStatus: callData.status
+      })
+
+      if (clientPhone) {
+        console.log('[Webhook] 📱 Attempting to send client SMS...')
+        // Send client SMS asynchronously (don't await to not block webhook response)
+        // Pass service role client to bypass RLS
+        sendClientSMS({
+          direction: direction as 'inbound' | 'outbound',
+          callStatus: callData.status as 'completed' | 'answered' | 'voicemail' | 'failed',
+          leadStatus: leadStatus as 'interested' | 'not_interested' | 'callback' | 'new',
+          clientName: leadData.name,
+          clientPhone,
+          organizationId,
+          serviceType: leadData.serviceType || null,
+          address: leadData.address || null,
+          transcript: callData.transcript || null,
+          summary: callData.summary || null,
+          supabaseClient: supabase, // Pass service role client from webhook
+        } as Parameters<typeof sendClientSMS>[0])
+          .then(result => {
+            if (result.success) {
+              console.log(`✅ Client SMS sent to ${clientPhone}: ${result.message?.substring(0, 50)}...`)
+            } else {
+              console.log(`⚠️ Client SMS not sent to ${clientPhone}: ${result.error}`)
+            }
+          })
+          .catch(err => {
+            console.error('❌ Client SMS error:', err)
+          })
+      } else {
+        console.log('[Webhook] ⚠️ No client phone number found - cannot send SMS')
+      }
+    } else {
+      console.log('[Webhook] ⏭️ Skipping client SMS - call not in final state')
     }
 
     return NextResponse.json({ success: true, callId: call?.id })

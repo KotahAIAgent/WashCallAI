@@ -22,6 +22,15 @@ export async function createCampaign(formData: FormData) {
   const phoneNumberId = formData.get('phoneNumberId') as string || null
   const dailyLimit = parseInt(formData.get('dailyLimit') as string) || 50
 
+  // Validate organizationId is not empty and is a valid UUID
+  if (!organizationId || organizationId.trim() === '') {
+    return { error: 'Organization ID is required' }
+  }
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(organizationId.trim())) {
+    return { error: 'Organization ID must be a valid UUID format' }
+  }
+
   // Schedule data
   const enabledDaysJson = formData.get('enabledDays') as string
   const enabledDays = enabledDaysJson ? JSON.parse(enabledDaysJson) : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
@@ -32,7 +41,7 @@ export async function createCampaign(formData: FormData) {
   const { data, error } = await supabase
     .from('campaigns')
     .insert({
-      organization_id: organizationId,
+      organization_id: organizationId.trim(),
       name,
       description: description || null,
       script_type: scriptType,
