@@ -909,7 +909,7 @@ export async function updateVoiceSettings(
         },
         body: JSON.stringify({
           voice: {
-            provider: 'elevenlabs',
+            provider: '11labs',
             voiceId: voiceId,
           },
         }),
