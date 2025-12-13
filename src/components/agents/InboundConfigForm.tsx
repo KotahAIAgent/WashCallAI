@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,7 +34,20 @@ export function InboundConfigForm({
 }) {
   const [loading, setLoading] = useState(false)
   const [useCustomGreeting, setUseCustomGreeting] = useState(!!config?.inbound_greeting)
+  const [greetingValue, setGreetingValue] = useState(config?.inbound_greeting || '')
   const { toast } = useToast()
+  const router = useRouter()
+
+  // Update state when config changes (after refresh)
+  useEffect(() => {
+    if (config?.inbound_greeting) {
+      setGreetingValue(config.inbound_greeting)
+      setUseCustomGreeting(true)
+    } else {
+      setGreetingValue('')
+      setUseCustomGreeting(false)
+    }
+  }, [config?.inbound_greeting])
 
   // Filter phone numbers that can be used for inbound
   const inboundPhones = phoneNumbers.filter(p => p.type === 'inbound' || p.type === 'both')
@@ -56,6 +70,8 @@ export function InboundConfigForm({
         title: 'Success',
         description: 'Inbound Agent configuration saved successfully',
       })
+      // Refresh the page to show updated values
+      router.refresh()
     }
     
     setLoading(false)
@@ -241,7 +257,8 @@ export function InboundConfigForm({
                 <Textarea
                   id="inboundGreeting"
                   name="inboundGreeting"
-                  defaultValue={config?.inbound_greeting || ''}
+                  value={greetingValue}
+                  onChange={(e) => setGreetingValue(e.target.value)}
                   placeholder="e.g., Thank you for calling [Business Name], this is your AI assistant. How can I help you today?"
                   rows={3}
                 />
@@ -254,11 +271,10 @@ export function InboundConfigForm({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const greetingText = (document.getElementById('inboundGreeting') as HTMLTextAreaElement)?.value || config?.inbound_greeting || ''
-                      if (greetingText.trim()) {
+                      if (greetingValue.trim()) {
                         toast({
                           title: 'Greeting Preview',
-                          description: greetingText,
+                          description: greetingValue,
                           duration: 5000,
                         })
                       } else {
