@@ -899,32 +899,72 @@ export async function updateVoiceSettings(
   const vapiApiKey = process.env.VAPI_API_KEY
   const assistantId = agentType === 'inbound' ? config.inbound_agent_id : config.outbound_agent_id
 
+  console.log(`[updateVoiceSettings] Attempting to update ${agentType} voice:`, {
+    organizationId,
+    assistantId,
+    voiceId,
+    voiceName,
+    hasVapiKey: !!vapiApiKey,
+  })
+
   if (vapiApiKey && assistantId) {
     try {
+      const updatePayload = {
+        voice: {
+          provider: '11labs',
+          voiceId: voiceId,
+        },
+      }
+      
+      console.log(`[updateVoiceSettings] Sending to Vapi API:`, {
+        url: `https://api.vapi.ai/assistant/${assistantId}`,
+        payload: updatePayload,
+      })
+
       const response = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${vapiApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          voice: {
-            provider: '11labs',
-            voiceId: voiceId,
-          },
-        }),
+        body: JSON.stringify(updatePayload),
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('Failed to update Vapi assistant voice:', errorText)
+        console.error(`[updateVoiceSettings] ❌ Failed to update Vapi assistant voice:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          assistantId,
+          voiceId,
+          voiceName,
+        })
         // Don't fail the whole operation - voice is saved in DB
       } else {
-        console.log(`[updateVoiceSettings] ✅ Voice updated for ${agentType} assistant: ${voiceName}`)
+        const responseData = await response.json().catch(() => ({}))
+        console.log(`[updateVoiceSettings] ✅ Voice updated for ${agentType} assistant:`, {
+          assistantId,
+          voiceId,
+          voiceName,
+          response: responseData,
+        })
       }
     } catch (err: any) {
-      console.error('Error updating Vapi assistant voice:', err?.message || err)
+      console.error(`[updateVoiceSettings] ❌ Error updating Vapi assistant voice:`, {
+        error: err?.message || err,
+        assistantId,
+        voiceId,
+        voiceName,
+      })
       // Don't fail - voice is saved in DB
+    }
+  } else {
+    if (!vapiApiKey) {
+      console.warn(`[updateVoiceSettings] ⚠️ VAPI_API_KEY not configured`)
+    }
+    if (!assistantId) {
+      console.warn(`[updateVoiceSettings] ⚠️ ${agentType}_agent_id not found for organization ${organizationId}`)
     }
   }
 
