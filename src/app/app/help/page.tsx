@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { RestartTourButton } from '@/components/onboarding/RestartTourButton'
+import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { 
   HelpCircle, 
@@ -19,7 +20,8 @@ import {
   ExternalLink,
   ArrowRight,
   Lightbulb,
-  PlayCircle
+  PlayCircle,
+  CreditCard
 } from 'lucide-react'
 
 const quickGuides = [
@@ -92,7 +94,34 @@ const faqs = [
   },
 ]
 
-export default function HelpPage() {
+async function getPurchasedCredits(organizationId: string) {
+  const supabase = createServerClient()
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('purchased_credits_minutes')
+    .eq('id', organizationId)
+    .single()
+
+  return org?.purchased_credits_minutes || 0
+}
+
+export default async function HelpPage() {
+  const supabase = createServerClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  let purchasedCredits = 0
+  if (session) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', session.user.id)
+      .single()
+
+    if (profile?.organization_id) {
+      purchasedCredits = await getPurchasedCredits(profile.organization_id)
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -250,6 +279,44 @@ export default function HelpPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
+            </CardContent>
+          </Card>
+
+          {/* Available Credits */}
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-green-800">
+                <CreditCard className="h-5 w-5" />
+                Available Credits
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-green-900">
+                    {purchasedCredits.toLocaleString()}
+                  </span>
+                  <span className="text-sm text-green-700">minutes</span>
+                </div>
+                <p className="text-sm text-green-800">
+                  Purchased credits never expire and are used automatically after your monthly plan minutes are exhausted.
+                </p>
+                {purchasedCredits === 0 ? (
+                  <Link href="/app/disputes">
+                    <Button variant="outline" size="sm" className="mt-2 bg-white border-green-300 text-green-800 hover:bg-green-50">
+                      Purchase Credits
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/app/disputes">
+                    <Button variant="outline" size="sm" className="mt-2 bg-white border-green-300 text-green-800 hover:bg-green-50">
+                      View Usage & Purchase More
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </CardContent>
           </Card>
 
