@@ -918,6 +918,20 @@ export async function updateVoiceSettings(
     hasVapiKey: !!vapiApiKey,
   })
 
+  // Validate assistant ID - check if it's accidentally set to organization ID
+  if (assistantId === organizationId) {
+    console.error(`[updateVoiceSettings] ❌ CRITICAL: Assistant ID is set to organization ID!`, {
+      assistantId,
+      organizationId,
+      message: 'The assistant_id in the database matches the organization_id. This is incorrect. The assistant_id should be the Vapi Assistant ID from the Vapi dashboard.',
+    })
+    // Still save to DB, but return a warning
+    return { 
+      error: `Invalid Assistant ID: The assistant ID is set to your organization ID instead of your Vapi Assistant ID. Please update it in the admin panel with the correct Assistant ID from your Vapi dashboard.`,
+      warning: true 
+    }
+  }
+
   if (vapiApiKey && assistantId) {
     try {
       const updatePayload = {
@@ -943,6 +957,14 @@ export async function updateVoiceSettings(
 
       if (!response.ok) {
         const errorText = await response.text()
+        let errorMessage = errorText
+        try {
+          const errorJson = JSON.parse(errorText)
+          errorMessage = errorJson.message || errorText
+        } catch {
+          // Keep original error text
+        }
+        
         console.error(`[updateVoiceSettings] ❌ Failed to update Vapi assistant voice:`, {
           status: response.status,
           statusText: response.statusText,
@@ -951,6 +973,15 @@ export async function updateVoiceSettings(
           voiceId,
           voiceName,
         })
+        
+        // If 404, provide helpful error message
+        if (response.status === 404) {
+          return {
+            error: `Assistant not found in Vapi. The assistant ID "${assistantId}" does not exist in your Vapi account. Please update the assistant ID in the admin panel with the correct Assistant ID from your Vapi dashboard (https://dashboard.vapi.ai).`,
+            warning: true,
+          }
+        }
+        
         // Don't fail the whole operation - voice is saved in DB
       } else {
         const responseData = await response.json().catch(() => ({}))

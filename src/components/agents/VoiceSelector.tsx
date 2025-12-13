@@ -89,11 +89,14 @@ export function VoiceSelector({ organizationId, agentType, currentVoiceId, curre
       if (result?.error) {
         console.error(`[VoiceSelector] ❌ Error from updateVoiceSettings:`, result.error)
         toast({
-          title: 'Error',
+          title: result.warning ? 'Warning' : 'Error',
           description: result.error,
-          variant: 'destructive',
+          variant: result.warning ? 'default' : 'destructive',
         })
-        setSelectedVoiceId(currentVoiceId || '') // Revert on error
+        // Only revert if it's a real error, not a warning
+        if (!result.warning) {
+          setSelectedVoiceId(currentVoiceId || '') // Revert on error
+        }
       } else {
         console.log(`[VoiceSelector] ✅ Voice update successful`)
         toast({
