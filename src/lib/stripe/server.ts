@@ -102,13 +102,24 @@ export function planHasAccess(plan: PlanType | null, feature: 'outbound' | 'camp
 }
 
 // Get industry-specific pricing for a plan
-export function getIndustryPricing(plan: PlanType, industrySlug?: IndustrySlug | null) {
+export function getIndustryPricing(plan: PlanType | null, industrySlug?: IndustrySlug | null) {
+  // Handle null/undefined plan
+  if (!plan || !STRIPE_PLANS[plan]) {
+    return {
+      price: 0,
+      minutes: 0,
+      overageRate: 0.20,
+      avgCallDuration: 5,
+    }
+  }
+
   if (!industrySlug) {
     // Return default/base pricing if no industry specified
     return {
       price: STRIPE_PLANS[plan].price,
       minutes: 0,
       overageRate: 0.20,
+      avgCallDuration: 5,
     }
   }
 
@@ -118,12 +129,23 @@ export function getIndustryPricing(plan: PlanType, industrySlug?: IndustrySlug |
       price: STRIPE_PLANS[plan].price,
       minutes: 0,
       overageRate: 0.20,
+      avgCallDuration: 5,
     }
   }
 
   const pricing = industry.pricing
+  // Handle null plan when accessing pricing
+  if (!plan) {
+    return {
+      price: 0,
+      minutes: 0,
+      overageRate: pricing.overageRate || 0.20,
+      avgCallDuration: pricing.avgCallDuration || 5,
+    }
+  }
+  
   return {
-    price: pricing[plan],
+    price: pricing[plan] || 0,
     minutes: plan === 'starter' ? pricing.starterMinutes : 
              plan === 'growth' ? pricing.growthMinutes : 
              pricing.proMinutes,

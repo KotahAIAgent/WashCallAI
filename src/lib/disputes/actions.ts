@@ -137,8 +137,9 @@ export async function getUsageStats(organizationId: string) {
   // Get plan limits (in minutes, industry-specific)
   const { getIndustryPricing } = await import('@/lib/stripe/server')
   const industrySlug = (org.industry as any) || null
-  const industryPricing = getIndustryPricing(org.plan as any, industrySlug)
-  const monthlyLimitMinutes = industryPricing.minutes || 0
+  const plan = org.plan as 'starter' | 'growth' | 'pro' | null
+  const industryPricing = getIndustryPricing(plan, industrySlug)
+  const monthlyLimitMinutes = industryPricing?.minutes || 0
 
   // Get pending disputes count
   const { count: pendingDisputes } = await supabase
