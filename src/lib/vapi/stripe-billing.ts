@@ -119,7 +119,7 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('plan, billable_minutes_this_month, billing_period_month, billing_period_year, industry')
+    .select('plan, billable_minutes_this_month, billing_period_month, billing_period_year, industry, purchased_credits_minutes')
     .eq('id', organizationId)
     .single()
 
@@ -166,19 +166,30 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
   // Use actual minutes tracked in database
   const currentUsageMinutes = org.billable_minutes_this_month || 0
   const callMinutes = Math.ceil(callDurationSeconds / 60)
-  const projectedUsage = currentUsageMinutes + callMinutes
+  const purchasedCredits = org.purchased_credits_minutes || 0
   
-  // Calculate how many minutes exceed the limit
-  const overageMinutes = Math.max(0, projectedUsage - planLimit)
+  // Calculate usage: monthly minutes first, then credits
+  // If monthly minutes are exhausted, use credits
+  const remainingMonthlyMinutes = Math.max(0, planLimit - currentUsageMinutes)
+  const minutesFromCredits = Math.max(0, callMinutes - remainingMonthlyMinutes)
+  const minutesFromMonthly = Math.min(callMinutes, remainingMonthlyMinutes)
+  
+  // Calculate how many minutes exceed both monthly limit AND credits
+  const totalAvailable = planLimit + purchasedCredits
+  const projectedUsage = currentUsageMinutes + callMinutes
+  const overageMinutes = Math.max(0, projectedUsage - totalAvailable)
   const isOverage = overageMinutes > 0
 
   return {
     shouldCharge: isOverage,
-    reason: isOverage ? 'Exceeds plan minutes limit' : 'Within plan limits',
+    reason: isOverage ? 'Exceeds plan minutes and credits' : minutesFromCredits > 0 ? 'Using purchased credits' : 'Within plan limits',
     currentUsage: currentUsageMinutes,
     planLimit,
     callMinutes,
     overageMinutes,
+    minutesFromMonthly,
+    minutesFromCredits,
+    remainingCredits: purchasedCredits - minutesFromCredits,
   }
 }
 

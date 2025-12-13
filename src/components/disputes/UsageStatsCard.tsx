@@ -11,6 +11,8 @@ interface UsageStatsProps {
     billableCallsThisMonth?: number
     monthlyLimitMinutes?: number
     remainingMinutes?: number
+    purchasedCreditsMinutes?: number
+    totalRemainingMinutes?: number
     // Legacy fields for backward compatibility
     monthlyLimit?: number
     remainingCalls?: number
@@ -80,10 +82,15 @@ export function UsageStatsCard({ stats }: UsageStatsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {monthlyLimitMinutes === -1 ? '∞' : monthlyLimitMinutes > 0 ? Math.max(remainingMinutes, 0).toLocaleString() : 'N/A'}
+            {stats.totalRemainingMinutes !== undefined 
+              ? (stats.totalRemainingMinutes === -1 ? '∞' : Math.max(stats.totalRemainingMinutes, 0).toLocaleString())
+              : (monthlyLimitMinutes === -1 ? '∞' : monthlyLimitMinutes > 0 ? Math.max(remainingMinutes, 0).toLocaleString() : 'N/A')}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             {stats.plan ? `${stats.plan.charAt(0).toUpperCase() + stats.plan.slice(1)} plan` : 'No plan'}
+            {stats.purchasedCreditsMinutes && stats.purchasedCreditsMinutes > 0 && (
+              <span className="block mt-1">+ {stats.purchasedCreditsMinutes.toLocaleString()} credits</span>
+            )}
           </p>
         </CardContent>
       </Card>

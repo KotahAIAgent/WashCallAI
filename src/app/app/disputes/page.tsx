@@ -6,6 +6,7 @@ import { BILLABLE_STATUSES } from '@/lib/disputes/constants'
 import { UsageStatsCard } from '@/components/disputes/UsageStatsCard'
 import { DisputesList } from '@/components/disputes/DisputesList'
 import { CallHistoryWithDispute } from '@/components/disputes/CallHistoryWithDispute'
+import { PurchaseCreditsCard } from '@/components/disputes/PurchaseCreditsCard'
 import { AlertCircle, Info } from 'lucide-react'
 
 export default async function DisputesPage() {
@@ -67,6 +68,9 @@ export default async function DisputesPage() {
       {usageResult && !usageResult.error && (
         <UsageStatsCard stats={usageResult as any} />
       )}
+
+      {/* Purchase Credits */}
+      <PurchaseCreditsCard />
 
       {/* How Billing Works Info */}
       <Card className="border-blue-200 bg-blue-50/50">

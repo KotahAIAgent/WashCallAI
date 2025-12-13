@@ -39,6 +39,7 @@ async function getLeadCalls(leadId: string, organizationId: string) {
     .select('*')
     .eq('lead_id', leadId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null) // Only show non-deleted calls
     .order('created_at', { ascending: false })
 
   return data || []

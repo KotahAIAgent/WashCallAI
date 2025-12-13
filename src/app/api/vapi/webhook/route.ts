@@ -1176,13 +1176,16 @@ export async function POST(request: Request) {
         // Get current organization billing info
         const { data: org } = await supabase
           .from('organizations')
-          .select('billable_minutes_this_month, billable_calls_this_month, billing_period_month, billing_period_year')
+          .select('billable_minutes_this_month, billable_calls_this_month, billing_period_month, billing_period_year, plan, industry, purchased_credits_minutes')
           .eq('id', organizationId)
           .single() as { data: { 
             billable_minutes_this_month: number | null
             billable_calls_this_month: number | null
             billing_period_month: number | null
             billing_period_year: number | null
+            plan: string | null
+            industry: string | null
+            purchased_credits_minutes: number | null
           } | null }
 
         if (org) {
@@ -1190,28 +1193,48 @@ export async function POST(request: Request) {
           const currentMonth = now.getMonth() + 1 // JavaScript months are 0-indexed
           const currentYear = now.getFullYear()
 
+          // Get plan limits to determine if we should use monthly minutes or credits
+          const { getIndustryPricing } = await import('@/lib/stripe/server')
+          const industrySlug = (org.industry as any) || null
+          const plan = org.plan as 'starter' | 'growth' | 'pro' | null
+          const industryPricing = getIndustryPricing(plan, industrySlug)
+          const monthlyLimit = industryPricing?.minutes || 0
+          
+          const currentMonthlyUsage = org.billable_minutes_this_month || 0
+          const purchasedCredits = org.purchased_credits_minutes || 0
+          
+          // Calculate how many minutes to use from monthly vs credits
+          // Use monthly minutes first, then credits
+          const remainingMonthlyMinutes = Math.max(0, monthlyLimit - currentMonthlyUsage)
+          const minutesFromMonthly = Math.min(callMinutes, remainingMonthlyMinutes)
+          const minutesFromCredits = Math.max(0, callMinutes - minutesFromMonthly)
+          
           // Check if we need to reset the counter for a new billing period
           if (org.billing_period_month !== currentMonth || org.billing_period_year !== currentYear) {
-            // New billing period - reset counters
+            // New billing period - reset monthly counter, keep credits
             await (supabase
               .from('organizations') as any)
               .update({
-                billable_minutes_this_month: callMinutes,
+                billable_minutes_this_month: minutesFromMonthly,
                 billable_calls_this_month: 1,
                 billing_period_month: currentMonth,
                 billing_period_year: currentYear,
+                purchased_credits_minutes: Math.max(0, purchasedCredits - minutesFromCredits),
               })
               .eq('id', organizationId)
           } else {
-            // Same billing period - increment both counters
+            // Same billing period - increment monthly counter, decrement credits if used
             await (supabase
               .from('organizations') as any)
               .update({
-                billable_minutes_this_month: (org.billable_minutes_this_month || 0) + callMinutes,
+                billable_minutes_this_month: (org.billable_minutes_this_month || 0) + minutesFromMonthly,
                 billable_calls_this_month: (org.billable_calls_this_month || 0) + 1,
+                purchased_credits_minutes: Math.max(0, purchasedCredits - minutesFromCredits),
               })
               .eq('id', organizationId)
           }
+          
+          console.log(`📊 Billing: ${minutesFromMonthly} min from monthly, ${minutesFromCredits} min from credits (${callMinutes} total)`)
         }
 
         console.log(`📊 Billable call counted: ${contactStatus} for org ${organizationId} - ${callMinutes} minutes`)

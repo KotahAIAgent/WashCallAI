@@ -39,12 +39,14 @@ export async function deleteCalls(callIds: string[]) {
     return { error: 'No calls selected' }
   }
 
-  // RLS policy will handle authorization - delete all selected calls
-  // The policy ensures users can only delete calls from their organizations
+  // Soft delete: Set deleted_at timestamp instead of actually deleting
+  // This preserves billing history and prevents users from deleting calls to get more time
+  // RLS policy will handle authorization - the policy ensures users can only delete calls from their organizations
   const { error } = await supabase
     .from('calls')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .in('id', callIds)
+    .is('deleted_at', null) // Only update if not already deleted
 
   if (error) {
     console.error('[deleteCalls] Error:', error)

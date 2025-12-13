@@ -112,7 +112,7 @@ export async function getUsageStats(organizationId: string) {
   // Get organization billing info
   const { data: org } = await supabase
     .from('organizations')
-    .select('plan, billable_minutes_this_month, billable_calls_this_month, billing_period_month, billing_period_year, industry')
+    .select('plan, billable_minutes_this_month, billable_calls_this_month, billing_period_month, billing_period_year, industry, purchased_credits_minutes')
     .eq('id', organizationId)
     .single()
 
@@ -157,12 +157,20 @@ export async function getUsageStats(organizationId: string) {
     .eq('credit_refunded', true)
     .gte('reviewed_at', new Date(currentYear, currentMonth - 1, 1).toISOString())
 
+  const purchasedCredits = org.purchased_credits_minutes || 0
+  const remainingMonthlyMinutes = monthlyLimitMinutes === -1 ? -1 : Math.max(0, monthlyLimitMinutes - billableMinutesThisMonth)
+  const totalRemainingMinutes = monthlyLimitMinutes === -1 
+    ? -1 
+    : remainingMonthlyMinutes + purchasedCredits
+
   return {
     plan: org.plan,
     billableMinutesThisMonth,
     billableCallsThisMonth,
     monthlyLimitMinutes,
-    remainingMinutes: monthlyLimitMinutes === -1 ? -1 : Math.max(0, monthlyLimitMinutes - billableMinutesThisMonth),
+    remainingMinutes: remainingMonthlyMinutes,
+    purchasedCreditsMinutes: purchasedCredits,
+    totalRemainingMinutes,
     pendingDisputes: pendingDisputes || 0,
     refundedCredits: refundedCredits || 0,
     billingPeriod: {

@@ -150,6 +150,41 @@ export async function POST(request: Request) {
       }
     }
 
+    // Handle credits purchase (checkout.session.completed)
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session
+      const purchaseType = session.metadata?.purchase_type
+      const organizationId = session.metadata?.organization_id
+      const minutes = session.metadata?.minutes
+
+      if (purchaseType === 'credits' && organizationId && minutes) {
+        const minutesToAdd = parseInt(minutes, 10)
+        
+        if (minutesToAdd > 0) {
+          // Get current credits
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('purchased_credits_minutes')
+            .eq('id', organizationId)
+            .single()
+
+          const currentCredits = org?.purchased_credits_minutes || 0
+          const newCredits = currentCredits + minutesToAdd
+
+          // Add credits to organization
+          await supabase
+            .from('organizations')
+            .update({
+              purchased_credits_minutes: newCredits,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', organizationId)
+
+          console.log(`✓ Added ${minutesToAdd} credits to org ${organizationId} (total: ${newCredits})`)
+        }
+      }
+    }
+
     return NextResponse.json({ received: true })
   } catch (error: any) {
     console.error('Webhook handler error:', error)
