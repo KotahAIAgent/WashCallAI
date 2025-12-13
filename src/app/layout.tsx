@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'FusionCaller - Never Miss Another Customer Again',
   description: '24/7 AI receptionist and outbound calling for service businesses. HVAC, Dental, Plumbing, Landscaping & more.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 }
 
 export default function RootLayout({
