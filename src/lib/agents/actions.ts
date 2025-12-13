@@ -135,6 +135,88 @@ export async function updateInboundConfig(formData: FormData) {
     }
   }
 
+  // Handle enabling/disabling the inbound agent
+  // When disabled, unassign assistant from phone numbers in Vapi
+  const vapiApiKey = process.env.VAPI_API_KEY
+  const assistantId = existing?.inbound_agent_id
+
+  if (vapiApiKey && assistantId && assistantId !== organizationId) {
+    try {
+      // Get all phone numbers for this organization that are assigned to inbound
+      const { data: phoneNumbers } = await supabase
+        .from('phone_numbers')
+        .select('provider_phone_id, phone_number, type')
+        .eq('organization_id', organizationId)
+        .in('type', ['inbound', 'both'])
+        .not('provider_phone_id', 'is', null)
+
+      if (phoneNumbers && phoneNumbers.length > 0) {
+        if (enableInbound) {
+          // Enable: Assign assistant to phone numbers
+          console.log(`[updateInboundConfig] Enabling inbound agent - assigning to ${phoneNumbers.length} phone number(s)`)
+          
+          for (const phone of phoneNumbers) {
+            if (!phone.provider_phone_id) continue
+            
+            try {
+              const assignResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${vapiApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  assistantId: assistantId,
+                }),
+              })
+
+              if (assignResponse.ok) {
+                console.log(`[updateInboundConfig] ✅ Assigned assistant to phone ${phone.phone_number}`)
+              } else {
+                const errorText = await assignResponse.text()
+                console.error(`[updateInboundConfig] ⚠️ Failed to assign assistant to ${phone.phone_number}: ${assignResponse.status} - ${errorText.substring(0, 200)}`)
+              }
+            } catch (err: any) {
+              console.error(`[updateInboundConfig] Error assigning assistant to phone ${phone.phone_number}:`, err?.message || err)
+            }
+          }
+        } else {
+          // Disable: Unassign assistant from phone numbers
+          console.log(`[updateInboundConfig] Disabling inbound agent - unassigning from ${phoneNumbers.length} phone number(s)`)
+          
+          for (const phone of phoneNumbers) {
+            if (!phone.provider_phone_id) continue
+            
+            try {
+              const unassignResponse = await fetch(`https://api.vapi.ai/phone-number/${phone.provider_phone_id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${vapiApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  assistantId: null, // Unassign assistant
+                }),
+              })
+
+              if (unassignResponse.ok) {
+                console.log(`[updateInboundConfig] ✅ Unassigned assistant from phone ${phone.phone_number}`)
+              } else {
+                const errorText = await unassignResponse.text()
+                console.error(`[updateInboundConfig] ⚠️ Failed to unassign assistant from ${phone.phone_number}: ${unassignResponse.status} - ${errorText.substring(0, 200)}`)
+              }
+            } catch (err: any) {
+              console.error(`[updateInboundConfig] Error unassigning assistant from phone ${phone.phone_number}:`, err?.message || err)
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error(`[updateInboundConfig] ❌ Error managing phone number assignments:`, err?.message || err)
+      // Don't fail the whole operation
+    }
+  }
+
   revalidatePath('/app/inbound-ai')
   return { success: true }
 }

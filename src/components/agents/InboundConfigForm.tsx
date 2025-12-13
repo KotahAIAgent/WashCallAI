@@ -245,9 +245,34 @@ export function InboundConfigForm({
                   placeholder="e.g., Thank you for calling [Business Name], this is your AI assistant. How can I help you today?"
                   rows={3}
                 />
-                <p className="text-sm text-muted-foreground">
-                  This greeting will replace the default greeting in your Vapi assistant
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground flex-1">
+                    This greeting will replace the default greeting in your Vapi assistant
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const greetingText = (document.getElementById('inboundGreeting') as HTMLTextAreaElement)?.value || config?.inbound_greeting || ''
+                      if (greetingText.trim()) {
+                        toast({
+                          title: 'Greeting Preview',
+                          description: greetingText,
+                          duration: 5000,
+                        })
+                      } else {
+                        toast({
+                          title: 'No greeting entered',
+                          description: 'Please enter a custom greeting to preview it.',
+                          variant: 'destructive',
+                        })
+                      }
+                    }}
+                  >
+                    Preview
+                  </Button>
+                </div>
               </div>
             )}
             
@@ -296,7 +321,7 @@ export function InboundConfigForm({
             <div className="space-y-0.5">
               <Label htmlFor="enableInbound">Enable Inbound Agent</Label>
               <p className="text-sm text-muted-foreground">
-                Your AI will answer calls 24/7 when enabled
+                Your AI Will either Answer 24/7 or when a call is Missed based on Call Forwarding Setup
               </p>
             </div>
             <Switch 
