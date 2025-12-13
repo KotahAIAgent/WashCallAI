@@ -83,6 +83,8 @@ async function getDashboardData(organizationId: string) {
       .from('calls')
       .select('*')
       .eq('organization_id', organizationId)
+      // Note: deleted_at filter removed temporarily - run migration add-soft-delete-to-calls.sql to enable
+      // .is('deleted_at', null) // Only show non-deleted calls
       .not('provider_call_id', 'is', null)
       .order('created_at', { ascending: false }),
     // Recent leads

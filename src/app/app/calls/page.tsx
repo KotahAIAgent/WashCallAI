@@ -13,7 +13,8 @@ async function getCalls(organizationId: string, searchParams: { direction?: stri
       .from('calls')
       .select('*')
       .eq('organization_id', organizationId)
-      .is('deleted_at', null) // Only show non-deleted calls
+      // Note: deleted_at filter removed temporarily - run migration add-soft-delete-to-calls.sql to enable
+      // .is('deleted_at', null) // Only show non-deleted calls
       .order('created_at', { ascending: false })
       .limit(500) // Increased limit to show more calls
 
