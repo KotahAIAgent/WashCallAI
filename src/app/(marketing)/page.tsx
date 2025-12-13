@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { IndustrySelector } from '@/components/marketing/IndustrySelector'
 import { IndustryGrid } from '@/components/marketing/IndustryGrid'
 import { motion } from 'framer-motion'
@@ -53,6 +55,8 @@ const item = {
 }
 
 export default function HomePage() {
+  const [showDemo, setShowDemo] = useState(false)
+  
   return (
     <div className="overflow-hidden">
       {/* Hero Section */}
@@ -109,7 +113,12 @@ export default function HomePage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-6 border-2">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="w-full sm:w-auto text-lg px-8 py-6 border-2"
+                onClick={() => setShowDemo(true)}
+              >
                 <Play className="mr-2 h-5 w-5" />
                 Watch Demo
               </Button>
@@ -665,6 +674,29 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Video Demo Modal */}
+      <Dialog open={showDemo} onOpenChange={setShowDemo}>
+        <DialogContent className="max-w-4xl w-full p-0">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>See FusionCaller in Action</DialogTitle>
+            <DialogDescription>
+              Watch how our AI handles calls and captures leads automatically
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative w-full aspect-video bg-black rounded-b-lg overflow-hidden">
+            <video
+              className="w-full h-full"
+              controls
+              autoPlay
+              playsInline
+            >
+              <source src="/demo-video.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
