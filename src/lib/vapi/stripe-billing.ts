@@ -114,6 +114,9 @@ export async function shouldChargeCall(organizationId: string, callDurationSecon
   planLimit: number // in minutes
   callMinutes: number
   overageMinutes: number // minutes that exceed the limit
+  minutesFromMonthly?: number // minutes used from monthly plan
+  minutesFromCredits?: number // minutes used from purchased credits
+  remainingCredits?: number // remaining credits after this call
 }> {
   const supabase = createActionClient()
 
