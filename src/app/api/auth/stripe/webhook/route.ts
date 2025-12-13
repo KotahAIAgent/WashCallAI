@@ -178,8 +178,27 @@ export async function POST(request: Request) {
             .single()
 
           if (fetchError) {
-            console.error(`[Webhook] Error fetching organization ${organizationId}:`, fetchError)
-            return NextResponse.json({ error: 'Failed to fetch organization' }, { status: 500 })
+            console.error(`[Webhook] Error fetching organization ${organizationId}:`, {
+              error: fetchError,
+              code: fetchError.code,
+              message: fetchError.message,
+              details: fetchError.details,
+              hint: fetchError.hint,
+            })
+            
+            // Check if it's a column missing error
+            if (fetchError.message?.includes('column') || fetchError.message?.includes('does not exist')) {
+              console.error(`[Webhook] ⚠️ Database column missing! Run migration: add-credits-to-organizations.sql`)
+              return NextResponse.json({ 
+                error: 'Database column missing. Please run the migration to add purchased_credits_minutes column.',
+                details: fetchError.message 
+              }, { status: 500 })
+            }
+            
+            return NextResponse.json({ 
+              error: 'Failed to fetch organization',
+              details: fetchError.message 
+            }, { status: 500 })
           }
 
           if (!org) {
