@@ -50,16 +50,46 @@ export async function POST(request: Request) {
     let organizationId: string | null = null
     
     // Try to find organization by assistant ID
+    let agentConfig: { organization_id: string; inbound_enabled: boolean; outbound_enabled: boolean } | null = null
     if (assistantId) {
-      const { data: agentConfig } = await supabase
+      const { data: config } = await supabase
         .from('agent_configs')
-        .select('organization_id')
+        .select('organization_id, inbound_enabled, outbound_enabled, inbound_agent_id, outbound_agent_id')
         .or(`inbound_agent_id.eq.${assistantId},outbound_agent_id.eq.${assistantId}`)
         .maybeSingle()
       
-      if (agentConfig) {
-        organizationId = agentConfig.organization_id
+      if (config) {
+        agentConfig = config
+        organizationId = config.organization_id
         console.log('[Pre-Call Check] ✅ Found org by assistant ID:', organizationId)
+        
+        // Check if this is an inbound call and if inbound is disabled
+        const isInboundCall = config.inbound_agent_id === assistantId
+        if (isInboundCall && !config.inbound_enabled) {
+          console.log('[Pre-Call Check] ❌ Access denied: Inbound agent is disabled')
+          return NextResponse.json(
+            { 
+              error: 'Inbound agent disabled',
+              action: 'reject',
+              message: 'The inbound agent is currently disabled. Calls will not be answered.'
+            },
+            { status: 403 }
+          )
+        }
+        
+        // Check if this is an outbound call and if outbound is disabled
+        const isOutboundCall = config.outbound_agent_id === assistantId
+        if (isOutboundCall && !config.outbound_enabled) {
+          console.log('[Pre-Call Check] ❌ Access denied: Outbound agent is disabled')
+          return NextResponse.json(
+            { 
+              error: 'Outbound agent disabled',
+              action: 'reject',
+              message: 'The outbound agent is currently disabled.'
+            },
+            { status: 403 }
+          )
+        }
       } else {
         console.log('[Pre-Call Check] No agent config found for assistant ID:', assistantId)
       }
@@ -79,6 +109,32 @@ export async function POST(request: Request) {
       }
     }
     
+    // If we found org by assistant ID, check agent enabled status
+    if (organizationId && agentConfig) {
+      // Determine if this is an inbound call (toNumber matches org's phone number)
+      const { data: orgPhoneNumbers } = await supabase
+        .from('phone_numbers')
+        .select('type')
+        .eq('organization_id', organizationId)
+        .in('type', ['inbound', 'both'])
+        .limit(1)
+      
+      // If toNumber exists and we have inbound phone numbers, this is likely an inbound call
+      if (toNumber && orgPhoneNumbers && orgPhoneNumbers.length > 0) {
+        if (!agentConfig.inbound_enabled) {
+          console.log('[Pre-Call Check] ❌ Access denied: Inbound agent is disabled for this organization')
+          return NextResponse.json(
+            { 
+              error: 'Inbound agent disabled',
+              action: 'reject',
+              message: 'The inbound agent is currently disabled. Calls will not be answered.'
+            },
+            { status: 403 }
+          )
+        }
+      }
+    }
+    
     // If still not found, try by actual phone number (for inbound)
     if (!organizationId && toNumber) {
       // Try exact match first in phone_numbers table
@@ -88,10 +144,29 @@ export async function POST(request: Request) {
         .eq('phone_number', toNumber)
         .maybeSingle()
       
-      if (phoneNumber) {
-        organizationId = phoneNumber.organization_id
-        console.log('[Pre-Call Check] ✅ Found org by exact phone number in phone_numbers table:', organizationId)
-      } else {
+          if (phoneNumber) {
+            organizationId = phoneNumber.organization_id
+            console.log('[Pre-Call Check] ✅ Found org by exact phone number in phone_numbers table:', organizationId)
+            
+            // Check if inbound agent is enabled for this organization
+            const { data: agentConfig } = await supabase
+              .from('agent_configs')
+              .select('inbound_enabled')
+              .eq('organization_id', organizationId)
+              .maybeSingle()
+            
+            if (agentConfig && !agentConfig.inbound_enabled) {
+              console.log('[Pre-Call Check] ❌ Access denied: Inbound agent is disabled')
+              return NextResponse.json(
+                { 
+                  error: 'Inbound agent disabled',
+                  action: 'reject',
+                  message: 'The inbound agent is currently disabled. Calls will not be answered.'
+                },
+                { status: 403 }
+              )
+            }
+          } else {
         // Try normalized version
         const normalized = normalizePhoneNumber(toNumber)
         if (normalized) {

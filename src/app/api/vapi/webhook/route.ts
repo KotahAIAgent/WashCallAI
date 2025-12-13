@@ -268,9 +268,9 @@ export async function POST(request: Request) {
         // Try inbound first
         let { data: agentConfig, error: inboundError } = await supabase
           .from('agent_configs')
-          .select('organization_id, inbound_agent_id, outbound_agent_id')
+          .select('organization_id, inbound_agent_id, outbound_agent_id, inbound_enabled, outbound_enabled')
           .eq('inbound_agent_id', assistantId)
-          .single() as { data: { organization_id: string; inbound_agent_id: string | null; outbound_agent_id: string | null } | null; error: any }
+          .single() as { data: { organization_id: string; inbound_agent_id: string | null; outbound_agent_id: string | null; inbound_enabled: boolean; outbound_enabled: boolean } | null; error: any }
         
         if (inboundError) {
           console.log('[Webhook] Inbound lookup error:', inboundError)
@@ -283,9 +283,9 @@ export async function POST(request: Request) {
           // If not found, try outbound
           const { data: outboundConfig, error: outboundError } = await supabase
             .from('agent_configs')
-            .select('organization_id, inbound_agent_id, outbound_agent_id')
+            .select('organization_id, inbound_agent_id, outbound_agent_id, inbound_enabled, outbound_enabled')
             .eq('outbound_agent_id', assistantId)
-            .single() as { data: { organization_id: string; inbound_agent_id: string | null; outbound_agent_id: string | null } | null; error: any }
+            .single() as { data: { organization_id: string; inbound_agent_id: string | null; outbound_agent_id: string | null; inbound_enabled: boolean; outbound_enabled: boolean } | null; error: any }
           
           if (outboundError) {
             console.log('[Webhook] Outbound lookup error:', outboundError)
@@ -301,6 +301,36 @@ export async function POST(request: Request) {
         if (agentConfig) {
           organizationId = agentConfig.organization_id
           console.log('[Webhook] ✅ Found organization by assistant ID:', organizationId, 'Direction:', detectedDirection)
+          
+          // Check if the agent is enabled for this call direction
+          if (detectedDirection === 'inbound' && !agentConfig.inbound_enabled) {
+            console.log('[Webhook] ❌ Inbound agent is disabled - rejecting call')
+            // Try to end the call via Vapi API
+            const providerCallId = payload.call?.id || payload.id || payload.callId
+            if (providerCallId && process.env.VAPI_API_KEY) {
+              try {
+                await fetch(`https://api.vapi.ai/call/${providerCallId}`, {
+                  method: 'DELETE',
+                  headers: { 'Authorization': `Bearer ${process.env.VAPI_API_KEY}` },
+                })
+                console.log('[Webhook] ✅ Attempted to end call via Vapi API')
+              } catch (err) {
+                console.error('[Webhook] Error ending call:', err)
+              }
+            }
+            return NextResponse.json({ 
+              message: 'Inbound agent is disabled',
+              rejected: true 
+            }, { status: 403 })
+          }
+          
+          if (detectedDirection === 'outbound' && !agentConfig.outbound_enabled) {
+            console.log('[Webhook] ❌ Outbound agent is disabled - rejecting call')
+            return NextResponse.json({ 
+              message: 'Outbound agent is disabled',
+              rejected: true 
+            }, { status: 403 })
+          }
         } else {
           console.log('[Webhook] ❌ No organization found for assistant ID:', assistantId)
           // Debug: List all agent configs to see what we have
@@ -398,6 +428,46 @@ export async function POST(request: Request) {
         if (phoneNumber) {
           organizationId = phoneNumber.organization_id
           console.log('[Webhook] Found organization:', organizationId, 'for phone:', phoneNumber.phone_number)
+          
+          // Check if inbound agent is enabled (this is likely an inbound call)
+          const { data: agentConfig } = await supabase
+            .from('agent_configs')
+            .select('inbound_enabled, outbound_enabled')
+            .eq('organization_id', organizationId)
+            .maybeSingle()
+          
+          if (agentConfig) {
+            // Determine if this is inbound or outbound based on phone number type
+            const { data: phoneRecord } = await supabase
+              .from('phone_numbers')
+              .select('type')
+              .eq('organization_id', organizationId)
+              .eq('phone_number', phoneNumber.phone_number)
+              .maybeSingle()
+            
+            const isInboundPhone = phoneRecord?.type === 'inbound' || phoneRecord?.type === 'both'
+            
+            if (isInboundPhone && !agentConfig.inbound_enabled) {
+              console.log('[Webhook] ❌ Inbound agent is disabled - rejecting call')
+              // Try to end the call via Vapi API
+              const providerCallId = payload.call?.id || payload.id || payload.callId
+              if (providerCallId && process.env.VAPI_API_KEY) {
+                try {
+                  await fetch(`https://api.vapi.ai/call/${providerCallId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${process.env.VAPI_API_KEY}` },
+                  })
+                  console.log('[Webhook] ✅ Attempted to end call via Vapi API')
+                } catch (err) {
+                  console.error('[Webhook] Error ending call:', err)
+                }
+              }
+              return NextResponse.json({ 
+                message: 'Inbound agent is disabled',
+                rejected: true 
+              }, { status: 403 })
+            }
+          }
         } else {
           console.log('[Webhook] No phone number match found - phoneNumberId:', phoneNumberId, 'toNumber:', toNumber)
           console.log('[Webhook] Full payload keys:', Object.keys(payload))

@@ -67,16 +67,42 @@ export async function POST(request: Request) {
     let organizationId: string | null = null
     
     // Try to find organization by assistant ID
+    let agentConfig: { organization_id: string; inbound_enabled: boolean; outbound_enabled: boolean; inbound_agent_id: string | null; outbound_agent_id: string | null } | null = null
     if (assistantId) {
-      const { data: agentConfig } = await supabase
+      const { data: config } = await supabase
         .from('agent_configs')
-        .select('organization_id')
+        .select('organization_id, inbound_enabled, outbound_enabled, inbound_agent_id, outbound_agent_id')
         .or(`inbound_agent_id.eq.${assistantId},outbound_agent_id.eq.${assistantId}`)
         .maybeSingle()
       
-      if (agentConfig) {
-        organizationId = agentConfig.organization_id
+      if (config) {
+        agentConfig = config
+        organizationId = config.organization_id
         console.log('[Vapi Check Access] Found org by assistant ID:', organizationId)
+        
+        // Check if this is an inbound call and if inbound is disabled
+        const isInboundCall = config.inbound_agent_id === assistantId
+        if (isInboundCall && !config.inbound_enabled) {
+          console.log('[Vapi Check Access] ❌ Access denied: Inbound agent is disabled')
+          return NextResponse.json({
+            allowed: false,
+            action: 'hangup',
+            message: 'The inbound agent is currently disabled. Calls will not be answered.',
+            instruction: 'Hang up the call immediately. Do not answer or speak to the caller.',
+          }, { status: 403 })
+        }
+        
+        // Check if this is an outbound call and if outbound is disabled
+        const isOutboundCall = config.outbound_agent_id === assistantId
+        if (isOutboundCall && !config.outbound_enabled) {
+          console.log('[Vapi Check Access] ❌ Access denied: Outbound agent is disabled')
+          return NextResponse.json({
+            allowed: false,
+            action: 'hangup',
+            message: 'The outbound agent is currently disabled.',
+            instruction: 'Do not proceed with this call.',
+          }, { status: 403 })
+        }
       }
     }
     
@@ -109,6 +135,25 @@ export async function POST(request: Request) {
         if (phoneNumber) {
           organizationId = phoneNumber.organization_id
           console.log('[Vapi Check Access] ✅ Found org by phone number in phone_numbers table:', organizationId)
+          
+          // Check if inbound agent is enabled (this is likely an inbound call)
+          if (!agentConfig) {
+            const { data: config } = await supabase
+              .from('agent_configs')
+              .select('inbound_enabled')
+              .eq('organization_id', organizationId)
+              .maybeSingle()
+            
+            if (config && !config.inbound_enabled) {
+              console.log('[Vapi Check Access] ❌ Access denied: Inbound agent is disabled')
+              return NextResponse.json({
+                allowed: false,
+                action: 'hangup',
+                message: 'The inbound agent is currently disabled. Calls will not be answered.',
+                instruction: 'Hang up the call immediately. Do not answer or speak to the caller.',
+              }, { status: 403 })
+            }
+          }
         }
       }
       
