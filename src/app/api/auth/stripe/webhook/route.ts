@@ -217,8 +217,59 @@ export async function POST(request: Request) {
           }
 
           if (!org) {
-            console.error(`[Webhook] Organization not found: ${organizationId}`)
-            return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+            console.error(`[Webhook] ❌ Organization not found: ${organizationId}`)
+            console.error(`[Webhook] Checkout session metadata:`, {
+              organizationId,
+              purchaseType,
+              minutes,
+              sessionId: session.id,
+              customerId: session.customer,
+            })
+            
+            // Try to find organization by customer ID as fallback
+            if (session.customer && typeof session.customer === 'string') {
+              console.log(`[Webhook] Attempting fallback lookup by customer ID: ${session.customer}`)
+              const { data: orgByCustomer } = await supabase
+                .from('organizations')
+                .select('id, purchased_credits_minutes')
+                .eq('billing_customer_id', session.customer)
+                .maybeSingle()
+              
+              if (orgByCustomer) {
+                console.log(`[Webhook] ✅ Found organization by customer ID: ${orgByCustomer.id}`)
+                // Use the found organization
+                const currentCredits = orgByCustomer.purchased_credits_minutes || 0
+                const newCredits = currentCredits + minutesToAdd
+                
+                const { error: updateError } = await supabase
+                  .from('organizations')
+                  .update({
+                    purchased_credits_minutes: newCredits,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', orgByCustomer.id)
+                
+                if (updateError) {
+                  console.error(`[Webhook] Error updating credits via fallback:`, updateError)
+                  return NextResponse.json({ 
+                    error: 'Failed to update credits',
+                    details: updateError.message 
+                  }, { status: 500 })
+                }
+                
+                console.log(`[Webhook] ✅ Credits added via fallback: ${minutesToAdd} minutes to org ${orgByCustomer.id} (total: ${newCredits})`)
+                return NextResponse.json({ success: true, message: 'Credits added via fallback lookup' })
+              } else {
+                console.error(`[Webhook] ❌ Organization not found by customer ID either: ${session.customer}`)
+              }
+            }
+            
+            // Return 200 to prevent Stripe from retrying (organization truly doesn't exist)
+            // But log it as an error for investigation
+            return NextResponse.json({ 
+              error: 'Organization not found',
+              message: 'Credits purchase completed but organization not found in database. Please contact support.',
+            }, { status: 200 }) // Return 200 so Stripe doesn't retry
           }
 
           const currentCredits = org.purchased_credits_minutes || 0
