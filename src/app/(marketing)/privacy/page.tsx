@@ -111,7 +111,7 @@ export default function PrivacyPage() {
                 <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
                   <li>Payment processors (Stripe)</li>
                   <li>Cloud hosting providers (Supabase, Vercel)</li>
-                  <li>AI voice service providers (Vapi.ai)</li>
+                  <li>AI voice service providers</li>
                   <li>Email service providers</li>
                   <li>Analytics providers</li>
                 </ul>
