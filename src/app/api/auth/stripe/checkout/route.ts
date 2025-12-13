@@ -21,21 +21,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('organization_id')
       .eq('id', session.user.id)
-      .single() as { data: { organization_id: string } | null }
+      .maybeSingle()
+
+    if (profileError) {
+      console.error('[Checkout] Error fetching profile:', profileError)
+      return NextResponse.json(
+        { error: 'Failed to fetch user profile', details: profileError.message },
+        { status: 500 }
+      )
+    }
 
     if (!profile?.organization_id) {
       return NextResponse.json({ error: 'No organization found' }, { status: 400 })
     }
 
-    const { data: organization } = await supabase
+    const { data: organization, error: orgError } = await supabase
       .from('organizations')
       .select('*')
       .eq('id', profile.organization_id)
-      .single() as { data: { id: string; billing_customer_id: string | null; admin_privileges: any } | null }
+      .maybeSingle()
+
+    if (orgError) {
+      console.error('[Checkout] Error fetching organization:', orgError)
+      return NextResponse.json(
+        { error: 'Failed to fetch organization', details: orgError.message },
+        { status: 500 }
+      )
+    }
 
     if (!organization) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
@@ -101,11 +117,16 @@ export async function POST(request: Request) {
     }
 
     // Check if user is converting from a trial
-    const { data: orgData } = await supabase
+    const { data: orgData, error: orgDataError } = await supabase
       .from('organizations')
       .select('trial_plan, trial_ends_at')
       .eq('id', organization.id)
-      .single()
+      .maybeSingle()
+
+    if (orgDataError) {
+      console.error('[Checkout] Error fetching trial data:', orgDataError)
+      // Continue anyway - trial conversion is optional
+    }
 
     const isConvertingFromTrial = isTrialConversion || (orgData?.trial_ends_at && new Date(orgData.trial_ends_at) > new Date())
     const trialPlan = orgData?.trial_plan as string | null

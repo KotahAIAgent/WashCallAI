@@ -29,11 +29,19 @@ export async function POST(request: Request) {
     }
 
     // Get user's organization
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('organization_id')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
+
+    if (profileError) {
+      console.error('[Checkout Credits] Error fetching profile:', profileError)
+      return NextResponse.json(
+        { error: 'Failed to fetch user profile', details: profileError.message },
+        { status: 500 }
+      )
+    }
 
     if (!profile?.organization_id) {
       return NextResponse.json(
@@ -43,11 +51,19 @@ export async function POST(request: Request) {
     }
 
     // Get organization billing customer ID
-    const { data: org } = await supabase
+    const { data: org, error: orgError } = await supabase
       .from('organizations')
       .select('billing_customer_id, name')
       .eq('id', profile.organization_id)
-      .single()
+      .maybeSingle()
+
+    if (orgError) {
+      console.error('[Checkout Credits] Error fetching organization:', orgError)
+      return NextResponse.json(
+        { error: 'Failed to fetch organization', details: orgError.message },
+        { status: 500 }
+      )
+    }
 
     if (!org) {
       return NextResponse.json(
