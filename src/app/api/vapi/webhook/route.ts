@@ -1197,7 +1197,7 @@ export async function POST(request: Request) {
           const { getIndustryPricing } = await import('@/lib/stripe/server')
           const industrySlug = (org.industry as any) || null
           const plan = org.plan as 'starter' | 'growth' | 'pro' | null
-          const industryPricing = getIndustryPricing(plan, industrySlug)
+          const industryPricing = getIndustryPricing(plan as any, industrySlug)
           const monthlyLimit = industryPricing?.minutes || 0
           
           const currentMonthlyUsage = org.billable_minutes_this_month || 0
