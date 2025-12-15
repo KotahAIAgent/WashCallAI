@@ -9,6 +9,7 @@ A complete AI-powered call center platform for service businesses, built with Ne
 - **Multi-tenant Architecture**: Organization-based data isolation with RLS
 - **Dashboard**: View calls, leads, and appointments
 - **Billing Integration**: Stripe subscriptions with multiple plans
+- **📱 Mobile App**: React Native app for clients to view live calls in real-time (see `mobile-app/` directory)
 
 ## Tech Stack
 
@@ -269,6 +270,17 @@ The app can be deployed to any platform that supports Next.js:
 - AWS Amplify
 - Railway
 - Fly.io
+
+## Mobile App
+
+A React Native mobile app is included in the `mobile-app/` directory. This allows your clients to:
+
+- 📞 View live inbound calls in real-time
+- 🔔 Receive push notifications when calls arrive
+- 📊 See call statistics and dashboard
+- 📝 View call transcripts and summaries
+
+See [MOBILE_APP_SETUP.md](./MOBILE_APP_SETUP.md) for setup instructions.
 
 ## License
 

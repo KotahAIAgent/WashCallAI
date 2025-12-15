@@ -122,7 +122,7 @@ export function OutboundConfigForm({
                 <p className="text-sm text-muted-foreground">
                   {config?.outbound_agent_id 
                     ? 'Your outbound agent is configured and ready'
-                    : 'Add your Vapi Assistant ID below to get started'}
+                    : 'Create your AI assistant below to get started'}
                 </p>
               </div>
             </div>

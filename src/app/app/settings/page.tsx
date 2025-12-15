@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { STRIPE_PLANS } from '@/lib/stripe/server'
@@ -115,6 +116,26 @@ export default async function SettingsPage() {
 
         {/* Phone Numbers Tab */}
         <TabsContent value="phone" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Purchase Phone Numbers
+              </CardTitle>
+              <CardDescription>
+                Browse and purchase phone numbers for your organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Looking to purchase a new phone number? Browse our catalog of available numbers.
+              </p>
+              <Button asChild>
+                <a href="/app/phone-numbers">Browse Phone Number Catalog</a>
+              </Button>
+            </CardContent>
+          </Card>
+
           <AddPhoneNumberForm />
           
           {phoneNumbers.length > 0 && (

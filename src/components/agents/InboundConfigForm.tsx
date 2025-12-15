@@ -101,7 +101,7 @@ export function InboundConfigForm({
                     ? 'Your inbound agent is active and answering calls'
                     : config?.inbound_agent_id 
                     ? 'Configured - Enable to start'
-                    : 'Add your Vapi Assistant ID below to get started'}
+                    : 'Create your AI assistant below to get started'}
                 </p>
               </div>
             </div>
@@ -217,7 +217,7 @@ export function InboundConfigForm({
               placeholder="My Business Name"
             />
             <p className="text-sm text-muted-foreground">
-              Your AI will introduce itself as representing this business. This overrides the Vapi agent's default business name.
+              Your AI will introduce itself as representing this business. This overrides the assistant's default business name.
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export function InboundConfigForm({
               rows={2}
             />
             <p className="text-sm text-muted-foreground">
-              Help your AI know which areas you serve to qualify leads properly. This overrides the Vapi agent's default service area.
+              Help your AI know which areas you serve to qualify leads properly. This overrides the assistant's default service area.
             </p>
           </div>
 
@@ -241,7 +241,7 @@ export function InboundConfigForm({
               <div className="space-y-0.5">
                 <Label htmlFor="useCustomGreeting">Use Custom Greeting</Label>
                 <p className="text-sm text-muted-foreground">
-                  Override the default greeting from your Vapi assistant
+                  Override the default greeting from your AI assistant
                 </p>
               </div>
               <Switch 
@@ -264,7 +264,7 @@ export function InboundConfigForm({
                 />
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-muted-foreground flex-1">
-                    This greeting will replace the default greeting in your Vapi assistant
+                    This greeting will replace the default greeting in your AI assistant
                   </p>
                   <Button
                     type="button"
