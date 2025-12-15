@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createAssistant } from '@/lib/assistants/actions'
+import { PromptBuilder } from './PromptBuilder'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Plus, Bot } from 'lucide-react'
 
@@ -193,18 +195,38 @@ export function CreateAssistantDialog({ organizationId, type, onSuccess }: Creat
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="systemPrompt">System Prompt (Optional)</Label>
-            <Textarea
-              id="systemPrompt"
-              value={formData.systemPrompt}
-              onChange={(e) => setFormData(prev => ({ ...prev, systemPrompt: e.target.value }))}
-              placeholder="e.g., You are a friendly and professional AI assistant for a service business. Your goal is to help customers, answer questions, and schedule appointments."
-              rows={4}
-            />
-            <p className="text-xs text-muted-foreground">
-              Customize how your assistant behaves and responds
-            </p>
+          <div className="space-y-4">
+            <Label>System Prompt (Optional)</Label>
+            <Tabs defaultValue="builder" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="builder">AI Builder</TabsTrigger>
+                <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="builder" className="space-y-4 mt-4">
+                <PromptBuilder
+                  organizationId={organizationId}
+                  type={type}
+                  onPromptGenerated={(generatedPrompt) => {
+                    setFormData(prev => ({ ...prev, systemPrompt: generatedPrompt }))
+                  }}
+                  initialPrompt={formData.systemPrompt}
+                />
+              </TabsContent>
+              
+              <TabsContent value="manual" className="space-y-2 mt-4">
+                <Textarea
+                  id="systemPrompt"
+                  value={formData.systemPrompt}
+                  onChange={(e) => setFormData(prev => ({ ...prev, systemPrompt: e.target.value }))}
+                  placeholder="e.g., You are a friendly and professional AI assistant for a service business. Your goal is to help customers, answer questions, and schedule appointments."
+                  rows={10}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Manually write your system prompt to customize how your assistant behaves and responds
+                </p>
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
