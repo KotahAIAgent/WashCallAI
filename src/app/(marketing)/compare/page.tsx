@@ -104,7 +104,7 @@ export default function ComparePage() {
                       </thead>
                       <tbody>
                         {features.map((feature) => {
-                          const comparison = competitor.comparison[feature]
+                          const comparison = (competitor.comparison as any)[feature]
                           if (!comparison) return null
 
                           const fusionValue = comparison.fusioncaller
