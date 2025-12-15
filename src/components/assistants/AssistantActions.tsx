@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/confirm-dialog'
+import { AssignPhoneNumberDialog } from './AssignPhoneNumberDialog'
 
 interface Assistant {
   id: string
@@ -88,19 +89,25 @@ export function AssistantActions({ assistant, organizationId }: AssistantActions
               </div>
             </div>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" disabled={deleting}>
-                {deleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </>
-                )}
-              </Button>
-            </AlertDialogTrigger>
+          <div className="flex items-center gap-2">
+            <AssignPhoneNumberDialog
+              assistantId={assistant.id}
+              assistantType={assistant.type}
+              organizationId={organizationId}
+            />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={deleting}>
+                  {deleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Assistant</AlertDialogTitle>
@@ -117,6 +124,7 @@ export function AssistantActions({ assistant, organizationId }: AssistantActions
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          </div>
         </div>
       </CardContent>
     </Card>

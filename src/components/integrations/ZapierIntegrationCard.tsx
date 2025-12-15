@@ -60,7 +60,7 @@ export function ZapierIntegrationCard({ organizationId }: ZapierIntegrationCardP
       </CardContent>
 
       <Dialog open={showSetup} onOpenChange={setShowSetup}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#FF4A00] to-[#FF6B35] flex items-center justify-center">
