@@ -10,8 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createAssistant } from '@/lib/assistants/actions'
 import { PromptBuilder } from './PromptBuilder'
+import { RecommendedSettingsCard } from './RecommendedSettingsCard'
+import { CostWarning } from './CostWarning'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Plus, Bot } from 'lucide-react'
+import { getRecommendedInboundSettings, getRecommendedOutboundSettings, type RecommendedSettings } from '@/lib/assistants/recommended-settings'
 
 interface ElevenLabsVoice {
   id: string
@@ -37,6 +40,7 @@ export function CreateAssistantDialog({ organizationId, type, onSuccess }: Creat
     firstMessage: '',
     systemPrompt: '',
   })
+  const [monthlyMinutes, setMonthlyMinutes] = useState<number | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -57,10 +61,23 @@ export function CreateAssistantDialog({ organizationId, type, onSuccess }: Creat
       }
     }
 
+    async function fetchUsageStats() {
+      try {
+        const { getUsageStats } = await import('@/lib/disputes/actions')
+        const stats = await getUsageStats(organizationId)
+        if (stats && !stats.error && stats.monthlyLimitMinutes) {
+          setMonthlyMinutes(stats.monthlyLimitMinutes > 0 ? stats.monthlyLimitMinutes : null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch usage stats:', error)
+      }
+    }
+
     if (open) {
       fetchVoices()
+      fetchUsageStats()
     }
-  }, [open])
+  }, [open, organizationId])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -106,6 +123,25 @@ export function CreateAssistantDialog({ organizationId, type, onSuccess }: Creat
     setLoading(false)
   }
 
+  function handleApplyRecommended(settings: RecommendedSettings) {
+    // Try to find voice by ID first, then by name, then use first available
+    const selectedVoice = voices.find(v => v.id === settings.voiceId) 
+      || voices.find(v => v.name === settings.voiceName) 
+      || voices[0]
+    
+    setFormData(prev => ({
+      ...prev,
+      model: settings.model,
+      voiceId: selectedVoice?.id || settings.voiceId || prev.voiceId,
+      firstMessage: settings.firstMessage,
+      ...(settings.systemPrompt && { systemPrompt: settings.systemPrompt }),
+    }))
+    toast({
+      title: 'Settings Applied',
+      description: 'Recommended settings have been applied. Review and customize as needed.',
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -125,6 +161,15 @@ export function CreateAssistantDialog({ organizationId, type, onSuccess }: Creat
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Recommended Settings Card */}
+          <RecommendedSettingsCard type={type} onApply={handleApplyRecommended} />
+
+          {/* Cost Warning */}
+          <CostWarning 
+            model={formData.model} 
+            voiceId={formData.voiceId}
+            monthlyMinutes={monthlyMinutes || undefined}
+          />
           <div className="space-y-2">
             <Label htmlFor="name">Assistant Name</Label>
             <Input
