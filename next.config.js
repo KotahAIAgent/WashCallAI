@@ -2,8 +2,8 @@
 const nextConfig = {
   // Exclude mobile-app directory from Next.js build
   // It's a separate Expo/React Native project
-  webpack: (config, { isServer }) => {
-    config.externals = config.externals || {}
+  webpack: (config) => {
+    // Ignore expo/react-native modules if they somehow get imported
     config.resolve.alias = {
       ...config.resolve.alias,
       'expo-router': false,
@@ -12,8 +12,6 @@ const nextConfig = {
     }
     return config
   },
-  // Ignore patterns during build
-  pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
 }
 
 module.exports = nextConfig
