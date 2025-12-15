@@ -5,6 +5,7 @@ import { SubscriptionGate } from '@/components/onboarding/SubscriptionGate'
 import { ThemeProvider } from '@/components/theme/ThemeProvider'
 import { TourProvider } from '@/components/onboarding/OnboardingTour'
 import { KeyboardShortcutsProvider } from '@/components/keyboard/KeyboardShortcutsProvider'
+import { ChatWidget } from '@/components/chat/ChatWidget'
 import { createServerClient } from '@/lib/supabase/server'
 import { getEffectivePlan } from '@/lib/admin/utils'
 
@@ -125,6 +126,7 @@ export default async function AppLayout({
               </main>
             </div>
           </div>
+          <ChatWidget />
         </OrganizationProvider>
       </TourProvider>
     </ThemeProvider>

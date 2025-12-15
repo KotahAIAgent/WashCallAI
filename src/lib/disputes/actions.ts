@@ -141,10 +141,17 @@ export async function getUsageStats(organizationId: string) {
 
   // Get plan limits (in minutes, industry-specific)
   const { getIndustryPricing } = await import('@/lib/stripe/server')
+  const { getEffectiveMinutes } = await import('@/lib/assistants/adjust-minutes')
   const industrySlug = (org.industry as any) || null
   const plan = org.plan as 'starter' | 'growth' | 'pro' | null
   const industryPricing = getIndustryPricing(plan, industrySlug)
-  const monthlyLimitMinutes = industryPricing?.minutes || 0
+  const baseMonthlyLimitMinutes = industryPricing?.minutes || 0
+  
+  // Get effective minutes (may be adjusted due to expensive assistants)
+  const effectiveMinutesResult = await getEffectiveMinutes(organizationId)
+  const monthlyLimitMinutes = effectiveMinutesResult.effectiveMinutes > 0 
+    ? effectiveMinutesResult.effectiveMinutes 
+    : baseMonthlyLimitMinutes
 
   // Get pending disputes count
   const { count: pendingDisputes } = await supabase

@@ -3,6 +3,7 @@
 import { createActionClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { createAssistantWithWebhook } from '@/lib/vapi/assistant-utils'
 import { revalidatePath } from 'next/cache'
+import { adjustMinutesForAssistant } from './adjust-minutes'
 
 const VAPI_API_URL = 'https://api.vapi.ai'
 
@@ -153,6 +154,20 @@ export async function createAssistant(params: CreateAssistantParams) {
         }, {
           onConflict: 'organization_id',
         })
+    }
+
+    // Adjust minutes based on assistant cost (only for outbound assistants)
+    // Inbound is typically unlimited, so we only adjust for outbound
+    if (params.type === 'outbound') {
+      const adjustmentResult = await adjustMinutesForAssistant(
+        params.organizationId,
+        params.model || 'gpt-3.5-turbo',
+        params.voiceId
+      )
+      
+      if (adjustmentResult.success && adjustmentResult.adjustedMinutes) {
+        console.log(`[createAssistant] Adjusted minutes to ${adjustmentResult.adjustedMinutes} due to higher cost assistant`)
+      }
     }
 
     revalidatePath('/app/inbound-ai')
