@@ -22,7 +22,7 @@ const SAMPLE_RECORDINGS: CallRecording[] = [
     title: 'Inbound Lead - Service Booking',
     description: 'AI handles customer inquiry and books appointment',
     duration: '2:34',
-    audioUrl: '/audio/sample-inbound-booking.mp3', // Placeholder - replace with real URLs
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', // Placeholder - replace with real call recordings
     type: 'inbound',
     outcome: 'booked',
   },
@@ -31,7 +31,7 @@ const SAMPLE_RECORDINGS: CallRecording[] = [
     title: 'Outbound Follow-up - Past Customer',
     description: 'AI re-engages past customer with discount offer',
     duration: '3:12',
-    audioUrl: '/audio/sample-outbound-followup.mp3',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', // Placeholder - replace with real call recordings
     type: 'outbound',
     outcome: 'interested',
   },
@@ -40,7 +40,7 @@ const SAMPLE_RECORDINGS: CallRecording[] = [
     title: 'Inbound Inquiry - Service Details',
     description: 'AI answers questions and qualifies lead',
     duration: '4:01',
-    audioUrl: '/audio/sample-inbound-qualify.mp3',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', // Placeholder - replace with real call recordings
     type: 'inbound',
     outcome: 'follow-up',
   },
@@ -49,8 +49,9 @@ const SAMPLE_RECORDINGS: CallRecording[] = [
 export function CallRecordingsShowcase() {
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [audioElements, setAudioElements] = useState<Record<string, HTMLAudioElement>>({})
+  const [errors, setErrors] = useState<Record<string, boolean>>({})
 
-  const handlePlay = (recording: CallRecording) => {
+  const handlePlay = async (recording: CallRecording) => {
     // Stop currently playing audio
     if (playingId && audioElements[playingId]) {
       audioElements[playingId].pause()
@@ -63,17 +64,34 @@ export function CallRecordingsShowcase() {
       return
     }
 
-    // Create new audio element if needed
-    if (!audioElements[recording.id]) {
-      const audio = new Audio(recording.audioUrl)
-      audio.addEventListener('ended', () => setPlayingId(null))
-      setAudioElements(prev => ({ ...prev, [recording.id]: audio }))
-      audio.play()
-    } else {
-      audioElements[recording.id].play()
-    }
+    try {
+      // Create new audio element if needed
+      if (!audioElements[recording.id]) {
+        const audio = new Audio(recording.audioUrl)
+        
+        audio.addEventListener('error', (e) => {
+          console.error('Audio playback error:', e)
+          setErrors(prev => ({ ...prev, [recording.id]: true }))
+          setPlayingId(null)
+        })
+        
+        audio.addEventListener('ended', () => setPlayingId(null))
+        audio.addEventListener('loadeddata', () => {
+          setErrors(prev => ({ ...prev, [recording.id]: false }))
+        })
+        
+        setAudioElements(prev => ({ ...prev, [recording.id]: audio }))
+        await audio.play()
+      } else {
+        await audioElements[recording.id].play()
+      }
 
-    setPlayingId(recording.id)
+      setPlayingId(recording.id)
+    } catch (error) {
+      console.error('Error playing audio:', error)
+      setErrors(prev => ({ ...prev, [recording.id]: true }))
+      setPlayingId(null)
+    }
   }
 
   return (
@@ -107,24 +125,28 @@ export function CallRecordingsShowcase() {
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <span className="text-sm text-muted-foreground">{recording.duration}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePlay(recording)}
-                    className="flex items-center gap-2"
-                  >
-                    {playingId === recording.id ? (
-                      <>
-                        <Pause className="h-4 w-4" />
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4" />
-                        Play
-                      </>
-                    )}
-                  </Button>
+                  {errors[recording.id] ? (
+                    <span className="text-xs text-muted-foreground italic">Audio unavailable</span>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePlay(recording)}
+                      className="flex items-center gap-2"
+                    >
+                      {playingId === recording.id ? (
+                        <>
+                          <Pause className="h-4 w-4" />
+                          Pause
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4" />
+                          Play
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
