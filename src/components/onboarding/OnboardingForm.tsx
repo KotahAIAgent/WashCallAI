@@ -181,6 +181,22 @@ export function OnboardingForm({ organizationId }: { organizationId: string }) {
     }
   }
 
+  // Get services based on selected service types
+  function getAvailableServices(): string[] {
+    const hasResidential = formData.serviceTypes.includes('residential') || formData.serviceTypes.includes('both')
+    const hasCommercial = formData.serviceTypes.includes('commercial') || formData.serviceTypes.includes('both')
+    
+    if (hasResidential && hasCommercial) {
+      // Both selected - combine and deduplicate
+      return [...new Set([...RESIDENTIAL_SERVICES, ...COMMERCIAL_SERVICES])]
+    } else if (hasResidential) {
+      return RESIDENTIAL_SERVICES
+    } else if (hasCommercial) {
+      return COMMERCIAL_SERVICES
+    }
+    return []
+  }
+
   async function handleSubmit() {
     setLoading(true)
     
