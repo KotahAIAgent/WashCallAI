@@ -188,7 +188,7 @@ export function OnboardingForm({ organizationId }: { organizationId: string }) {
     
     if (hasResidential && hasCommercial) {
       // Both selected - combine and deduplicate
-      return [...new Set([...RESIDENTIAL_SERVICES, ...COMMERCIAL_SERVICES])]
+      return Array.from(new Set([...RESIDENTIAL_SERVICES, ...COMMERCIAL_SERVICES]))
     } else if (hasResidential) {
       return RESIDENTIAL_SERVICES
     } else if (hasCommercial) {
