@@ -25,7 +25,7 @@ export function PromptBuilder({
 }: PromptBuilderProps) {
   const [loading, setLoading] = useState(false)
   const [prompt, setPrompt] = useState(initialPrompt)
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('auto')
   const { toast } = useToast()
 
   // Filter templates by type
@@ -42,7 +42,7 @@ export function PromptBuilder({
         body: JSON.stringify({
           organizationId,
           type,
-          templateId: selectedTemplate || undefined,
+          templateId: selectedTemplate === 'auto' ? undefined : selectedTemplate,
         }),
       })
 
@@ -80,7 +80,7 @@ export function PromptBuilder({
             <SelectValue placeholder="Auto-select based on your business (Recommended)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Auto-select (Recommended)</SelectItem>
+            <SelectItem value="auto">Auto-select (Recommended)</SelectItem>
             {availableTemplates.map((template) => (
               <SelectItem key={template.id} value={template.id}>
                 {template.name} - {template.description}
