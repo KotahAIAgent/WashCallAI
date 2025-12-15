@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getAvailablePhoneNumbers, createPhoneNumberCheckout } from '@/lib/phone-numbers/purchase-actions'
+import { createTwilioPhoneCheckout } from '@/lib/phone-numbers/twilio-purchase-actions'
 import { useToast } from '@/hooks/use-toast'
 import { Phone, Loader2, Search, DollarSign, MapPin } from 'lucide-react'
 
@@ -15,13 +15,18 @@ interface PhoneNumberCatalogProps {
 }
 
 interface PhoneNumber {
-  id: string
-  phone_number: string
-  area_code: string | null
-  state: string | null
-  city: string | null
-  price_cents: number
-  available: boolean
+  phoneNumber: string
+  friendlyName: string
+  region?: string
+  locality?: string
+  postalCode?: string
+  areaCode?: string
+  capabilities: {
+    voice: boolean
+    SMS: boolean
+    MMS: boolean
+  }
+  priceCents: number
 }
 
 export function PhoneNumberCatalog({ organizationId }: PhoneNumberCatalogProps) {
@@ -41,22 +46,42 @@ export function PhoneNumberCatalog({ organizationId }: PhoneNumberCatalogProps) 
 
   async function loadPhoneNumbers() {
     setLoading(true)
-    const result = await getAvailablePhoneNumbers(filters)
-    if (result.error) {
+    try {
+      const params = new URLSearchParams()
+      if (filters.areaCode) params.append('areaCode', filters.areaCode)
+      if (filters.state) params.append('region', filters.state)
+      if (filters.city) params.append('locality', filters.city)
+      params.append('limit', '20')
+
+      const response = await fetch(`/api/phone-numbers/search?${params.toString()}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to search phone numbers')
+      }
+
+      setPhoneNumbers(data.numbers || [])
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: result.error,
+        description: error.message || 'Failed to load phone numbers',
         variant: 'destructive',
       })
-    } else {
-      setPhoneNumbers(result.phoneNumbers || [])
+      setPhoneNumbers([])
     }
     setLoading(false)
   }
 
-  async function handlePurchase(phoneNumberId: string) {
-    setPurchasing(phoneNumberId)
-    const result = await createPhoneNumberCheckout(phoneNumberId, organizationId)
+  async function handlePurchase(phone: PhoneNumber) {
+    setPurchasing(phone.phoneNumber)
+    const result = await createTwilioPhoneCheckout({
+      phoneNumber: phone.phoneNumber,
+      organizationId,
+      priceCents: phone.priceCents,
+      areaCode: phone.areaCode,
+      locality: phone.locality,
+      region: phone.region,
+    })
 
     if (result.error) {
       toast({
@@ -73,6 +98,13 @@ export function PhoneNumberCatalog({ organizationId }: PhoneNumberCatalogProps) 
 
   function formatPrice(cents: number): string {
     return `$${(cents / 100).toFixed(2)}`
+  }
+
+  function getLocationDisplay(phone: PhoneNumber): string {
+    const parts: string[] = []
+    if (phone.locality) parts.push(phone.locality)
+    if (phone.region) parts.push(phone.region)
+    return parts.length > 0 ? parts.join(', ') : 'United States'
   }
 
   return (
@@ -141,39 +173,42 @@ export function PhoneNumberCatalog({ organizationId }: PhoneNumberCatalogProps) 
           <div className="space-y-3">
             {phoneNumbers.map((phone) => (
               <div
-                key={phone.id}
+                key={phone.phoneNumber}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <Phone className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-semibold text-lg">{phone.phone_number}</p>
+                      <p className="font-semibold text-lg">{phone.phoneNumber}</p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                        {phone.area_code && (
+                        {phone.areaCode && (
                           <span className="flex items-center gap-1">
-                            <span>{phone.area_code}</span>
+                            <span>Area: {phone.areaCode}</span>
                           </span>
                         )}
-                        {phone.city && phone.state && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {phone.city}, {phone.state}
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {getLocationDisplay(phone)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          {phone.capabilities.voice && <span className="text-xs">Voice</span>}
+                          {phone.capabilities.SMS && <span className="text-xs">SMS</span>}
+                          {phone.capabilities.MMS && <span className="text-xs">MMS</span>}
+                        </span>
                         <span className="flex items-center gap-1 text-green-600 font-medium">
                           <DollarSign className="h-4 w-4" />
-                          {formatPrice(phone.price_cents)}
+                          {formatPrice(phone.priceCents)}/mo
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
                 <Button
-                  onClick={() => handlePurchase(phone.id)}
-                  disabled={purchasing === phone.id}
+                  onClick={() => handlePurchase(phone)}
+                  disabled={purchasing === phone.phoneNumber}
                 >
-                  {purchasing === phone.id ? (
+                  {purchasing === phone.phoneNumber ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Processing...
