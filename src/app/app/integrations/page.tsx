@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { CrmIntegrationCard } from '@/components/integrations/CrmIntegrationCard'
 import { FormWebhookCard } from '@/components/integrations/FormWebhookCard'
+import { ZapierIntegrationCard } from '@/components/integrations/ZapierIntegrationCard'
 import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
@@ -51,14 +52,38 @@ export default async function IntegrationsPage() {
         </p>
       </div>
 
-      {/* Form Webhook Section */}
-      <FormWebhookCard webhookUrl={webhookUrl} />
+      {/* CRM Integrations Section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">CRM Integrations</h2>
+          <p className="text-sm text-muted-foreground">
+            Connect your CRM to automatically sync invoices, estimates, and customer data
+          </p>
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Zapier Integration Card */}
+          <ZapierIntegrationCard organizationId={profile.organization_id} />
+          
+          {/* Direct CRM Integration Card */}
+          <CrmIntegrationCard
+            organizationId={profile.organization_id}
+            integrations={crmIntegrations}
+          />
+        </div>
+      </div>
 
-      {/* CRM Integration Section */}
-      <CrmIntegrationCard
-        organizationId={profile.organization_id}
-        integrations={crmIntegrations}
-      />
+      {/* Form Webhooks Section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Form Webhooks</h2>
+          <p className="text-sm text-muted-foreground">
+            Connect Facebook Ads and Google Ads forms to automatically create leads and trigger calls
+          </p>
+        </div>
+        
+        <FormWebhookCard webhookUrl={webhookUrl} />
+      </div>
     </div>
   )
 }
