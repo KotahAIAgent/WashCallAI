@@ -25,12 +25,37 @@ export function Footer() {
                   Pricing
                 </Link>
               </li>
+              <li>
+                <Link href="/case-studies" className="hover:text-white transition-colors">
+                  Case Studies
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare" className="hover:text-white transition-colors">
+                  Compare
+                </Link>
+              </li>
+              <li>
+                <Link href="/affiliate" className="hover:text-white transition-colors">
+                  Affiliate Program
+                </Link>
+              </li>
             </ul>
           </div>
           
           <div>
-            <h4 className="text-white font-semibold mb-4">Company</h4>
+            <h4 className="text-white font-semibold mb-4">Resources</h4>
             <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/api-docs" className="hover:text-white transition-colors">
+                  API Documentation
+                </Link>
+              </li>
+              <li>
+                <Link href="/trust" className="hover:text-white transition-colors">
+                  Trust Center
+                </Link>
+              </li>
               <li>
                 <Link href="/login" className="hover:text-white transition-colors">
                   Login

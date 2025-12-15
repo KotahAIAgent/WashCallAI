@@ -26,6 +26,10 @@ import { SidebarCredits } from './SidebarCredits'
 const navigation = [
   { name: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard, tourId: 'dashboard' },
   { name: 'Calls', href: '/app/calls', icon: Phone },
+  { name: 'Call Intelligence', href: '/app/calls/intelligence', icon: BarChart3 },
+  { name: 'Search Transcripts', href: '/app/calls/search', icon: Phone },
+  { name: 'Live Calls', href: '/app/calls/live', icon: Phone },
+  { name: 'Trending Topics', href: '/app/trending-topics', icon: BarChart3 },
   { name: 'Inbound Leads', href: '/app/leads', icon: Users, tourId: 'leads' },
   { name: 'Analytics', href: '/app/analytics', icon: BarChart3 },
   { name: 'Usage & Disputes', href: '/app/disputes', icon: Receipt },

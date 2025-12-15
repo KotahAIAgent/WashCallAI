@@ -9,6 +9,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { IndustrySelector } from '@/components/marketing/IndustrySelector'
 import { IndustryGrid } from '@/components/marketing/IndustryGrid'
+import { ROICalculator } from '@/components/marketing/ROICalculator'
+import { CallRecordingsShowcase } from '@/components/marketing/CallRecordingsShowcase'
+import { DoneForYouSection } from '@/components/marketing/DoneForYouSection'
+import { CostComparisonSection } from '@/components/marketing/CostComparisonSection'
+import { BookDemoDialog } from '@/components/marketing/BookDemoDialog'
 import { motion } from 'framer-motion'
 import { 
   Check, 
@@ -94,10 +99,20 @@ export default function HomePage() {
             </motion.h1>
             
             {/* Supporting paragraph */}
-            <motion.p variants={item} className="text-xl md:text-2xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            <motion.p variants={item} className="text-xl md:text-2xl text-gray-600 mb-6 max-w-2xl mx-auto leading-relaxed">
+              <Badge variant="outline" className="mb-4">🚀 No Code Required</Badge>
+              <br />
               AI receptionist that answers calls 24/7, captures leads, and books appointments 
-              for your business. While you're on the job.
+              for your business. While you're on the job. <strong>Zero coding needed</strong> — we set it up for you.
             </motion.p>
+            <motion.div variants={item} className="flex items-center justify-center gap-4 mb-10">
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                🌍 50+ Languages Supported
+              </Badge>
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                ⚡ 5-Minute Setup
+              </Badge>
+            </motion.div>
 
             {/* Industry Selector */}
             <motion.div variants={item} className="mb-8">
@@ -113,15 +128,16 @@ export default function HomePage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="w-full sm:w-auto text-lg px-8 py-6 border-2"
-                onClick={() => setShowDemo(true)}
-              >
-                <Play className="mr-2 h-5 w-5" />
-                Watch Demo
-              </Button>
+              <BookDemoDialog>
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="w-full sm:w-auto text-lg px-8 py-6 border-2"
+                >
+                  <Play className="mr-2 h-5 w-5" />
+                  Book a Demo
+                </Button>
+              </BookDemoDialog>
             </motion.div>
 
             {/* Trust badges / social proof */}
@@ -231,6 +247,24 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Real Call Recordings */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto">
+            <CallRecordingsShowcase />
+          </div>
+        </div>
+      </section>
+
+      {/* Done For You Section */}
+      <section className="py-20 bg-gradient-to-b from-white to-gray-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto">
+            <DoneForYouSection />
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -290,7 +324,7 @@ export default function HomePage() {
                   </div>
                   <CardTitle className="text-2xl">AI Sales Caller</CardTitle>
                   <CardDescription className="text-base">
-                    Proactively reach out to leads and grow your customer base automatically.
+                    Proactively reach out to leads and grow your customer base automatically. <Badge variant="outline" className="ml-2 text-xs">🚀 No Code Setup</Badge>
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -331,7 +365,7 @@ export default function HomePage() {
                 {
                   step: '1',
                   title: 'Tell Us About Your Business',
-                  description: 'Share your services, pricing, and service areas. We\'ll customize your AI agent.',
+                  description: 'Share your services, pricing, and service areas. No coding required — we\'ll customize your AI agent for you.',
                   icon: Building2,
                 },
                 {
@@ -370,6 +404,24 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Cost Comparison Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto">
+            <CostComparisonSection />
+          </div>
+        </div>
+      </section>
+
+      {/* ROI Calculator */}
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto">
+            <ROICalculator />
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section id="pricing" className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -385,26 +437,26 @@ export default function HomePage() {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-8">
-              {/* Starter */}
+              {/* Voice Agent */}
               <Card className="relative">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-teal-500" />
-                    Starter
+                    Voice Agent
                   </CardTitle>
-                  <CardDescription>Perfect for getting started</CardDescription>
+                  <CardDescription>AI phone receptionist - perfect for getting started</CardDescription>
                   <div className="mt-4">
                     <span className="text-4xl font-bold">From $129</span>
                     <span className="text-gray-500">/month</span>
                   </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    + $99 one-time setup fee
-                    <br />
+                  <div className="mt-2 text-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold">+ $99 setup</span>
+                      <Badge variant="outline" className="text-xs">Refunded if you cancel during trial</Badge>
+                    </div>
                     <span className="text-xs text-teal-600 font-semibold">
-                      ✨ Credited back after 6 months of subscription
+                      ✨ Setup credited back after 6 months
                     </span>
-                    <br />
-                    <span className="text-xs">(Also refunded if you cancel during trial)</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -434,7 +486,7 @@ export default function HomePage() {
                 </CardFooter>
               </Card>
 
-              {/* Growth - Featured */}
+              {/* Combo - Featured */}
               <Card className="relative border-2 border-teal-500 shadow-xl shadow-teal-500/10 scale-105">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                   <Badge className="bg-teal-500 text-white px-4 py-1">Most Popular</Badge>
@@ -442,27 +494,27 @@ export default function HomePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Star className="h-5 w-5 text-amber-500" />
-                    Growth
+                    Combo
                   </CardTitle>
-                  <CardDescription>For businesses ready to scale</CardDescription>
+                  <CardDescription>Voice + Web AI agents - for businesses ready to scale</CardDescription>
                   <div className="mt-4">
                     <span className="text-4xl font-bold">From $299</span>
                     <span className="text-gray-500">/month</span>
                   </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    + $149 one-time setup fee
-                    <br />
+                  <div className="mt-2 text-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold">+ $149 setup</span>
+                      <Badge variant="outline" className="text-xs">Refunded if you cancel during trial</Badge>
+                    </div>
                     <span className="text-xs text-teal-600 font-semibold">
-                      ✨ Credited back after 6 months of subscription
+                      ✨ Setup credited back after 6 months
                     </span>
-                    <br />
-                    <span className="text-xs">(Also refunded if you cancel during trial)</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ul className="space-y-3">
                     {[
-                      'Everything in Starter',
+                      'Everything in Voice Agent',
                       'Outbound minutes included (varies by industry)',
                       '3 active campaigns',
                       'Campaign contact management',
@@ -499,20 +551,20 @@ export default function HomePage() {
                     <span className="text-4xl font-bold">From $599</span>
                     <span className="text-gray-500">/month</span>
                   </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    + $199 one-time setup fee
-                    <br />
+                  <div className="mt-2 text-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold">+ $199 setup</span>
+                      <Badge variant="outline" className="text-xs">Refunded if you cancel during trial</Badge>
+                    </div>
                     <span className="text-xs text-teal-600 font-semibold">
-                      ✨ Credited back after 6 months of subscription
+                      ✨ Setup credited back after 6 months
                     </span>
-                    <br />
-                    <span className="text-xs">(Also refunded if you cancel during trial)</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ul className="space-y-3">
                     {[
-                      'Everything in Growth',
+                      'Everything in Combo',
                       'Outbound minutes included (varies by industry)',
                       'Unlimited campaigns',
                       'Custom AI voice & scripts',

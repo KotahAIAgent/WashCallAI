@@ -1297,6 +1297,20 @@ export async function POST(request: Request) {
           callId: call.id,
           leadId,
         }).catch(err => console.error('Workflow trigger error:', err))
+
+        // Process AI call intelligence (sentiment, topics, notes)
+        if (callData.transcript && callData.transcript.length > 50) {
+          const { processCallIntelligence } = await import('@/lib/ai/call-intelligence')
+          processCallIntelligence(call.id, callData.transcript, callData.summary || undefined)
+            .then(result => {
+              if (result.success) {
+                console.log('✅ Call intelligence processed successfully')
+              } else {
+                console.error('⚠️ Call intelligence processing failed:', result.error)
+              }
+            })
+            .catch(err => console.error('Call intelligence error:', err))
+        }
       }
     }
 

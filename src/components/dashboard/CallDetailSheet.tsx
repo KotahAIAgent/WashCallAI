@@ -14,8 +14,17 @@ import { Badge } from '@/components/ui/badge'
 import { Database } from '@/types/database'
 import { format } from 'date-fns'
 import { Eye } from 'lucide-react'
+import { CallIntelligence } from '@/components/calls/CallIntelligence'
 
-type Call = Database['public']['Tables']['calls']['Row']
+type Call = Database['public']['Tables']['calls']['Row'] & {
+  sentiment?: string | null
+  sentiment_score?: number | null
+  topics?: any[] | null
+  ai_notes?: string | null
+  talk_time_seconds?: number | null
+  listen_time_seconds?: number | null
+  talk_listen_ratio?: number | null
+}
 
 export function CallDetailSheet({ call }: { call: Call }) {
   const [open, setOpen] = useState(false)
@@ -92,6 +101,17 @@ export function CallDetailSheet({ call }: { call: Call }) {
               </div>
             </div>
           )}
+
+          {/* Call Intelligence */}
+          <CallIntelligence
+            sentiment={call.sentiment as any}
+            sentimentScore={call.sentiment_score as number | null}
+            topics={call.topics as any}
+            aiNotes={call.ai_notes as any}
+            talkTimeSeconds={call.talk_time_seconds as number | null}
+            listenTimeSeconds={call.listen_time_seconds as number | null}
+            talkListenRatio={call.talk_listen_ratio as number | null}
+          />
 
           {safeRecordingUrl && (
             <div>
