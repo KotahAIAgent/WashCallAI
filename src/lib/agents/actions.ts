@@ -563,6 +563,23 @@ export async function initiateOutboundCall({ organizationId, leadId, phoneNumber
     campaignPromptContext = generateCampaignPromptContext(campaignData.script_type, campaignData.description, campaignData.name)
   }
 
+  // Build context-aware prompt information
+  let callContextString: string | undefined
+  if (campaignContactId || actualLeadId) {
+    try {
+      const { buildCallContext } = await import('@/lib/prompts/context-builder')
+      const { formatContextForPrompt } = await import('@/lib/prompts/format-context')
+      const context = await buildCallContext(organizationId, actualLeadId || undefined, campaignContactId || undefined)
+      callContextString = formatContextForPrompt(context)
+      
+      // Add context to metadata for use in prompts
+      customVariables.callContext = callContextString
+    } catch (error) {
+      console.error('[initiateOutboundCall] Error building call context:', error)
+      // Continue without context if there's an error
+    }
+  }
+
   // Validate phone number format (must be E.164)
   if (!contactPhone || !contactPhone.startsWith('+')) {
     return { error: `Invalid phone number format. Phone number must be in E.164 format (e.g., +1234567890). Got: ${contactPhone}` }

@@ -102,6 +102,9 @@ export function NewCampaignForm({
             <SelectItem value="past_customers">Past Customer Follow-up</SelectItem>
             <SelectItem value="new_leads">New Lead Follow-up</SelectItem>
             <SelectItem value="estimate_reminder">Estimate Reminders</SelectItem>
+            <SelectItem value="invoice_followup">Invoice Follow-up</SelectItem>
+            <SelectItem value="form_lead_warm_call">Form Lead Warm Call</SelectItem>
+            <SelectItem value="company_cold_call">Company Cold Call</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-sm text-muted-foreground">

@@ -1,38 +1,64 @@
 import { Metadata } from 'next'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plug, Clock } from 'lucide-react'
+import { createServerClient } from '@/lib/supabase/server'
+import { CrmIntegrationCard } from '@/components/integrations/CrmIntegrationCard'
+import { FormWebhookCard } from '@/components/integrations/FormWebhookCard'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'Integrations | FusionCaller',
-  description: 'Integrations coming soon to FusionCaller.',
+  description: 'Manage your integrations and webhooks.',
 }
 
-export default function IntegrationsPage() {
+async function getCrmIntegrations(organizationId: string) {
+  const supabase = createServerClient()
+  const { data } = await supabase
+    .from('crm_integrations')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+  
+  return data || []
+}
+
+export default async function IntegrationsPage() {
+  const supabase = createServerClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    redirect('/login')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', session.user.id)
+    .single()
+
+  if (!profile?.organization_id) {
+    redirect('/app/dashboard')
+  }
+
+  const crmIntegrations = await getCrmIntegrations(profile.organization_id)
+  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fusioncaller.com'}/api/webhooks/form-submission?orgId=${profile.organization_id}`
+
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Card className="max-w-2xl w-full">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500">
-              <Plug className="h-12 w-12 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-3xl font-bold">Integrations Coming Soon</CardTitle>
-          <CardDescription className="text-lg mt-2">
-            We're working hard to bring you powerful integrations with your favorite tools.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Clock className="h-5 w-5" />
-            <p className="text-sm">Stay tuned for updates!</p>
-          </div>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Connect FusionCaller with CRM systems, calendar apps, email marketing tools, and more. 
-            We'll notify you as soon as integrations are available.
-          </p>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Integrations</h1>
+        <p className="text-muted-foreground mt-2">
+          Connect your tools and automate your workflow
+        </p>
+      </div>
+
+      {/* Form Webhook Section */}
+      <FormWebhookCard webhookUrl={webhookUrl} />
+
+      {/* CRM Integration Section */}
+      <CrmIntegrationCard
+        organizationId={profile.organization_id}
+        integrations={crmIntegrations}
+      />
     </div>
   )
 }
