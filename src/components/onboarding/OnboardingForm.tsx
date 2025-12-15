@@ -24,20 +24,41 @@ import {
 } from 'lucide-react'
 import { submitOnboardingForm } from '@/lib/onboarding/actions'
 
-// Generic services - will be customized per industry later
-const SERVICES = [
-  'Emergency Services',
-  'Routine Maintenance',
-  'Installation/Setup',
-  'Repairs',
-  'Inspections',
-  'Consultations',
-  'Commercial Services',
-  'Residential Services',
-  'Preventive Care',
-  'Same-Day Service',
-  'After-Hours Service',
-  'Seasonal Services',
+// Common services by customer type
+const RESIDENTIAL_SERVICES = [
+  'House Washing',
+  'Driveway & Walkway Cleaning',
+  'Roof Cleaning',
+  'Deck & Patio Cleaning',
+  'Fence Cleaning',
+  'Gutter Cleaning',
+  'Window Cleaning',
+  'Pool Deck Cleaning',
+  'Sidewalk Cleaning',
+  'Garage Cleaning',
+  'Stain Removal',
+  'Pressure Washing',
+  'Soft Washing',
+  'Exterior Painting Prep',
+  'Deck Staining Prep',
+]
+
+const COMMERCIAL_SERVICES = [
+  'Commercial Building Washing',
+  'Parking Lot Cleaning',
+  'Sidewalk & Walkway Cleaning',
+  'Fleet/Vehicle Washing',
+  'Restaurant Cleaning',
+  'Graffiti Removal',
+  'Concrete Cleaning',
+  'Deck & Patio Cleaning',
+  'Window Cleaning',
+  'Gutter Cleaning',
+  'Awning Cleaning',
+  'Storefront Cleaning',
+  'Dumpster Pad Cleaning',
+  'Warehouse Cleaning',
+  'Equipment Cleaning',
 ]
 
 const EQUIPMENT = [
@@ -74,6 +95,7 @@ interface FormData {
   // Service Details
   serviceTypes: string[] // residential, commercial, both
   servicesOffered: string[]
+  otherService: string // Custom "Other" service input
   equipmentOwned: string[]
   crewSize: string
   
@@ -110,6 +132,7 @@ const initialFormData: FormData = {
   yearsInBusiness: '',
   serviceTypes: [],
   servicesOffered: [],
+  otherService: '',
   equipmentOwned: [],
   crewSize: '',
   city: '',
@@ -182,6 +205,26 @@ export function OnboardingForm({ organizationId }: { organizationId: string }) {
   }
 
   function nextStep() {
+    // Validate step 1 (Services) - require service type and at least one service
+    if (step === 1) {
+      if (formData.serviceTypes.length === 0) {
+        toast({
+          title: 'Required',
+          description: 'Please select at least one customer type (Residential, Commercial, or Both)',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (formData.servicesOffered.length === 0) {
+        toast({
+          title: 'Required',
+          description: 'Please select at least one service you offer',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+    
     if (step < STEPS.length - 1) setStep(step + 1)
   }
 
@@ -324,50 +367,143 @@ export function OnboardingForm({ organizationId }: { organizationId: string }) {
             {step === 1 && (
               <>
                 <div className="space-y-4">
-                  <Label>Type of Customers *</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Residential', 'Commercial', 'Both'].map(type => (
-                      <Badge
-                        key={type}
-                        variant={formData.serviceTypes.includes(type.toLowerCase()) ? 'default' : 'outline'}
-                        className="cursor-pointer px-4 py-2"
-                        onClick={() => toggleArrayField('serviceTypes', type.toLowerCase())}
-                      >
-                        {formData.serviceTypes.includes(type.toLowerCase()) && <Check className="h-3 w-3 mr-1" />}
-                        {type}
-                      </Badge>
-                    ))}
+                  <div>
+                    <Label>First, select your customer type *</Label>
+                    <p className="text-sm text-muted-foreground mt-1 mb-3">
+                      This helps us show you the most relevant services for your business
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Residential', 'Commercial', 'Both'].map(type => (
+                        <Badge
+                          key={type}
+                          variant={formData.serviceTypes.includes(type.toLowerCase()) ? 'default' : 'outline'}
+                          className="cursor-pointer px-4 py-2 text-base"
+                          onClick={() => {
+                            const typeLower = type.toLowerCase()
+                            toggleArrayField('serviceTypes', typeLower === 'both' ? 'both' : typeLower)
+                          }}
+                        >
+                          {formData.serviceTypes.includes(type.toLowerCase()) || (type === 'Both' && formData.serviceTypes.includes('both')) ? (
+                            <Check className="h-4 w-4 mr-1" />
+                          ) : null}
+                          {type}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <Label>Services You Offer *</Label>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {SERVICES.map(service => (
-                      <label
-                        key={service}
-                        className={`flex items-center gap-2 p-2 border rounded cursor-pointer transition-colors ${
-                          formData.servicesOffered.includes(service)
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.servicesOffered.includes(service)}
-                          onChange={() => toggleArrayField('servicesOffered', service)}
-                          className="sr-only"
+                {formData.serviceTypes.length > 0 && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Now select the services you offer *</Label>
+                      <p className="text-sm text-muted-foreground mt-1 mb-3">
+                        Select all that apply. We'll customize your AI agent based on these services.
+                      </p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {getAvailableServices().map(service => (
+                        <label
+                          key={service}
+                          className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
+                            formData.servicesOffered.includes(service)
+                              ? 'border-primary bg-primary/5'
+                              : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.servicesOffered.includes(service)}
+                            onChange={() => toggleArrayField('servicesOffered', service)}
+                            className="sr-only"
+                          />
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                            formData.servicesOffered.includes(service) ? 'bg-primary border-primary' : 'border-gray-300'
+                          }`}>
+                            {formData.servicesOffered.includes(service) && <Check className="h-3 w-3 text-white" />}
+                          </div>
+                          <span className="text-sm">{service}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    {/* Other Service Input */}
+                    <div className="space-y-2 pt-4 border-t">
+                      <Label htmlFor="otherService">Other Service (optional)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="otherService"
+                          value={formData.otherService}
+                          onChange={(e) => updateField('otherService', e.target.value)}
+                          placeholder="Enter a custom service not listed above"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const value = formData.otherService.trim()
+                              if (value && !formData.servicesOffered.includes(value)) {
+                                updateField('servicesOffered', [...formData.servicesOffered, value])
+                                updateField('otherService', '')
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value.trim()
+                            if (value && !formData.servicesOffered.includes(value)) {
+                              updateField('servicesOffered', [...formData.servicesOffered, value])
+                              updateField('otherService', '')
+                            }
+                          }}
                         />
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                          formData.servicesOffered.includes(service) ? 'bg-primary border-primary' : 'border-gray-300'
-                        }`}>
-                          {formData.servicesOffered.includes(service) && <Check className="h-3 w-3 text-white" />}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const value = formData.otherService.trim()
+                            if (value && !formData.servicesOffered.includes(value)) {
+                              updateField('servicesOffered', [...formData.servicesOffered, value])
+                              updateField('otherService', '')
+                            }
+                          }}
+                          disabled={!formData.otherService.trim()}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Type your custom service and press Enter or click Add to include it
+                      </p>
+                      {/* Show added "Other" services */}
+                      {formData.servicesOffered.filter(s => !getAvailableServices().includes(s)).length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {formData.servicesOffered
+                            .filter(s => !getAvailableServices().includes(s))
+                            .map(service => (
+                              <Badge key={service} variant="secondary" className="flex items-center gap-1">
+                                {service}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateField('servicesOffered', formData.servicesOffered.filter(s => s !== service))
+                                  }}
+                                  className="ml-1 hover:text-destructive"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
                         </div>
-                        <span className="text-sm">{service}</span>
-                      </label>
-                    ))}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {formData.serviceTypes.length === 0 && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-900">
+                      Please select at least one customer type above to see available services.
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
