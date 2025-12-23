@@ -1,7 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { 
   Phone, 
@@ -11,6 +10,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   Target,
+  Sparkles,
 } from 'lucide-react'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { DashboardChart } from '@/components/dashboard/DashboardChart'
@@ -233,18 +233,22 @@ export default async function DashboardPage() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Subtle background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-950/20 via-transparent to-cyan-950/20 pointer-events-none" />
+      
       {/* Inbound Call Notification - Shows popup when new inbound call arrives */}
       <InboundCallNotification organizationId={profile.organization_id} />
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-            {greeting}, {firstName}! 👋
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+            {greeting}, {firstName}!
+            <span className="text-2xl">👋</span>
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Here's what's happening with {org?.name || 'your business'} today.
+          <p className="text-muted-foreground mt-1">
+            Here's what's happening with <span className="text-purple-400 font-medium">{org?.name || 'your business'}</span> today.
           </p>
         </div>
         <div className="flex-shrink-0">
@@ -257,96 +261,108 @@ export default async function DashboardPage() {
       ) : (
         <>
           {/* Stats Grid */}
-          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          <div className="relative grid gap-4 grid-cols-2 lg:grid-cols-5">
             {/* Total Calls */}
-            <Card>
+            <Card className="glass-card border-border/30 hover:border-purple-500/30 transition-all duration-300 group hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Calls</CardTitle>
-                <Phone className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Calls</CardTitle>
+                <div className="p-2 rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
+                  <Phone className="h-4 w-4 text-purple-400" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.stats.callsThisWeek}</div>
-                <div className="flex items-center text-xs text-muted-foreground">
+                <div className="text-3xl font-bold font-mono">{data.stats.callsThisWeek}</div>
+                <div className="flex items-center text-xs text-muted-foreground mt-1">
                   {data.stats.callsChange > 0 ? (
                     <>
-                      <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
-                      <span className="text-green-500">+{data.stats.callsChange}%</span>
+                      <TrendingUp className="mr-1 h-3 w-3 text-green-400" />
+                      <span className="text-green-400 font-medium">+{data.stats.callsChange}%</span>
                     </>
                   ) : data.stats.callsChange < 0 ? (
                     <>
-                      <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
-                      <span className="text-red-500">{data.stats.callsChange}%</span>
+                      <TrendingDown className="mr-1 h-3 w-3 text-red-400" />
+                      <span className="text-red-400 font-medium">{data.stats.callsChange}%</span>
                     </>
                   ) : (
                     <span>No change</span>
                   )}
-                  <span className="ml-1">from last week</span>
+                  <span className="ml-1 opacity-70">from last week</span>
                 </div>
               </CardContent>
             </Card>
 
             {/* New Leads */}
-            <Card>
+            <Card className="glass-card border-border/30 hover:border-cyan-500/30 transition-all duration-300 group hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">New Leads</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">New Leads</CardTitle>
+                <div className="p-2 rounded-lg bg-cyan-500/10 group-hover:bg-cyan-500/20 transition-colors">
+                  <Users className="h-4 w-4 text-cyan-400" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.stats.leadsThisWeek}</div>
-                <div className="flex items-center text-xs text-muted-foreground">
+                <div className="text-3xl font-bold font-mono">{data.stats.leadsThisWeek}</div>
+                <div className="flex items-center text-xs text-muted-foreground mt-1">
                   {data.stats.leadsChange > 0 ? (
                     <>
-                      <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
-                      <span className="text-green-500">+{data.stats.leadsChange}%</span>
+                      <TrendingUp className="mr-1 h-3 w-3 text-green-400" />
+                      <span className="text-green-400 font-medium">+{data.stats.leadsChange}%</span>
                     </>
                   ) : data.stats.leadsChange < 0 ? (
                     <>
-                      <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
-                      <span className="text-red-500">{data.stats.leadsChange}%</span>
+                      <TrendingDown className="mr-1 h-3 w-3 text-red-400" />
+                      <span className="text-red-400 font-medium">{data.stats.leadsChange}%</span>
                     </>
                   ) : (
                     <span>No change</span>
                   )}
-                  <span className="ml-1">from last week</span>
+                  <span className="ml-1 opacity-70">from last week</span>
                 </div>
               </CardContent>
             </Card>
 
             {/* Inbound Calls */}
-            <Card>
+            <Card className="glass-card border-border/30 hover:border-green-500/30 transition-all duration-300 group hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inbound Calls</CardTitle>
-                <PhoneIncoming className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Inbound Calls</CardTitle>
+                <div className="p-2 rounded-lg bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
+                  <PhoneIncoming className="h-4 w-4 text-green-400" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.stats.inboundCount}</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-3xl font-bold font-mono">{data.stats.inboundCount}</div>
+                <p className="text-xs text-muted-foreground mt-1 opacity-70">
                   This week
                 </p>
               </CardContent>
             </Card>
 
             {/* Outbound Calls */}
-            <Card>
+            <Card className="glass-card border-border/30 hover:border-blue-500/30 transition-all duration-300 group hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Outbound Calls</CardTitle>
-                <PhoneOutgoing className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Outbound Calls</CardTitle>
+                <div className="p-2 rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
+                  <PhoneOutgoing className="h-4 w-4 text-blue-400" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.stats.outboundCount}</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-3xl font-bold font-mono">{data.stats.outboundCount}</div>
+                <p className="text-xs text-muted-foreground mt-1 opacity-70">
                   This week
                 </p>
               </CardContent>
             </Card>
-            <Card>
+
+            {/* Conversion Rate */}
+            <Card className="glass-card border-border/30 hover:border-pink-500/30 transition-all duration-300 group hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
+                <div className="p-2 rounded-lg bg-pink-500/10 group-hover:bg-pink-500/20 transition-colors">
+                  <Target className="h-4 w-4 text-pink-400" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.stats.conversionRate}%</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-3xl font-bold font-mono">{data.stats.conversionRate}%</div>
+                <p className="text-xs text-muted-foreground mt-1 opacity-70">
                   Leads → Interested
                 </p>
               </CardContent>
@@ -354,14 +370,24 @@ export default async function DashboardPage() {
           </div>
 
           {/* Charts and Activity Row */}
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-7">
+          <div className="relative grid gap-6 lg:grid-cols-7">
             {/* Call Activity Chart */}
-            <Card className="lg:col-span-4">
+            <Card className="lg:col-span-4 glass-card border-border/30">
               <CardHeader>
-                <CardTitle>Call Activity</CardTitle>
-                <CardDescription>
-                  Your call volume over the last 7 days
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      Call Activity
+                      <Sparkles className="h-4 w-4 text-purple-400" />
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Your call volume over the last 7 days
+                    </CardDescription>
+                  </div>
+                  <Badge className="bg-purple-500/10 text-purple-300 border-purple-500/30">
+                    Live Data
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <DashboardChart data={data.chartData} />
@@ -369,51 +395,63 @@ export default async function DashboardPage() {
             </Card>
 
             {/* Call Breakdown */}
-            <Card className="lg:col-span-3">
+            <Card className="lg:col-span-3 glass-card border-border/30">
               <CardHeader>
                 <CardTitle>Call Breakdown</CardTitle>
                 <CardDescription>Inbound vs Outbound this week</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <PhoneIncoming className="h-4 w-4 text-green-500" />
-                      <span className="text-sm">Inbound</span>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-green-500/20">
+                          <PhoneIncoming className="h-4 w-4 text-green-400" />
+                        </div>
+                        <span className="text-sm font-medium">Inbound</span>
+                      </div>
+                      <span className="font-mono font-bold text-green-400">{data.stats.inboundCount}</span>
                     </div>
-                    <span className="font-medium">{data.stats.inboundCount}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500 rounded-full transition-all"
-                      style={{ 
-                        width: `${data.stats.callsThisWeek > 0 ? (data.stats.inboundCount / data.stats.callsThisWeek * 100) : 0}%` 
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <PhoneOutgoing className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm">Outbound</span>
+                    <div className="h-3 rounded-full bg-muted/30 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500 shadow-glow-sm"
+                        style={{ 
+                          width: `${data.stats.callsThisWeek > 0 ? (data.stats.inboundCount / data.stats.callsThisWeek * 100) : 0}%`,
+                          boxShadow: '0 0 10px rgba(34, 197, 94, 0.4)'
+                        }}
+                      />
                     </div>
-                    <span className="font-medium">{data.stats.outboundCount}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-500 rounded-full transition-all"
-                      style={{ 
-                        width: `${data.stats.callsThisWeek > 0 ? (data.stats.outboundCount / data.stats.callsThisWeek * 100) : 0}%` 
-                      }}
-                    />
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-500/20">
+                          <PhoneOutgoing className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <span className="text-sm font-medium">Outbound</span>
+                      </div>
+                      <span className="font-mono font-bold text-blue-400">{data.stats.outboundCount}</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-muted/30 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${data.stats.callsThisWeek > 0 ? (data.stats.outboundCount / data.stats.callsThisWeek * 100) : 0}%`,
+                          boxShadow: '0 0 10px rgba(59, 130, 246, 0.4)'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total this week</span>
-                    <span className="font-semibold">{data.stats.callsThisWeek} calls</span>
+                <div className="pt-4 border-t border-border/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total this week</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold font-mono gradient-text">{data.stats.callsThisWeek}</span>
+                      <span className="text-sm text-muted-foreground">calls</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -421,7 +459,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* Bottom Row */}
-          <div className="grid gap-4 sm:gap-6">
+          <div className="relative grid gap-6">
             {/* Recent Activity */}
             <RecentActivityFeed 
               calls={data.recentCalls} 

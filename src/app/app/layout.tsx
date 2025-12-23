@@ -99,9 +99,13 @@ export default async function AppLayout({
     <ThemeProvider>
       <TourProvider>
         <OrganizationProvider>
-          <div className="h-screen flex overflow-hidden bg-background">
+          <div className="h-screen flex overflow-hidden bg-background relative">
+            {/* Ambient background effects */}
+            <div className="absolute inset-0 bg-mesh pointer-events-none" />
+            <div className="absolute inset-0 bg-grid opacity-[0.02] pointer-events-none" />
+            
             <Sidebar isAdmin={isAdmin} />
-            <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex flex-col flex-1 overflow-hidden relative">
               <Topbar isAdmin={isAdmin} userId={userId} />
               <main className="flex-1 relative overflow-y-auto focus:outline-none">
                 <div className="py-6">
